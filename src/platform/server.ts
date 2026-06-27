@@ -1,10 +1,27 @@
 import "server-only";
 
 export * from "./core/server";
+export * from "./app-registry/server";
+export * from "./approvals/server";
 export * from "./auth/server";
+export * from "./automation/server";
+export * from "./background-jobs/server";
+export * from "./cost/server";
+export * from "./dashboard/server";
+export * from "./document/server";
+export * from "./export/server";
+export * from "./files/server";
 export * from "./tenancy/server";
 export * from "./permissions/server";
 export * from "./audit/server";
 export * from "./observability/server";
+export * from "./navigation/server";
+export * from "./notifications/server";
+export * from "./numbering/server";
+export * from "./printing/server";
+export * from "./reporting/server";
+export * from "./search/server";
+export * from "./testing/server";
+export * from "./workflow/server";
 export * from "./financial/server";
 export * from "./party/server";

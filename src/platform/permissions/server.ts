@@ -3,10 +3,27 @@ import "server-only";
 import { ApplicationError } from "@/core/errors";
 import { createRequestSupabaseClient } from "@/infrastructure/server";
 import type { TenantRequestContext } from "@/platform/auth/server";
+import {
+  resolvePermission,
+  type DataScope,
+  type FeatureFlagCheck,
+  type PermissionResolverSource,
+  type ProtectedResource,
+} from "@/platform/security/public-api";
 
 import type { PermissionKey } from "./permission-key";
 
-export async function hasServerPermission(params: {
+export type ServerPermissionCheck = Readonly<{
+  context: TenantRequestContext;
+  permission: PermissionKey;
+  entitlementKey?: string;
+  featureFlags?: readonly FeatureFlagCheck[];
+  requestedDataScope?: DataScope;
+  resource?: ProtectedResource;
+  resolverSource?: PermissionResolverSource;
+}>;
+
+async function hasLegacyServerPermission(params: {
   context: TenantRequestContext;
   permission: PermissionKey;
 }): Promise<boolean> {
@@ -31,10 +48,35 @@ export async function hasServerPermission(params: {
   return data === true;
 }
 
-export async function requirePermission(params: {
-  context: TenantRequestContext;
-  permission: PermissionKey;
-}): Promise<void> {
+export async function hasServerPermission(params: ServerPermissionCheck): Promise<boolean> {
+  if (!params.resolverSource) {
+    return hasLegacyServerPermission(params);
+  }
+
+  const result = await resolvePermission(
+    {
+      entitlementKey: params.entitlementKey,
+      experience: params.context.experience,
+      featureFlags: params.featureFlags,
+      identity: {
+        identity: params.context.identity,
+        identityId: params.context.identityId,
+        principal: params.context.principal,
+        principalId: params.context.principalId,
+        userId: params.context.userId,
+      },
+      permission: params.permission,
+      requestedDataScope: params.requestedDataScope,
+      resource: params.resource,
+      tenantId: params.context.tenantId,
+    },
+    params.resolverSource,
+  );
+
+  return result.allowed;
+}
+
+export async function requirePermission(params: ServerPermissionCheck): Promise<void> {
   const allowed = await hasServerPermission(params);
 
   if (!allowed) {

@@ -22,7 +22,9 @@ Read these documents in order:
 8. `07_SECURITY_GUIDELINES.md`
 9. `08_DATA_GUIDELINES.md`
 10. `09_REPORTING_PRINTING_COSTING.md`
-11. `CHANGELOG.md`
+11. `10_EVENT_OUTBOX_LAYERING.md`
+12. `11_PLATFORM_FREEZE_V1.md`
+13. `CHANGELOG.md`
 
 The older root-level architecture documents remain supporting references. If there is a conflict, `docs/platform` wins.
 

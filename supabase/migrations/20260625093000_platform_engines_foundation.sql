@@ -494,7 +494,6 @@ begin
         raise exception 'document tenant must match approval instance tenant';
       end if;
     end if;
-    end if;
   elsif tg_table_name = 'platform_document_comments' then
     select tenant_id into parent_tenant_id from public.platform_documents where id = new.document_id;
     if parent_tenant_id is distinct from new.tenant_id then

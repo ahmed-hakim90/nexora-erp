@@ -20,7 +20,7 @@ export class DashboardRegistry {
   }
 
   buildDashboard(dashboard: DashboardDefinition): DashboardDefinition {
-    const missingWidget = dashboard.layout.find((item) => !this.widgets.has(item.widgetKey));
+    const missingWidget = dashboard.layout.positions.find((item) => !this.widgets.has(item.widgetKey));
 
     if (missingWidget) {
       throw new ApplicationError({
@@ -29,7 +29,7 @@ export class DashboardRegistry {
       });
     }
 
-    if (dashboard.layout.length > dashboard.builderSchema.maxWidgets) {
+    if (dashboard.layout.positions.length > dashboard.builderSchema.maxWidgets) {
       throw new ApplicationError({
         code: "VALIDATION_ERROR",
         message: "Dashboard exceeds the configured maximum widget count.",

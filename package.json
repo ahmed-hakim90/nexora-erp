@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "node --conditions react-server --import tsx --test tests/**/*.test.ts",
     "typecheck": "tsc --noEmit",
+    "validate:migrations": "node scripts/validate-supabase-migrations.mjs",
     "verify:sprint2": "node scripts/verify-sprint2-foundation.mjs",
     "verify:sprint3": "node scripts/verify-sprint3-engines.mjs",
     "verify:sprint5": "node scripts/verify-sprint5-master-data.mjs && node scripts/verify-sprint5-boundaries.mjs",

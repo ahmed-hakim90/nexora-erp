@@ -4,6 +4,22 @@
 
 Date: 2026-06-27.
 
+Platform Freeze v1.0 Review Gate completed.
+
+Added:
+
+- `10_EVENT_OUTBOX_LAYERING.md` to document the Event Bus versus durable Outbox boundary.
+- `11_PLATFORM_FREEZE_V1.md` to document accepted engines, freeze rules, public/server API rules, security rules, RLS guidance, background-job readiness, and future extension rules.
+
+Validation:
+
+- Static Supabase migration validation.
+- TypeScript typecheck.
+- ESLint.
+- Platform test suite.
+
+Earlier baseline:
+
 Initial official platform documentation baseline.
 
 Included:
