@@ -229,10 +229,7 @@ create policy inventory_integration_messages_update_member_permission on public.
 insert into public.permissions (permission_key, label, description, risk_level)
 values
   ('inventory.events.view', 'View Inventory Event Definitions', 'View Sprint 7 event foundation definitions.', 'standard'),
-  ('inventory.events.manage', 'Manage Inventory Event Definitions', 'Manage Sprint 7 event foundation definitions.', 'elevated'),
+  ('inventory.events.manage', 'Manage Inventory Event Definitions', 'Manage Sprint 7 event foundation definitions.', 'high'),
   ('inventory.integration.view', 'View Inventory Integration Foundation', 'View Sprint 7 integration endpoints, routes, and message placeholders.', 'standard'),
-  ('inventory.integration.manage', 'Manage Inventory Integration Foundation', 'Manage Sprint 7 integration placeholders without posting stock.', 'elevated')
-on conflict (permission_key) do update
-set label = excluded.label,
-    description = excluded.description,
-    risk_level = excluded.risk_level;
+  ('inventory.integration.manage', 'Manage Inventory Integration Foundation', 'Manage Sprint 7 integration placeholders without posting stock.', 'high')
+on conflict do nothing;

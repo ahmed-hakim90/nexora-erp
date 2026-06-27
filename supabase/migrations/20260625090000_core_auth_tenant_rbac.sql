@@ -133,6 +133,35 @@ create unique index tenants_slug_active_uq
   on public.tenants (slug)
   where deleted_at is null;
 
+create table public.companies (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references public.tenants(id) on delete restrict,
+  code text not null,
+  name text not null,
+  legal_name text,
+  tax_number text,
+  default_locale text not null default 'en' check (default_locale in ('ar', 'en')),
+  default_timezone text not null default 'UTC',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  created_by uuid references auth.users(id),
+  updated_by uuid references auth.users(id),
+  deleted_at timestamptz,
+  deleted_by uuid references auth.users(id),
+  is_active boolean not null default true,
+  version integer not null default 1 check (version > 0),
+  check (code = upper(code)),
+  check (length(trim(name)) > 0),
+  check (deleted_at is null or deleted_by is not null)
+);
+
+create unique index companies_tenant_code_active_uq
+  on public.companies (tenant_id, code)
+  where deleted_at is null;
+create index companies_tenant_active_idx
+  on public.companies (tenant_id, is_active)
+  where deleted_at is null;
+
 create table public.branches (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references public.tenants(id) on delete restrict,
@@ -463,6 +492,15 @@ create trigger tenants_touch_updated_at
 create trigger tenants_prevent_id_change
   before update on public.tenants
   for each row execute function public.prevent_id_change();
+create trigger companies_touch_updated_at
+  before update on public.companies
+  for each row execute function public.touch_platform_row();
+create trigger companies_prevent_id_change
+  before update on public.companies
+  for each row execute function public.prevent_id_change();
+create trigger companies_prevent_tenant_id_change
+  before update on public.companies
+  for each row execute function public.prevent_tenant_id_change();
 create trigger branches_touch_updated_at
   before update on public.branches
   for each row execute function public.touch_platform_row();
@@ -626,6 +664,7 @@ grant execute on function public.has_permission(text, uuid) to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.tenants enable row level security;
+alter table public.companies enable row level security;
 alter table public.branches enable row level security;
 alter table public.tenant_memberships enable row level security;
 alter table public.permissions enable row level security;
@@ -638,6 +677,7 @@ alter table public.app_settings enable row level security;
 
 alter table public.profiles force row level security;
 alter table public.tenants force row level security;
+alter table public.companies force row level security;
 alter table public.branches force row level security;
 alter table public.tenant_memberships force row level security;
 alter table public.permissions force row level security;
@@ -694,6 +734,35 @@ create policy tenants_update_manage_permission
   to authenticated
   using (is_active = true and deleted_at is null and public.has_permission('platform.tenant.manage', id))
   with check (is_active = true and deleted_at is null and public.has_permission('platform.tenant.manage', id));
+
+create policy companies_select_member
+  on public.companies
+  for select
+  to authenticated
+  using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id));
+
+create policy companies_insert_manage_permission
+  on public.companies
+  for insert
+  to authenticated
+  with check (
+    is_active = true
+    and deleted_at is null
+    and public.is_tenant_member(tenant_id)
+    and public.has_permission('platform.company.manage', tenant_id)
+  );
+
+create policy companies_update_manage_permission
+  on public.companies
+  for update
+  to authenticated
+  using (is_active = true and deleted_at is null and public.has_permission('platform.company.manage', tenant_id))
+  with check (
+    is_active = true
+    and deleted_at is null
+    and public.is_tenant_member(tenant_id)
+    and public.has_permission('platform.company.manage', tenant_id)
+  );
 
 create policy branches_select_member
   on public.branches
@@ -1004,6 +1073,7 @@ values
   ('platform.user.read', 'Read tenant users', 'Allows reading users within an assigned tenant.', 'high'),
   ('platform.user.manage', 'Manage tenant users', 'Allows managing user profile foundation data within a tenant.', 'critical'),
   ('platform.tenant.manage', 'Manage tenant', 'Allows updating tenant foundation settings.', 'critical'),
+  ('platform.company.manage', 'Manage companies', 'Allows creating and updating tenant company records.', 'critical'),
   ('platform.branch.manage', 'Manage branches', 'Allows creating and updating tenant branches.', 'high'),
   ('platform.membership.read', 'Read memberships', 'Allows reading tenant memberships.', 'high'),
   ('platform.membership.manage', 'Manage memberships', 'Allows creating and updating tenant memberships.', 'critical'),
@@ -1030,6 +1100,7 @@ join public.permissions p on p.permission_key in (
   'platform.user.read',
   'platform.user.manage',
   'platform.tenant.manage',
+  'platform.company.manage',
   'platform.branch.manage',
   'platform.membership.read',
   'platform.membership.manage',

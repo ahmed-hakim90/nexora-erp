@@ -893,7 +893,4 @@ values
   ('purchasing.receipt.create', 'Create Purchase Receipts', 'Create and submit purchase receipt documents.', 'standard'),
   ('purchasing.receipt.post', 'Post Purchase Receipts', 'Post purchase receipts through public inventory services only.', 'high'),
   ('purchasing.cancel', 'Cancel Purchasing Documents', 'Cancel eligible purchasing documents.', 'high')
-on conflict (permission_key) do update
-set label = excluded.label,
-    description = excluded.description,
-    risk_level = excluded.risk_level;
+on conflict do nothing;

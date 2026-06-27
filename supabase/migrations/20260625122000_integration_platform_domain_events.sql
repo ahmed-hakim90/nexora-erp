@@ -483,13 +483,13 @@ create policy api_version_registry_member_select on public.api_version_registry 
 create policy api_version_registry_member_insert on public.api_version_registry for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.integration.manage', tenant_id));
 create policy api_version_registry_member_update on public.api_version_registry for update to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.integration.manage', tenant_id)) with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.integration.manage', tenant_id));
 
-create policy import_jobs_member_select on public.import_jobs for select to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.view', tenant_id));
-create policy import_jobs_member_insert on public.import_jobs for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.manage', tenant_id));
-create policy import_jobs_member_update on public.import_jobs for update to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.manage', tenant_id)) with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.manage', tenant_id));
+create policy import_jobs_member_select on public.import_jobs for select to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.view', tenant_id));
+create policy import_jobs_member_insert on public.import_jobs for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.manage', tenant_id));
+create policy import_jobs_member_update on public.import_jobs for update to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.manage', tenant_id)) with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.manage', tenant_id));
 
-create policy export_registry_member_select on public.export_registry for select to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.view', tenant_id));
-create policy export_registry_member_insert on public.export_registry for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.manage', tenant_id));
-create policy export_registry_member_update on public.export_registry for update to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.manage', tenant_id)) with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import_export.manage', tenant_id));
+create policy export_registry_member_select on public.export_registry for select to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.view', tenant_id));
+create policy export_registry_member_insert on public.export_registry for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.manage', tenant_id));
+create policy export_registry_member_update on public.export_registry for update to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.manage', tenant_id)) with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.import-export.manage', tenant_id));
 
 create policy event_background_handlers_member_select on public.event_background_handlers for select to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.integration.view', tenant_id));
 create policy event_background_handlers_member_insert on public.event_background_handlers for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('platform.integration.manage', tenant_id));
@@ -507,9 +507,6 @@ values
   ('platform.integration.manage', 'Manage Integration Registry', 'Manage platform integration registries and handler metadata.', 'high'),
   ('platform.webhooks.view', 'View Webhook Deliveries', 'View generic webhook delivery logs.', 'standard'),
   ('platform.webhooks.manage', 'Manage Webhooks', 'Manage generic webhook endpoint definitions and delivery logs.', 'high'),
-  ('platform.import_export.view', 'View Import Export Foundation', 'View generic import and export foundation records.', 'standard'),
-  ('platform.import_export.manage', 'Manage Import Export Foundation', 'Manage generic import and export foundation records.', 'high')
-on conflict (permission_key) do update
-set label = excluded.label,
-    description = excluded.description,
-    risk_level = excluded.risk_level;
+  ('platform.import-export.view', 'View Import Export Foundation', 'View generic import and export foundation records.', 'standard'),
+  ('platform.import-export.manage', 'Manage Import Export Foundation', 'Manage generic import and export foundation records.', 'high')
+on conflict do nothing;

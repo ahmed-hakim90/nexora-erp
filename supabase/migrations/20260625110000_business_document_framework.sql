@@ -628,7 +628,7 @@ create policy document_statuses_update_member_permission on public.document_stat
 
 create policy business_documents_select_member_permission on public.business_documents for select to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and public.has_permission('documents.view', tenant_id));
 create policy business_documents_insert_member_permission on public.business_documents for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and public.has_permission('documents.create', tenant_id));
-create policy business_documents_update_member_permission on public.business_documents for update to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and (public.has_permission('documents.update', tenant_id) or public.has_permission('documents.change_status', tenant_id) or public.has_permission('documents.cancel', tenant_id) or public.has_permission('documents.close', tenant_id))) with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and (public.has_permission('documents.update', tenant_id) or public.has_permission('documents.change_status', tenant_id) or public.has_permission('documents.cancel', tenant_id) or public.has_permission('documents.close', tenant_id)));
+create policy business_documents_update_member_permission on public.business_documents for update to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and (public.has_permission('documents.update', tenant_id) or public.has_permission('documents.change-status', tenant_id) or public.has_permission('documents.cancel', tenant_id) or public.has_permission('documents.close', tenant_id))) with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and (public.has_permission('documents.update', tenant_id) or public.has_permission('documents.change-status', tenant_id) or public.has_permission('documents.cancel', tenant_id) or public.has_permission('documents.close', tenant_id)));
 
 create policy document_references_select_member_permission on public.document_references for select to authenticated using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and public.has_permission('documents.view', tenant_id));
 create policy document_references_insert_member_permission on public.document_references for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and public.has_permission('documents.update', tenant_id));
@@ -643,7 +643,7 @@ create policy document_timeline_events_insert_member_permission on public.docume
   and (
     (event_type = 'created' and public.has_permission('documents.create', tenant_id))
     or (event_type = 'updated' and public.has_permission('documents.update', tenant_id))
-    or (event_type in ('status_changed', 'workflow_transitioned', 'approval_requested', 'approved', 'rejected') and public.has_permission('documents.change_status', tenant_id))
+    or (event_type in ('status_changed', 'workflow_transitioned', 'approval_requested', 'approved', 'rejected') and public.has_permission('documents.change-status', tenant_id))
     or (event_type = 'commented' and public.has_permission('documents.comment', tenant_id))
     or (event_type = 'attachment_added' and public.has_permission('documents.attach', tenant_id))
     or (event_type = 'printed' and public.has_permission('documents.print', tenant_id))
@@ -675,7 +675,7 @@ values
   ('documents.view', 'View Documents', 'Sprint 6 generic document permission.', 'standard'),
   ('documents.create', 'Create Documents', 'Sprint 6 generic document permission.', 'standard'),
   ('documents.update', 'Update Documents', 'Sprint 6 generic document permission.', 'standard'),
-  ('documents.change_status', 'Change Document Status', 'Sprint 6 generic document permission.', 'high'),
+  ('documents.change-status', 'Change Document Status', 'Sprint 6 generic document permission.', 'high'),
   ('documents.comment', 'Comment On Documents', 'Sprint 6 generic document permission.', 'standard'),
   ('documents.attach', 'Attach Files To Documents', 'Sprint 6 generic document permission.', 'standard'),
   ('documents.print', 'Print Documents', 'Sprint 6 generic document permission.', 'standard'),

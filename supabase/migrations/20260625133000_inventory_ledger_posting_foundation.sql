@@ -311,7 +311,7 @@ as $$
     (
       select (value #>> '{}')::boolean
       from public.app_settings
-      where setting_key = 'inventory.allow_negative_stock'
+      where setting_key = 'inventory.allow-negative-stock'
         and (tenant_id = input_tenant_id or tenant_id is null)
         and is_active = true
         and deleted_at is null
@@ -813,8 +813,8 @@ create policy stock_balance_snapshots_select_member_permission on public.stock_b
 create policy stock_balance_snapshots_insert_member_permission on public.stock_balance_snapshots for insert to authenticated with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.snapshot', tenant_id));
 
 create policy stock_posting_rules_select_member_permission on public.stock_posting_rules for select to authenticated using (is_active = true and deleted_at is null and (tenant_id is null or public.is_tenant_member(tenant_id)) and (tenant_id is null or public.has_permission('inventory.stock.view', tenant_id)));
-create policy stock_posting_rules_insert_member_permission on public.stock_posting_rules for insert to authenticated with check (is_active = true and deleted_at is null and tenant_id is not null and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.manage_rules', tenant_id));
-create policy stock_posting_rules_update_member_permission on public.stock_posting_rules for update to authenticated using (is_active = true and deleted_at is null and tenant_id is not null and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.manage_rules', tenant_id)) with check (is_active = true and deleted_at is null and tenant_id is not null and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.manage_rules', tenant_id));
+create policy stock_posting_rules_insert_member_permission on public.stock_posting_rules for insert to authenticated with check (is_active = true and deleted_at is null and tenant_id is not null and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.manage-rules', tenant_id));
+create policy stock_posting_rules_update_member_permission on public.stock_posting_rules for update to authenticated using (is_active = true and deleted_at is null and tenant_id is not null and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.manage-rules', tenant_id)) with check (is_active = true and deleted_at is null and tenant_id is not null and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.manage-rules', tenant_id));
 
 create policy event_outbox_inventory_stock_select on public.event_outbox for select to authenticated using (is_active = true and deleted_at is null and event_name in ('inventory.stock_posted', 'inventory.stock_reversed', 'inventory.balance_updated') and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.view', tenant_id));
 create policy event_outbox_inventory_stock_insert on public.event_outbox for insert to authenticated with check (is_active = true and deleted_at is null and event_name in ('inventory.stock_posted', 'inventory.stock_reversed', 'inventory.balance_updated') and public.is_tenant_member(tenant_id) and public.has_permission('inventory.stock.post', tenant_id));
@@ -831,7 +831,7 @@ values
 on conflict do nothing;
 
 insert into public.app_settings (tenant_id, setting_key, value_type, value, description)
-values (null, 'inventory.allow_negative_stock', 'boolean', 'false'::jsonb, 'Sprint 9 placeholder. When false, issue or transfer-out posting cannot make quantity_on_hand negative.')
+values (null, 'inventory.allow-negative-stock', 'boolean', 'false'::jsonb, 'Sprint 9 placeholder. When false, issue or transfer-out posting cannot make quantity_on_hand negative.')
 on conflict do nothing;
 
 insert into public.permissions (permission_key, label, description, risk_level)
@@ -840,8 +840,5 @@ values
   ('inventory.stock.post', 'Post Stock Entries', 'Post stock entries through StockPostingService only.', 'high'),
   ('inventory.stock.reverse', 'Reverse Stock Posting', 'Create reversal entries through StockPostingService reversal foundation.', 'high'),
   ('inventory.stock.snapshot', 'Create Stock Balance Snapshots', 'Create future stock balance snapshot records.', 'high'),
-  ('inventory.stock.manage_rules', 'Manage Stock Posting Rules', 'Manage generic stock posting movement rules.', 'high')
-on conflict (permission_key) do update
-set label = excluded.label,
-    description = excluded.description,
-    risk_level = excluded.risk_level;
+  ('inventory.stock.manage-rules', 'Manage Stock Posting Rules', 'Manage generic stock posting movement rules.', 'high')
+on conflict do nothing;

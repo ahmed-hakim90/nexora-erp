@@ -33,7 +33,7 @@ test("supabase migrations pass repeatable PL/pgSQL validation", () => {
 
 test("review fix migration replaces broad platform engine RLS policies", () => {
   const migration = fs.readFileSync(
-    path.join(root, "supabase/migrations/20260627120000_platform_review_fix_gate.sql"),
+    path.join(root, "supabase/migrations/20260627121000_platform_review_fix_gate.sql"),
     "utf8",
   );
 
