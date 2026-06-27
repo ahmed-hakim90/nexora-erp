@@ -1,0 +1,47 @@
+{
+  "name": "nexora-platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "test": "node --conditions react-server --import tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "verify:sprint2": "node scripts/verify-sprint2-foundation.mjs",
+    "verify:sprint3": "node scripts/verify-sprint3-engines.mjs",
+    "verify:sprint5": "node scripts/verify-sprint5-master-data.mjs && node scripts/verify-sprint5-boundaries.mjs",
+    "verify:sprint6": "node scripts/verify-sprint6-business-documents.mjs",
+    "verify:sprint7": "node scripts/verify-sprint7-inventory-foundation.mjs",
+    "verify:sprint8": "node scripts/verify-sprint8-integration-platform.mjs",
+    "verify:sprint8_5": "node scripts/verify-sprint8-5-durable-outbox.mjs",
+    "verify:sprint9": "node scripts/verify-sprint9-inventory-ledger-posting.mjs",
+    "verify:sprint10": "node scripts/verify-sprint10-inventory-transactions.mjs",
+    "verify:sprint11": "node scripts/verify-sprint11-purchasing-foundation.mjs",
+    "verify:sprint11_5": "node scripts/verify-sprint11-5-public-business-contracts.mjs",
+    "verify:sprint12": "node scripts/verify-sprint12-manufacturing-foundation.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "server-only": "^0.0.1",
+    "sonner": "^2.0.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.1",
+    "@types/node": "^26.0.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.5.2",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.9",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
