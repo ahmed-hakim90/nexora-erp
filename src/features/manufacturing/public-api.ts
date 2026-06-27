@@ -1,3 +1,5 @@
+export { manufacturingAppManifest } from "./app.manifest";
+export * from "./foundation-contracts";
 export { manufacturingModuleManifest } from "./module.manifest";
 export { MANUFACTURING_PERMISSIONS, MANUFACTURING_PERMISSION_LIST } from "./permissions/permission-registry";
 export {

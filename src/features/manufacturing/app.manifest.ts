@@ -1,0 +1,96 @@
+import { defineAppManifest, type AppManifest } from "@/platform/app-registry/public-api";
+
+import { MANUFACTURING_PERMISSIONS } from "./permissions/permission-registry";
+
+export const manufacturingAppManifest = defineAppManifest({
+  capabilities: [
+    { key: "manufacturing.navigation", requiredPermission: MANUFACTURING_PERMISSIONS.view, type: "navigation" },
+    { key: "manufacturing.search", requiredPermission: MANUFACTURING_PERMISSIONS.searchView, type: "search" },
+    { key: "manufacturing.reports", requiredPermission: MANUFACTURING_PERMISSIONS.dailyReportsView, type: "report" },
+    { key: "manufacturing.prints", requiredPermission: MANUFACTURING_PERMISSIONS.dailyReportsView, type: "print" },
+    { key: "manufacturing.dashboards", requiredPermission: MANUFACTURING_PERMISSIONS.kpisView, type: "dashboard" },
+    { key: "manufacturing.document-contracts", requiredPermission: MANUFACTURING_PERMISSIONS.executionView, type: "workflow" },
+    { key: "manufacturing.approval-readiness", requiredPermission: MANUFACTURING_PERMISSIONS.approvalsView, type: "approval" },
+    { key: "manufacturing.import-export", requiredPermission: MANUFACTURING_PERMISSIONS.importExportManage, type: "connector" },
+  ],
+  category: "operations",
+  commands: [
+    {
+      actionType: "open-page",
+      appKey: "manufacturing",
+      category: "navigation",
+      href: "/erp/manufacturing",
+      key: "manufacturing.open",
+      label: "Open Manufacturing Foundation",
+      order: 40,
+      requiredPermission: MANUFACTURING_PERMISSIONS.view,
+      scope: "global",
+      supportedExperiences: ["erp"],
+    },
+  ],
+  dashboards: [
+    { key: "manufacturing.foundation.dashboard-readiness", requiredPermission: MANUFACTURING_PERMISSIONS.kpisView, type: "dashboard" },
+  ],
+  dependencies: [
+    { appKey: "platform", reason: "Relies on Platform v1.0 app registry, security, data/RLS, document, event, workflow, approval, notification, search, import/export, report, print, dashboard, job, and cost contracts." },
+    { appKey: "finance", reason: "Uses accepted Finance Foundation posting-readiness contracts only; no finance logic is implemented." },
+    { appKey: "inventory", reason: "Uses accepted Inventory Foundation movement contracts only; Inventory remains stock quantity owner." },
+  ],
+  description: "Foundation-only Manufacturing app for production master data, plans, targets, daily reports, execution contracts, KPI facts, and integration readiness.",
+  experiences: ["erp"],
+  featureFlags: [],
+  icon: "factory",
+  key: "manufacturing",
+  name: "Manufacturing Foundation",
+  navigation: [
+    {
+      appKey: "manufacturing",
+      href: "/erp/manufacturing",
+      key: "manufacturing.launcher",
+      kind: "app",
+      label: "Manufacturing",
+      order: 40,
+      placement: "app-launcher",
+      requiredPermission: MANUFACTURING_PERMISSIONS.view,
+      supportedExperiences: ["erp"],
+    },
+    {
+      appKey: "manufacturing",
+      href: "/erp/manufacturing",
+      key: "manufacturing.sidebar",
+      label: "Manufacturing Foundation",
+      order: 40,
+      placement: "contextual-sidebar",
+      requiredPermission: MANUFACTURING_PERMISSIONS.view,
+      supportedExperiences: ["erp"],
+    },
+  ],
+  permissions: [
+    MANUFACTURING_PERMISSIONS.view,
+    MANUFACTURING_PERMISSIONS.planningView,
+    MANUFACTURING_PERMISSIONS.dailyReportsView,
+    MANUFACTURING_PERMISSIONS.kpisView,
+  ],
+  prints: [
+    { key: "manufacturing.foundation.print-readiness", requiredPermission: MANUFACTURING_PERMISSIONS.dailyReportsView, type: "print" },
+  ],
+  quickActions: [],
+  reports: [
+    { key: "manufacturing.foundation.report-readiness", requiredPermission: MANUFACTURING_PERMISSIONS.dailyReportsView, type: "report" },
+  ],
+  routes: [
+    {
+      experience: "erp",
+      key: "manufacturing.home",
+      label: "Manufacturing Foundation",
+      path: "/erp/manufacturing",
+      requiredPermission: MANUFACTURING_PERMISSIONS.view,
+    },
+  ],
+  sensitiveData: "sensitive",
+  settings: [
+    { key: "manufacturing.foundation.settings", requiredPermission: MANUFACTURING_PERMISSIONS.manage, type: "setting" },
+  ],
+  statuses: ["draft", "active", "released", "completed", "cancelled", "inactive", "locked", "archived"],
+  version: "1.0.0",
+} satisfies AppManifest);
