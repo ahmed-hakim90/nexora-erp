@@ -1,51 +1,74 @@
-import { getInventoryOverview } from "@/features/inventory/routes/loaders/inventory.loader";
-import { PageContainer, PageContent, PageFooter, PageHeader } from "@/shared/ui";
+import Link from "next/link";
+
+import { loadInventoryOverview, type InventoryOverviewData } from "@/features/inventory/routes/loaders/inventory-overview.loader";
+import { DocumentationHomeButton, PageActions, PageContainer, PageContent, PageHeader } from "@/shared/ui";
 
 import { InventoryShell } from "./_components/inventory-shell";
 
-export default async function InventoryOverviewPage({
-  searchParams,
-}: Readonly<{
-  searchParams?: Promise<Record<string, string | undefined>>;
-}>) {
-  const params = (await searchParams) ?? {};
-  let overview: Awaited<ReturnType<typeof getInventoryOverview>> | null = null;
+const workspaceLinks = [
+  { href: "/erp/inventory/products", label: "Products" },
+  { href: "/erp/inventory/stock-balances", label: "Stock Balances" },
+  { href: "/erp/inventory/transactions", label: "Transactions" },
+  { href: "/erp/inventory/stock-ledger", label: "Stock Ledger" },
+  { href: "/erp/inventory/posting-batches", label: "Posting Batches" },
+  { href: "/erp/inventory/events", label: "Event Definitions" },
+] as const;
+
+function MetricCards({ data }: Readonly<{ data: InventoryOverviewData }>) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {data.metrics.map((metric) => (
+        <article className="rounded-lg border bg-[hsl(var(--surface))] p-4" key={metric.key}>
+          <p className="text-sm text-muted-foreground">{metric.label}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums">{metric.value.toLocaleString("en")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{metric.description}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export default async function InventoryOverviewPage() {
+  let data: InventoryOverviewData = { lastUpdated: new Date().toISOString(), metrics: [] };
   let errorMessage: string | undefined;
 
   try {
-    overview = await getInventoryOverview(params);
+    data = await loadInventoryOverview();
   } catch (error) {
-    errorMessage = error instanceof Error ? error.message : "Could not load inventory events overview.";
+    errorMessage = error instanceof Error ? error.message : "Could not load inventory overview.";
   }
 
   return (
     <InventoryShell activeKey="overview">
-      <PageContainer>
+      <PageContainer className="max-w-[96rem]">
         <PageHeader
-          description="Sprint 10 adds controlled inventory transactions on top of the immutable Sprint 9 stock ledger and posting service."
-          title="Inventory Transactions"
-        />
+          description="Live Inventory overview from Supabase inventory foundation tables. No static catalog data is used here."
+          title="Inventory Dashboard"
+        >
+          <PageActions>
+            <DocumentationHomeButton href="/erp/inventory/documentation" />
+            <Link className="rounded-md border px-3 py-2 text-sm" href="/erp/inventory/products">Open Products</Link>
+            <Link className="rounded-md border px-3 py-2 text-sm" href="/erp/inventory/transactions">Open Transactions</Link>
+          </PageActions>
+        </PageHeader>
         <PageContent>
-          {errorMessage ? <p className="rounded-md border p-4 text-sm text-[hsl(var(--danger))]">{errorMessage}</p> : null}
-          <div className="grid gap-4 md:grid-cols-3">
-            <section className="rounded-md border bg-[hsl(var(--surface))] p-4">
-              <h2 className="text-sm font-medium">Event Definitions</h2>
-              <p className="mt-2 text-3xl font-semibold">{overview?.eventDefinitions.records.length ?? 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">Current page of generic event contracts.</p>
-            </section>
-            <section className="rounded-md border bg-[hsl(var(--surface))] p-4">
-              <h2 className="text-sm font-medium">Endpoints</h2>
-              <p className="mt-2 text-3xl font-semibold">{overview?.endpoints.records.length ?? 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">Integration endpoint placeholders only.</p>
-            </section>
-            <section className="rounded-md border bg-[hsl(var(--surface))] p-4">
-              <h2 className="text-sm font-medium">Messages</h2>
-              <p className="mt-2 text-3xl font-semibold">{overview?.messages.records.length ?? 0}</p>
-              <p className="mt-1 text-sm text-muted-foreground">Message placeholders with no delivery side effects.</p>
-            </section>
-          </div>
+          {errorMessage ? (
+            <div className="rounded-md border border-[hsl(var(--danger))] p-4 text-sm" role="alert">{errorMessage}</div>
+          ) : data.metrics.length === 0 ? (
+            <div className="rounded-md border bg-[hsl(var(--surface))] p-6 text-sm text-muted-foreground">No inventory overview data is available.</div>
+          ) : (
+            <MetricCards data={data} />
+          )}
         </PageContent>
-        <PageFooter>Inventory quantity changes are posted only through StockPostingService. No sales, purchasing, production, or accounting workflows are implemented.</PageFooter>
+        <section className="rounded-lg border bg-[hsl(var(--surface))] p-4">
+          <h2 className="font-medium">Active Inventory Workspaces</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {workspaceLinks.map((item) => (
+              <Link className="rounded-md border px-3 py-2 text-sm" href={item.href} key={item.href}>{item.label}</Link>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">Last refreshed {new Date(data.lastUpdated).toLocaleString()}.</p>
+        </section>
       </PageContainer>
     </InventoryShell>
   );

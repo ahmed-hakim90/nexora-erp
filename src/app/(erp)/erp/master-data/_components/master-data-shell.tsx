@@ -1,5 +1,9 @@
-import { AppShell } from "@/shared/ui";
 import type { ReactNode } from "react";
+import { Database } from "lucide-react";
+
+import { AppShell } from "@/shared/ui";
+
+import { createErpShellChrome, resolveErpRuntimeContext } from "../../../erp-shell-model";
 
 const masterDataItems = [
   { key: "products", label: "Products", href: "/erp/master-data/products" },
@@ -14,25 +18,21 @@ const masterDataItems = [
   { key: "tax-profiles", label: "Tax Profiles", href: "/erp/master-data/tax-profiles" },
 ];
 
-export function MasterDataShell({
+export async function MasterDataShell({
   activeKey,
   children,
 }: Readonly<{
   activeKey: string;
   children: ReactNode;
 }>) {
+  const runtime = await resolveErpRuntimeContext();
+
   return (
     <AppShell
-      activeWorkspaceKey="erp"
-      breadcrumbs={[{ label: "ERP Workspace", href: "/erp" }, { label: "Master Data" }]}
-      sidebarGroups={[
-        {
-          key: "master-data",
-          label: "Master Data",
-          items: masterDataItems.map((item) => ({ ...item, isActive: item.key === activeKey })),
-        },
-      ]}
-      workspaceOptions={[{ key: "erp", label: "ERP Workspace" }]}
+      {...createErpShellChrome("master-data", runtime)}
+      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "Master Data", href: "/erp/master-data" }]}
+      workspace={{ key: "master-data", name: "Master Data", icon: <Database className="size-4" /> }}
+      workspaceNav={masterDataItems.map((item) => ({ ...item, isActive: item.key === activeKey }))}
     >
       {children}
     </AppShell>

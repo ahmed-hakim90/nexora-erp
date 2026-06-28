@@ -22,6 +22,12 @@ export const INVENTORY_PERMISSIONS = {
   reorderRulesManage: definePermissionKey("inventory.reorder-rules.manage"),
   reorderRulesView: definePermissionKey("inventory.reorder-rules.view"),
   reportsView: definePermissionKey("inventory.reports.view"),
+  reservationsApprove: definePermissionKey("inventory.reservations.approve"),
+  reservationsAudit: definePermissionKey("inventory.reservations.audit"),
+  reservationsCancel: definePermissionKey("inventory.reservations.cancel"),
+  reservationsConsume: definePermissionKey("inventory.reservations.consume"),
+  reservationsCreate: definePermissionKey("inventory.reservations.create"),
+  reservationsRelease: definePermissionKey("inventory.reservations.release"),
   reservationsManage: definePermissionKey("inventory.reservations.manage"),
   reservationsView: definePermissionKey("inventory.reservations.view"),
   searchView: definePermissionKey("inventory.search.view"),
@@ -45,9 +51,9 @@ export const INVENTORY_PERMISSIONS = {
   uomsView: definePermissionKey("inventory.uoms.view"),
   warehousesManage: definePermissionKey("inventory.warehouses.manage"),
   warehousesView: definePermissionKey("inventory.warehouses.view"),
-  cycleCountView: definePermissionKey("inventory.cycle_count.view"),
-  cycleCountManage: definePermissionKey("inventory.cycle_count.manage"),
-  cycleCountPost: definePermissionKey("inventory.cycle_count.post"),
+  cycleCountView: definePermissionKey("inventory.cycle-count.view"),
+  cycleCountManage: definePermissionKey("inventory.cycle-count.manage"),
+  cycleCountPost: definePermissionKey("inventory.cycle-count.post"),
 } as const;
 
 export const INVENTORY_PERMISSION_LIST = Object.values(INVENTORY_PERMISSIONS);

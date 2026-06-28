@@ -1,13 +1,21 @@
 import type { PermissionKey } from "@/platform/permissions/public-api";
+import type { BusinessCodeConfig } from "@/shared/business-codes";
 
 export type ManufacturingResourceKey =
+  | "manufacturing-products"
   | "production-lines"
   | "work-centers"
+  | "workstations"
+  | "machines"
+  | "operations"
   | "manufacturing-profiles"
   | "line-assignments"
   | "production-standards"
   | "boms"
-  | "routing-plans";
+  | "routing-plans"
+  | "production-plans"
+  | "manufacturing-orders"
+  | "work-orders";
 
 export type ManufacturingSortDirection = "asc" | "desc";
 
@@ -44,6 +52,7 @@ export type ManufacturingFieldConfig = Readonly<{
   label: string;
   type: ManufacturingFieldType;
   isRequired: boolean;
+  autoCode?: BusinessCodeConfig;
 }>;
 
 export type ManufacturingColumnConfig = Readonly<{
@@ -68,6 +77,7 @@ export type ManufacturingResourceDefinition = Readonly<{
   createdEventName?: string;
   updatedEventName?: string;
   aggregateType: string;
+  scope?: "tenant" | "company" | "branch";
 }>;
 
 export type ProductionStandardResolutionPriority = readonly [

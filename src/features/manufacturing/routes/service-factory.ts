@@ -1,6 +1,6 @@
 import "server-only";
 
-import { resolveTenantRequestContext } from "@/platform/auth/server";
+import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { OutboxService } from "@/platform/integration/server";
 
@@ -21,7 +21,7 @@ import { getManufacturingResourceDefinition } from "../presentation/view-models/
 import { SupabaseManufacturingRepository } from "../infrastructure/repositories/manufacturing.repository";
 
 async function createManufacturingParts() {
-  const context = await resolveTenantRequestContext("erp");
+  const context = await resolveBranchRequestContext("erp");
   const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
   const repository = new SupabaseManufacturingRepository(supabase, context);
   const outbox = new OutboxService(supabase, context);

@@ -57,7 +57,11 @@ test("finance foundation registers app and module manifests without posting capa
     valid: true,
   });
 
-  assert.equal(financeAppManifest.routes.length, 1);
+  assert.deepEqual(financeAppManifest.routes.map((route) => route.path).sort(), [
+    "/erp/finance",
+    "/erp/finance/documentation",
+    "/erp/finance/reports",
+  ]);
   assert.equal(financeAppManifest.quickActions.length, 0);
   assert.equal(financeAppManifest.commands.some((command) => command.key.includes("post")), false);
   assert.equal(financeAppManifest.capabilities.some((capability) => capability.key.includes("invoice")), false);

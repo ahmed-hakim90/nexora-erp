@@ -29,6 +29,7 @@ import {
   MANUFACTURING_PERMISSIONS,
   MANUFACTURING_QUALITY_READINESS_CONTRACT,
   MANUFACTURING_REPORT_READINESS_CONTRACT,
+  MANUFACTURING_RESOURCE_DEFINITIONS,
   MANUFACTURING_SEARCH_PROVIDER_CONTRACT,
   manufacturingModuleManifest,
   type ManufacturingKpiFactsContract,
@@ -41,6 +42,7 @@ import {
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260627125000_manufacturing_foundation.sql");
+const operationalMigrationPath = path.join(root, "supabase/migrations/20260628080000_manufacturing_operational_lines_steps.sql");
 const scope = { branchId: "branch-1", companyId: "company-1", tenantId: "tenant-1" };
 
 const platformManifest = defineAppManifest({
@@ -79,6 +81,31 @@ test("manufacturing foundation registers app and module manifests", () => {
   assert.equal(manufacturingAppManifest.dependencies.some((dependency) => dependency.appKey === "finance"), true);
   assert.equal(manufacturingAppManifest.dependencies.some((dependency) => dependency.appKey === "inventory"), true);
   assert.equal(manufacturingAppManifest.quickActions.length, 0);
+});
+
+test("manufacturing generated codes cover required operational identifiers", () => {
+  const expected = {
+    "manufacturing-products": ["productKey"],
+    "production-lines": ["lineKey"],
+    "work-centers": ["workCenterKey"],
+    workstations: ["workstationKey"],
+    machines: ["machineKey"],
+    operations: ["operationKey"],
+    "manufacturing-profiles": ["manufacturingCode"],
+    boms: ["bomKey", "versionKey"],
+    "routing-plans": ["routingKey", "versionKey"],
+    "production-plans": ["planKey"],
+    "manufacturing-orders": ["orderKey"],
+    "work-orders": ["workOrderKey"],
+  } as const;
+
+  for (const [resourceKey, fieldNames] of Object.entries(expected)) {
+    const definition = MANUFACTURING_RESOURCE_DEFINITIONS[resourceKey as keyof typeof MANUFACTURING_RESOURCE_DEFINITIONS];
+    for (const fieldName of fieldNames) {
+      const field = definition.formFields.find((candidate) => candidate.name === fieldName);
+      assert.ok(field && "autoCode" in field && field.autoCode, `${resourceKey}.${fieldName} should be generated`);
+    }
+  }
 });
 
 test("production plan contracts include planned product, quantity, shift, line, and no scheduler", () => {
@@ -178,6 +205,57 @@ test("daily production report contract is the source for KPI, inventory, cost, q
   assert.equal(report.sourceFor.includes("inventory_movements"), true);
   assert.equal(report.sourceFor.includes("cost_facts"), true);
   assert.equal(report.sourceFor.includes("quality_facts"), true);
+});
+
+test("daily production report UI captures worker output as production fact rows", () => {
+  const page = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/daily-reports/page.tsx"), "utf8");
+  const panel = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/daily-reports/daily-report-record-panel.tsx"), "utf8");
+  const createRoute = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/daily-reports/new/page.tsx"), "utf8");
+  const editRoute = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/daily-reports/[id]/edit/page.tsx"), "utf8");
+  const action = fs.readFileSync(path.join(process.cwd(), "src/features/manufacturing/routes/actions/daily-reports.actions.ts"), "utf8");
+
+  assert.match(page, /DailyReportRecordModalLauncher/);
+  assert.match(page, /buildHref\(params, \{ create: "1", edit: null \}\)/);
+  assert.match(panel, /closeHref/);
+  assert.match(createRoute, /\/erp\/manufacturing\/daily-reports\?create=1/);
+  assert.match(editRoute, /\/erp\/manufacturing\/daily-reports\?edit=\$\{encodeURIComponent\(id\)\}/);
+  assert.match(panel, /Worker Output Grid/);
+  assert.match(panel, /workerOutputWorkerRefId/);
+  assert.match(panel, /workerOutputTargetQuantity/);
+  assert.match(panel, /workerOutputActualQuantity/);
+  assert.doesNotMatch(panel, /name="workerOutputJson"/);
+  assert.match(action, /workerOutputJson: JSON\.stringify\(workerOutput\)/);
+  assert.match(action, /Production facts only|worker_output: input\.workerOutputJson/);
+});
+
+test("manufacturing targets use list-first record modals", () => {
+  const page = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/targets/page.tsx"), "utf8");
+  const modal = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/targets/target-record-modal.tsx"), "utf8");
+  const createRoute = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/targets/new/page.tsx"), "utf8");
+  const editRoute = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/targets/[id]/edit/page.tsx"), "utf8");
+
+  assert.match(page, /TargetRecordModalLauncher/);
+  assert.match(page, /buildTargetsHref\(params, \{ create: "product", edit: null, editType: null \}\)/);
+  assert.match(modal, /RecordFormDialog/);
+  assert.match(modal, /createManufacturingTargetAction/);
+  assert.match(modal, /updateManufacturingTargetAction/);
+  assert.match(createRoute, /\/erp\/manufacturing\/targets\?create=\$\{normalizeType/);
+  assert.match(editRoute, /\/erp\/manufacturing\/targets\?editType=\$\{normalizeType/);
+  assert.doesNotMatch(page, /ProductTargetForm|LineTargetForm|WorkerTargetForm/);
+});
+
+test("manufacturing reports route is Supabase backed and production-facts only", () => {
+  const page = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/reports/page.tsx"), "utf8");
+  const loader = fs.readFileSync(path.join(process.cwd(), "src/features/manufacturing/routes/loaders/reports.loader.ts"), "utf8");
+  const shell = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/manufacturing/_components/manufacturing-shell.tsx"), "utf8");
+
+  assert.match(page, /loadManufacturingReports/);
+  assert.match(page, /Manufacturing Reports & KPIs/);
+  assert.match(loader, /manufacturing_daily_reports/);
+  assert.match(loader, /MANUFACTURING_PERMISSIONS\.kpisView/);
+  assert.match(shell, /\/erp\/manufacturing\/reports/);
+  assert.doesNotMatch(page, /mock|fake|PRODUCT_TARGETS|WORKER_TARGETS|LINE_TARGETS/i);
+  assert.doesNotMatch(loader, /payroll|incentive|cost_calculation/i);
 });
 
 test("KPI contracts expose facts without payroll or cost calculations", () => {
@@ -369,4 +447,123 @@ test("manufacturing foundation has no finance, payroll, valuation, cost calculat
   assert.match(sql, /payroll_calculation_implemented boolean not null default false check \(payroll_calculation_implemented = false\)/);
   assert.match(sql, /cost_calculation_implemented boolean not null default false check \(cost_calculation_implemented = false\)/);
   assert.match(sql, /quality_workflow_implemented boolean not null default false check \(quality_workflow_implemented = false\)/);
+});
+
+test("manufacturing operational migration adds normalized BOM lines and routing steps without deleting legacy JSON", () => {
+  const sql = fs.readFileSync(operationalMigrationPath, "utf8");
+
+  for (const table of ["manufacturing_bom_lines", "manufacturing_routing_steps"]) {
+    assert.match(sql, new RegExp(`create table if not exists public\\.${table}`));
+    assert.match(sql, new RegExp(`alter table public\\.${table} enable row level security`));
+    assert.match(sql, new RegExp(`alter table public\\.${table} force row level security`));
+    assert.match(sql, new RegExp(`${table}.*public\\.is_tenant_member\\(tenant_id\\)`, "s"));
+  }
+
+  assert.match(sql, /component_product_id uuid not null references public\.manufacturing_products\(id\)/);
+  assert.match(sql, /quantity numeric\(18, 6\) not null check \(quantity > 0\)/);
+  assert.match(sql, /scrap_percent numeric\(9, 4\) not null default 0/);
+  assert.match(sql, /step_sequence integer not null check \(step_sequence > 0\)/);
+  assert.match(sql, /work_center_id uuid not null references public\.manufacturing_work_centers\(id\)/);
+  assert.match(sql, /manufacturing_boms\.components JSON remains/);
+  assert.match(sql, /manufacturing_routings\.operations JSON remains/);
+  assert.doesNotMatch(sql, /drop table public\.manufacturing_boms|drop table public\.manufacturing_routings/i);
+});
+
+test("manufacturing production forms use EntityLookup instead of datalist or raw ID fields", () => {
+  const manufacturingPages = fs.readFileSync(path.join(root, "src/app/(erp)/erp/manufacturing/_components/manufacturing-pages.tsx"), "utf8");
+  const dailyReportsPage = fs.readFileSync(path.join(root, "src/app/(erp)/erp/manufacturing/daily-reports/page.tsx"), "utf8");
+  const targetsPage = fs.readFileSync(path.join(root, "src/app/(erp)/erp/manufacturing/targets/page.tsx"), "utf8");
+  const targetsModal = fs.readFileSync(path.join(root, "src/app/(erp)/erp/manufacturing/targets/target-record-modal.tsx"), "utf8");
+  const entityLookup = fs.readFileSync(path.join(root, "src/shared/ui/primitives/entity-lookup.tsx"), "utf8");
+
+  for (const page of [manufacturingPages, dailyReportsPage, targetsPage, targetsModal]) {
+    assert.doesNotMatch(page, /<datalist|list=\{/);
+  }
+
+  for (const page of [manufacturingPages, dailyReportsPage, targetsModal]) {
+    assert.match(page, /EntityLookup/);
+  }
+
+  assert.match(entityLookup, /Command\.Input/);
+  assert.match(entityLookup, /emptyMessage/);
+  assert.match(entityLookup, /loading/);
+  assert.match(entityLookup, /recentOptionIds/);
+  assert.match(entityLookup, /type="hidden"/);
+});
+
+test("manufacturing operational UI exposes BOM lines, routing steps, plan line actuals, and lifecycle transitions", () => {
+  const page = fs.readFileSync(path.join(root, "src/app/(erp)/erp/manufacturing/_components/manufacturing-pages.tsx"), "utf8");
+  const actions = fs.readFileSync(path.join(root, "src/features/manufacturing/routes/actions/operational.actions.ts"), "utf8");
+  const loader = fs.readFileSync(path.join(root, "src/features/manufacturing/routes/loaders/operational.loader.ts"), "utf8");
+  const navigation = fs.readFileSync(path.join(root, "src/shared/workspace/erp-navigation.ts"), "utf8");
+
+  assert.match(page, /BOM Lines/);
+  assert.match(page, /Routing Steps/);
+  assert.match(page, /Production Plan Lines/);
+  assert.match(page, /Lifecycle/);
+  assert.match(page, /Canonical operational model/);
+  assert.match(page, /manufacturing_bom_lines/);
+  assert.match(page, /manufacturing_routing_steps/);
+  assert.match(actions, /Invalid lifecycle transition/);
+  assert.match(actions, /manufacturingOrderTransitions/);
+  assert.match(actions, /workOrderTransitions/);
+  assert.match(loader, /manufacturing_daily_reports/);
+  assert.match(loader, /achievementPercent/);
+  assert.match(navigation, /ready\("manufacturing\.production-plans"/);
+  assert.match(navigation, /ready\("manufacturing\.orders"/);
+  assert.match(navigation, /\/erp\/manufacturing\/reports/);
+});
+
+test("manufacturing validation blocks invalid activation and inconsistent DPR worker output", () => {
+  const foundationActions = fs.readFileSync(path.join(root, "src/features/manufacturing/routes/actions/manufacturing.actions.ts"), "utf8");
+  const dprActions = fs.readFileSync(path.join(root, "src/features/manufacturing/routes/actions/daily-reports.actions.ts"), "utf8");
+  const operationalSchema = fs.readFileSync(path.join(root, "src/features/manufacturing/application/schemas/operational.schema.ts"), "utf8");
+
+  assert.match(foundationActions, /BOM needs at least one line before activation/);
+  assert.match(foundationActions, /Routing needs at least one step before activation/);
+  assert.match(foundationActions, /planned quantity must be greater than zero/i);
+  assert.match(dprActions, /Worker output total must match the DPR actual quantity/);
+  assert.match(operationalSchema, /plannedEnd.*plannedStart/s);
+  assert.match(operationalSchema, /Estimated time must cover setup plus run time/);
+});
+
+test("manufacturing reports are bound to DPR, targets, plan lines, and worker facts", () => {
+  const page = fs.readFileSync(path.join(root, "src/app/(erp)/erp/manufacturing/reports/page.tsx"), "utf8");
+  const loader = fs.readFileSync(path.join(root, "src/features/manufacturing/routes/loaders/reports.loader.ts"), "utf8");
+
+  for (const title of ["Daily Production Summary", "Line Achievement", "Worker Achievement", "Product Achievement", "Scrap / Rework Summary", "Downtime Summary", "Plan vs Actual"]) {
+    assert.match(page, new RegExp(title.replaceAll("/", "\\/")));
+  }
+
+  assert.match(loader, /manufacturing_daily_reports/);
+  assert.match(loader, /manufacturing_plan_lines/);
+  assert.match(loader, /manufacturing_profiles/);
+  assert.match(loader, /worker_output/);
+  assert.doesNotMatch(loader, /mock|fake|PRODUCT_TARGETS|WORKER_TARGETS|LINE_TARGETS/i);
+});
+
+test("demo seed is explicit, development-only, tenant scoped, and covers operational master data", () => {
+  const script = fs.readFileSync(path.join(root, "scripts/seed-demo-data.mjs"), "utf8");
+  const packageJson = fs.readFileSync(path.join(root, "package.json"), "utf8");
+
+  assert.match(packageJson, /"seed:demo": "node scripts\/seed-demo-data\.mjs"/);
+  assert.match(script, /NEXORA_DEMO_SEED !== "confirm"/);
+  assert.match(script, /NODE_ENV === "production"/);
+  assert.match(script, /DEMO_TENANT_ID/);
+  assert.match(script, /DEMO_COMPANY_ID/);
+  assert.match(script, /DEMO_BRANCH_ID/);
+  for (const table of ["inventory_products", "inventory_warehouses", "inventory_locations", "manufacturing_bom_lines", "manufacturing_routing_steps", "manufacturing_orders", "manufacturing_work_orders"]) {
+    assert.match(script, new RegExp(table));
+  }
+});
+
+test("legacy foundation reconciliation document identifies canonical and legacy manufacturing surfaces", () => {
+  const doc = fs.readFileSync(path.join(root, "docs/MANUFACTURING_LEGACY_FOUNDATION_RECONCILIATION.md"), "utf8");
+
+  assert.match(doc, /Canonical Foundation \/ Operational Tables/);
+  assert.match(doc, /manufacturing_bom_lines/);
+  assert.match(doc, /manufacturing_routing_steps/);
+  assert.match(doc, /manufacturing_boms\.components/);
+  assert.match(doc, /manufacturing_routings\.operations/);
+  assert.match(doc, /No destructive cleanup/);
 });

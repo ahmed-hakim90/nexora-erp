@@ -1,41 +1,74 @@
-import { FUTURE_WORKER_ACHIEVEMENT_FORMULA, MANUFACTURING_RESOURCE_LIST, PRODUCTION_STANDARD_RESOLUTION_PRIORITY } from "@/features/manufacturing/public-api";
-import { PageContainer, PageContent, PageFooter, PageHeader } from "@/shared/ui";
+import Link from "next/link";
+
+import { loadManufacturingOverview, type ManufacturingOverviewData } from "@/features/manufacturing/routes/loaders/manufacturing-overview.loader";
+import { DocumentationHomeButton, PageActions, PageContainer, PageContent, PageHeader } from "@/shared/ui";
 
 import { ManufacturingShell } from "./_components/manufacturing-shell";
 
-export default function ManufacturingOverviewPage() {
+const workspaceLinks = [
+  { href: "/erp/manufacturing/daily-reports", label: "Daily Reports" },
+  { href: "/erp/manufacturing/targets", label: "Targets" },
+  { href: "/erp/manufacturing/production-lines", label: "Production Lines" },
+  { href: "/erp/manufacturing/work-centers", label: "Work Centers" },
+  { href: "/erp/manufacturing/boms", label: "BOM" },
+  { href: "/erp/manufacturing/routing-plans", label: "Routing" },
+] as const;
+
+function MetricCards({ data }: Readonly<{ data: ManufacturingOverviewData }>) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {data.metrics.map((metric) => (
+        <article className="rounded-lg border bg-[hsl(var(--surface))] p-4" key={metric.key}>
+          <p className="text-sm text-muted-foreground">{metric.label}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums">{metric.value.toLocaleString("en")}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{metric.description}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export default async function ManufacturingOverviewPage() {
+  let data: ManufacturingOverviewData = { lastUpdated: new Date().toISOString(), metrics: [] };
+  let errorMessage: string | undefined;
+
+  try {
+    data = await loadManufacturingOverview();
+  } catch (error) {
+    errorMessage = error instanceof Error ? error.message : "Could not load manufacturing overview.";
+  }
+
   return (
     <ManufacturingShell activeKey="overview">
-      <PageContainer>
+      <PageContainer className="max-w-[96rem]">
         <PageHeader
-          description="Sprint 12 prepares manufacturing engineering and factory structure for the future Production Session source of truth."
-          title="Manufacturing Foundation"
-        />
+          description="Live Manufacturing overview from Supabase manufacturing foundation tables. No static dashboard rows are used here."
+          title="Production Dashboard"
+        >
+          <PageActions>
+            <DocumentationHomeButton href="/erp/manufacturing/documentation" />
+            <Link className="rounded-md border px-3 py-2 text-sm" href="/erp/manufacturing/daily-reports">Open DPR</Link>
+            <Link className="rounded-md border px-3 py-2 text-sm" href="/erp/manufacturing/targets">Open Targets</Link>
+          </PageActions>
+        </PageHeader>
         <PageContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {MANUFACTURING_RESOURCE_LIST.map((resource) => (
-              <a className="rounded-md border bg-[hsl(var(--surface))] p-4" href={resource.basePath} key={resource.key}>
-                <h2 className="text-sm font-medium">{resource.title}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{resource.description}</p>
-              </a>
+          {errorMessage ? (
+            <div className="rounded-md border border-[hsl(var(--danger))] p-4 text-sm" role="alert">{errorMessage}</div>
+          ) : data.metrics.length === 0 ? (
+            <div className="rounded-md border bg-[hsl(var(--surface))] p-6 text-sm text-muted-foreground">No manufacturing overview data is available.</div>
+          ) : (
+            <MetricCards data={data} />
+          )}
+        </PageContent>
+        <section className="rounded-lg border bg-[hsl(var(--surface))] p-4">
+          <h2 className="font-medium">Active Manufacturing Workspaces</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {workspaceLinks.map((item) => (
+              <Link className="rounded-md border px-3 py-2 text-sm" href={item.href} key={item.href}>{item.label}</Link>
             ))}
           </div>
-          <section className="mt-4 rounded-md border bg-[hsl(var(--surface))] p-4">
-            <h2 className="text-sm font-medium">Production Standard Resolution</h2>
-            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
-              {PRODUCTION_STANDARD_RESOLUTION_PRIORITY.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ol>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Future worker output formulas: target per worker is {FUTURE_WORKER_ACHIEVEMENT_FORMULA.targetPerWorker}; achievement percent is{" "}
-              {FUTURE_WORKER_ACHIEVEMENT_FORMULA.workerAchievementPercent}.
-            </p>
-          </section>
-        </PageContent>
-        <PageFooter>
-          Production Sessions, Daily Production Reports, Work Orders, Production Planning, HR attendance/payroll, material consumption, and inventory posting are not part of this sprint.
-        </PageFooter>
+          <p className="mt-3 text-xs text-muted-foreground">Last refreshed {new Date(data.lastUpdated).toLocaleString()}.</p>
+        </section>
       </PageContainer>
     </ManufacturingShell>
   );

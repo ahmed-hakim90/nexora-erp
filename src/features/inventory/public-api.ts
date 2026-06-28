@@ -40,6 +40,18 @@ import { INVENTORY_PERMISSIONS, INVENTORY_PERMISSION_LIST } from "./permissions/
 
 export { inventoryAppManifest } from "./app.manifest";
 export { inventoryModuleManifest } from "./module.manifest";
+export {
+  getInventoryFoundationEntity,
+  INVENTORY_FOUNDATION_ENTITIES,
+  INVENTORY_FOUNDATION_RESOURCE_KEYS,
+  isInventoryFoundationResourceKey,
+} from "./application/foundation-entities";
+export { inventoryProductMutationSchema } from "./application/schemas/inventory-products.schema";
+export type {
+  InventoryFoundationDescriptor,
+  InventoryFoundationField,
+  InventoryFoundationResourceKey,
+} from "./application/foundation-entities";
 export { INVENTORY_PERMISSIONS, INVENTORY_PERMISSION_LIST } from "./permissions/permission-registry";
 export { INVENTORY_PAGE_CONFIGS } from "./presentation/view-models/page-config";
 export {
@@ -58,6 +70,40 @@ export type InventoryLocationKind = "warehouse" | "zone" | "aisle" | "rack" | "s
 export type InventoryMovementDirection = "in" | "out" | "internal" | "adjustment";
 export type InventoryMovementDocumentKind = "movement" | "transfer" | "adjustment" | "opening_balance";
 export type InventoryReservationPolicy = "none" | "soft" | "hard";
+export type InventoryReservationKind =
+  | "soft_hold"
+  | "hard_reservation"
+  | "transfer_reservation"
+  | "manufacturing_reservation"
+  | "sales_reservation"
+  | "service_reservation"
+  | "rental_reservation"
+  | "project_reservation"
+  | "custom";
+export type InventoryReservationStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "reserved"
+  | "picked"
+  | "issued"
+  | "in_transit"
+  | "received"
+  | "completed"
+  | "rejected"
+  | "cancelled"
+  | "released"
+  | "expired"
+  | "consumed";
+export type InventoryQuantityBucket =
+  | "on_hand"
+  | "reserved"
+  | "pending_approval"
+  | "in_transit"
+  | "incoming"
+  | "outgoing"
+  | "damaged"
+  | "quarantine";
 export type InventoryReorderPolicy = "min_max" | "reorder_point" | "manual_review";
 
 export type InventoryScope = Readonly<{
@@ -165,6 +211,74 @@ export type InventoryStockBalanceContract = InventoryScope & Readonly<{
   costFieldsOwnedByCostEngine: true;
 }>;
 
+export type InventoryQuantityModelContract = Readonly<{
+  key: string;
+  owner: "inventory-engine";
+  storedBuckets: readonly InventoryQuantityBucket[];
+  derivedBuckets: readonly ["available"];
+  availableFormula: "on_hand - reserved - pending_approval - outgoing - damaged - quarantine";
+  availableStoredManually: false;
+  supportsNegativeAvailableByPolicyOnly: true;
+}>;
+
+export type InventoryReservationEngineContract = Readonly<{
+  key: string;
+  owner: "inventory-engine";
+  operations: readonly [
+    "reserve_quantity",
+    "release_quantity",
+    "consume_reservation",
+    "expire_reservation",
+    "reject_reservation",
+    "recalculate_availability",
+    "validate_reservation",
+    "validate_concurrency",
+    "write_reservation_audit",
+    "publish_reservation_events",
+  ];
+  concurrencyStrategy: Readonly<{
+    database: "postgres";
+    lock: "transactional-row-lock-and-advisory-key";
+    idempotencyRequired: true;
+    frontendValidationTrusted: false;
+    noOversellingUnlessPolicyAllowsNegativeAvailable: true;
+  }>;
+  runtimeExecutionImplemented: false;
+  implementsAccounting: false;
+  implementsCosting: false;
+  implementsWarehouseExecution: false;
+}>;
+
+export type InventoryReservationLifecycleContract = Readonly<{
+  initialStatus: "draft";
+  terminalStatuses: readonly ["completed", "cancelled", "released", "expired", "consumed", "rejected"];
+  statuses: readonly InventoryReservationStatus[];
+  transferFlow: readonly ["draft", "pending_approval", "approved", "reserved", "issued", "in_transit", "received", "completed"];
+  noReservationStatuses: readonly ["draft"];
+  softHoldStatuses: readonly ["pending_approval"];
+  hardReservationStatuses: readonly ["approved", "reserved", "picked"];
+  inTransitStatuses: readonly ["issued", "in_transit"];
+  releaseStatuses: readonly ["rejected", "cancelled", "released", "expired"];
+}>;
+
+export type InventoryReservationPlatformIntegrationContract = Readonly<{
+  key: string;
+  integrations: readonly [
+    "platform-events",
+    "background-jobs",
+    "audit",
+    "notifications",
+    "search",
+    "reporting",
+    "dashboard",
+    "import-export",
+    "workflow",
+    "approvals",
+  ];
+  handlersImplemented: false;
+  runtimeExecutionImplemented: false;
+}>;
+
 export type InventoryReorderRuleDefinition = InventoryScope & Readonly<{
   ruleKey: string;
   productKey: string;
@@ -265,6 +379,110 @@ export function createInventoryCostIntegrationContract(
   };
 }
 
+export const INVENTORY_QUANTITY_MODEL_CONTRACT: InventoryQuantityModelContract = {
+  availableFormula: "on_hand - reserved - pending_approval - outgoing - damaged - quarantine",
+  availableStoredManually: false,
+  derivedBuckets: ["available"],
+  key: "inventory.quantity-model",
+  owner: "inventory-engine",
+  storedBuckets: [
+    "on_hand",
+    "reserved",
+    "pending_approval",
+    "in_transit",
+    "incoming",
+    "outgoing",
+    "damaged",
+    "quarantine",
+  ],
+  supportsNegativeAvailableByPolicyOnly: true,
+};
+
+export const INVENTORY_RESERVATION_LIFECYCLE_CONTRACT: InventoryReservationLifecycleContract = {
+  hardReservationStatuses: ["approved", "reserved", "picked"],
+  inTransitStatuses: ["issued", "in_transit"],
+  initialStatus: "draft",
+  noReservationStatuses: ["draft"],
+  releaseStatuses: ["rejected", "cancelled", "released", "expired"],
+  softHoldStatuses: ["pending_approval"],
+  statuses: [
+    "draft",
+    "pending_approval",
+    "approved",
+    "reserved",
+    "picked",
+    "issued",
+    "in_transit",
+    "received",
+    "completed",
+    "rejected",
+    "cancelled",
+    "released",
+    "expired",
+    "consumed",
+  ],
+  terminalStatuses: ["completed", "cancelled", "released", "expired", "consumed", "rejected"],
+  transferFlow: ["draft", "pending_approval", "approved", "reserved", "issued", "in_transit", "received", "completed"],
+};
+
+export const INVENTORY_RESERVATION_TYPES = [
+  "soft_hold",
+  "hard_reservation",
+  "transfer_reservation",
+  "manufacturing_reservation",
+  "sales_reservation",
+  "service_reservation",
+  "rental_reservation",
+  "project_reservation",
+  "custom",
+] as const satisfies readonly InventoryReservationKind[];
+
+export const INVENTORY_RESERVATION_ENGINE_CONTRACT: InventoryReservationEngineContract = {
+  concurrencyStrategy: {
+    database: "postgres",
+    frontendValidationTrusted: false,
+    idempotencyRequired: true,
+    lock: "transactional-row-lock-and-advisory-key",
+    noOversellingUnlessPolicyAllowsNegativeAvailable: true,
+  },
+  implementsAccounting: false,
+  implementsCosting: false,
+  implementsWarehouseExecution: false,
+  key: "inventory.reservation-engine",
+  operations: [
+    "reserve_quantity",
+    "release_quantity",
+    "consume_reservation",
+    "expire_reservation",
+    "reject_reservation",
+    "recalculate_availability",
+    "validate_reservation",
+    "validate_concurrency",
+    "write_reservation_audit",
+    "publish_reservation_events",
+  ],
+  owner: "inventory-engine",
+  runtimeExecutionImplemented: false,
+};
+
+export const INVENTORY_RESERVATION_PLATFORM_INTEGRATION_CONTRACT: InventoryReservationPlatformIntegrationContract = {
+  handlersImplemented: false,
+  integrations: [
+    "platform-events",
+    "background-jobs",
+    "audit",
+    "notifications",
+    "search",
+    "reporting",
+    "dashboard",
+    "import-export",
+    "workflow",
+    "approvals",
+  ],
+  key: "inventory.reservation-platform-integrations",
+  runtimeExecutionImplemented: false,
+};
+
 export const INVENTORY_DOCUMENT_CONTRACTS = {
   adjustment: createInventoryDocumentContract("adjustment", INVENTORY_PERMISSIONS.adjustmentsCreate),
   movement: createInventoryDocumentContract("movement", INVENTORY_PERMISSIONS.movementsCreate),
@@ -361,6 +579,8 @@ export const INVENTORY_SEARCH_PROVIDER_CONTRACT = defineSearchProvider({
     "inventory_location",
     "inventory_lot",
     "inventory_serial_number",
+    "inventory_reservation",
+    "inventory_availability",
   ],
   key: "inventory.foundation.search",
   moduleKey: "inventory",
@@ -394,6 +614,20 @@ export const INVENTORY_SEARCH_PROVIDER_CONTRACT = defineSearchProvider({
       rankingStrategy: "weighted",
       resultType: "record",
     },
+    {
+      appKey: "inventory",
+      displayName: "Inventory reservations and availability",
+      entityType: "inventory_reservation",
+      moduleKey: "inventory",
+      permissionPolicy: {
+        hideWhenUnauthorized: true,
+        requiredPermissions: [INVENTORY_PERMISSIONS.reservationsView],
+        sensitivity: "restricted",
+      },
+      quickSearchFields: ["reservationNumber", "documentReference", "productId", "warehouseId", "status"],
+      rankingStrategy: "recent-first",
+      resultType: "document",
+    },
   ],
   source: "app",
   supportedExperiences: ["erp"],
@@ -410,6 +644,9 @@ export const INVENTORY_REPORT_DATASET_CONTRACT = defineReportDataset({
     { key: "name", label: "Name", type: "text" },
     { isMeasure: true, key: "quantityOnHand", label: "Quantity On Hand", type: "quantity" },
     { isMeasure: true, key: "quantityReserved", label: "Quantity Reserved", type: "quantity" },
+    { isMeasure: true, key: "quantityPendingApproval", label: "Pending Approval", type: "quantity" },
+    { isMeasure: true, key: "quantityInTransit", label: "In Transit", type: "quantity" },
+    { isMeasure: true, key: "quantityAvailable", label: "Available", type: "quantity" },
     { isDimension: true, key: "status", label: "Status", type: "text" },
   ],
   key: "inventory.foundation.definitions",
@@ -730,6 +967,16 @@ export const INVENTORY_EVENT_DEFINITIONS = [
   "InventoryLotCreated",
   "InventorySerialNumberCreated",
   "InventoryReorderRuleTriggered",
+  "InventoryReservationRequested",
+  "InventoryReservationCreated",
+  "InventoryReservationApproved",
+  "InventoryReservationReleased",
+  "InventoryReservationConsumed",
+  "InventoryReservationExpired",
+  "InventoryReservationCancelled",
+  "InventoryAvailabilityChanged",
+  "InventoryTransferIssued",
+  "InventoryTransferReceived",
 ].map((name) =>
   definePlatformEventDefinition({
     category: "document",
@@ -744,6 +991,11 @@ export const INVENTORY_EVENT_DEFINITIONS = [
 export const INVENTORY_AUDIT_ACTIONS = {
   definitionChanged: defineAuditAction("inventory.definition.changed"),
   openingBalanceImported: defineAuditAction("inventory.opening-balance.imported"),
+  reservationApproved: defineAuditAction("inventory.reservation.approved"),
+  reservationCancelled: defineAuditAction("inventory.reservation.cancelled"),
+  reservationConsumed: defineAuditAction("inventory.reservation.consumed"),
+  reservationCreated: defineAuditAction("inventory.reservation.created"),
+  reservationReleased: defineAuditAction("inventory.reservation.released"),
   stockMovementCreated: defineAuditAction("inventory.stock-movement.created"),
 } as const;
 
@@ -753,6 +1005,9 @@ export const INVENTORY_JOB_READINESS_CONTRACTS = [
   createJobReadinessContract("print-generation", "inventory.foundation.print"),
   createCostJobReadinessContract("snapshot", INVENTORY_COST_DEFINITION_CONTRACT.key),
   createCostJobReadinessContract("recalculation", INVENTORY_COST_DEFINITION_CONTRACT.key),
+  createJobReadinessContract("search-indexing", "inventory.reservation.search-index"),
+  createJobReadinessContract("report-generation", "inventory.reservation.report"),
+  createJobReadinessContract("notification-delivery", "inventory.reservation.notification"),
   createImportJobReadinessContract(INVENTORY_PRODUCT_IMPORT_CONTRACT),
   createImportJobReadinessContract(INVENTORY_OPENING_BALANCE_IMPORT_CONTRACT),
   createExportJobReadinessContract(INVENTORY_EXPORT_CONTRACT),
@@ -794,7 +1049,12 @@ export const INVENTORY_FOUNDATION_CONTRACTS = {
   jobReadiness: INVENTORY_JOB_READINESS_CONTRACTS,
   moduleManifest: inventoryModuleManifest,
   permissions: INVENTORY_PERMISSION_LIST,
+  quantityModel: INVENTORY_QUANTITY_MODEL_CONTRACT,
   print: INVENTORY_PRINT_READINESS_CONTRACT,
+  reservationEngine: INVENTORY_RESERVATION_ENGINE_CONTRACT,
+  reservationLifecycle: INVENTORY_RESERVATION_LIFECYCLE_CONTRACT,
+  reservationPlatformIntegrations: INVENTORY_RESERVATION_PLATFORM_INTEGRATION_CONTRACT,
+  reservationTypes: INVENTORY_RESERVATION_TYPES,
   report: INVENTORY_REPORT_READINESS_CONTRACT,
   reportDataset: INVENTORY_REPORT_DATASET_CONTRACT,
   search: INVENTORY_SEARCH_PROVIDER_CONTRACT,

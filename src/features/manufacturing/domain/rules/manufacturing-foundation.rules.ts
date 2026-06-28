@@ -16,11 +16,12 @@ export const FUTURE_WORKER_ACHIEVEMENT_FORMULA = {
 const executableProductionConcepts = [
   "productionSessionId",
   "productionReportId",
-  "workOrderId",
   "productionPlanId",
   "inventoryPostingId",
   "attendanceRecordId",
 ];
+
+const manufacturingStatuses = ["draft", "active", "released", "completed", "cancelled", "inactive", "locked", "archived"];
 
 export function assertFoundationOnlyInput(input: ManufacturingMutationInput) {
   for (const key of executableProductionConcepts) {
@@ -36,7 +37,7 @@ export function assertFoundationOnlyInput(input: ManufacturingMutationInput) {
 export function assertBomFoundationRules(input: ManufacturingMutationInput) {
   assertFoundationOnlyInput(input);
 
-  if (input.status && !["draft", "active", "inactive", "obsolete"].includes(String(input.status))) {
+  if (input.status && !manufacturingStatuses.includes(String(input.status))) {
     throw new ApplicationError({ code: "VALIDATION_ERROR", message: "BOM status is not supported." });
   }
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { ApplicationError } from "@/core/errors";
 import { createRequestSupabaseClient } from "@/infrastructure/server";
@@ -10,6 +10,10 @@ const TENANT_HEADER = "x-nexora-tenant-id";
 const COMPANY_HEADER = "x-nexora-company-id";
 const BRANCH_HEADER = "x-nexora-branch-id";
 const EMPLOYEE_HEADER = "x-nexora-employee-id";
+const TENANT_COOKIE = "nexora_tenant_id";
+const COMPANY_COOKIE = "nexora_company_id";
+const BRANCH_COOKIE = "nexora_branch_id";
+const EMPLOYEE_COOKIE = "nexora_employee_id";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -35,13 +39,21 @@ function validateScopedId(value: string | null, label: string): string | null {
   return value;
 }
 
-async function getScopedHeader(headerName: string, label: string): Promise<string | null> {
+async function getScopedValue(
+  headerName: string,
+  cookieName: string,
+  label: string,
+): Promise<string | null> {
   const requestHeaders = await headers();
-  return validateScopedId(requestHeaders.get(headerName), label);
+  const requestCookies = await cookies();
+  return validateScopedId(
+    requestHeaders.get(headerName) ?? requestCookies.get(cookieName)?.value ?? null,
+    label,
+  );
 }
 
 export async function getCurrentTenant(): Promise<string | null> {
-  return getScopedHeader(TENANT_HEADER, "Tenant");
+  return getScopedValue(TENANT_HEADER, TENANT_COOKIE, "Tenant");
 }
 
 export async function requireTenant(): Promise<string> {
@@ -58,7 +70,7 @@ export async function requireTenant(): Promise<string> {
 }
 
 export async function getCurrentCompany(): Promise<string | null> {
-  return getScopedHeader(COMPANY_HEADER, "Company");
+  return getScopedValue(COMPANY_HEADER, COMPANY_COOKIE, "Company");
 }
 
 export async function requireCompany(): Promise<string> {
@@ -75,7 +87,7 @@ export async function requireCompany(): Promise<string> {
 }
 
 export async function getCurrentBranch(): Promise<string | null> {
-  return getScopedHeader(BRANCH_HEADER, "Branch");
+  return getScopedValue(BRANCH_HEADER, BRANCH_COOKIE, "Branch");
 }
 
 export async function requireBranch(): Promise<string> {
@@ -92,7 +104,7 @@ export async function requireBranch(): Promise<string> {
 }
 
 export async function getCurrentEmployee(): Promise<string | null> {
-  return getScopedHeader(EMPLOYEE_HEADER, "Employee");
+  return getScopedValue(EMPLOYEE_HEADER, EMPLOYEE_COOKIE, "Employee");
 }
 
 export async function requireEmployee(): Promise<string> {

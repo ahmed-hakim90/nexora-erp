@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
 
 import {
   createPurchaseDocumentAction,
@@ -8,7 +9,9 @@ import {
   transitionPurchaseDocumentAction,
 } from "@/features/purchasing/routes/actions/purchasing.actions";
 import type { PurchaseDocumentDetail, PurchaseDocumentKind, PurchaseStatus } from "@/features/purchasing/public-api";
-import { EnterpriseDataTable, FieldGroup, FormGrid, FormSection, PageActions, PageContainer, PageContent, PageFooter, PageForm, PageHeader } from "@/shared/ui";
+import { AppShell, EnterpriseDataTable, FieldGroup, FormGrid, FormSection, PageActions, PageContainer, PageContent, PageFooter, PageForm, PageHeader } from "@/shared/ui";
+
+import { createErpShellChrome, resolveErpRuntimeContext } from "../../../erp-shell-model";
 
 export const PURCHASE_PAGE_CONFIGS: Record<string, { kind: PurchaseDocumentKind; title: string; description: string }> = {
   orders: {
@@ -52,18 +55,24 @@ export function slugForKind(kind: PurchaseDocumentKind) {
   return "receipts";
 }
 
-export function PurchasingShell({ activeSlug, children }: Readonly<{ activeSlug: string; children: ReactNode }>) {
+export async function PurchasingShell({ activeSlug, children }: Readonly<{ activeSlug: string; children: ReactNode }>) {
+  const items = Object.entries(PURCHASE_PAGE_CONFIGS).map(([slug, config]) => ({
+    href: `/erp/purchasing/${slug}`,
+    isActive: slug === activeSlug,
+    key: slug,
+    label: config.title,
+  }));
+  const runtime = await resolveErpRuntimeContext();
+
   return (
-    <div className="space-y-4">
-      <nav className="flex flex-wrap gap-2 rounded-md border bg-[hsl(var(--surface))] p-3 text-sm">
-        {Object.entries(PURCHASE_PAGE_CONFIGS).map(([slug, config]) => (
-          <Link className={`rounded-md px-3 py-2 ${slug === activeSlug ? "bg-[hsl(var(--muted))] font-medium" : "hover:bg-[hsl(var(--muted))]"}`} href={`/erp/purchasing/${slug}`} key={slug}>
-            {config.title}
-          </Link>
-        ))}
-      </nav>
+    <AppShell
+      {...createErpShellChrome("purchasing", runtime)}
+      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "Purchasing", href: "/erp/purchasing" }]}
+      workspace={{ key: "purchasing", name: "Purchasing", icon: <ShoppingCart className="size-4" /> }}
+      workspaceNav={items}
+    >
       {children}
-    </div>
+    </AppShell>
   );
 }
 

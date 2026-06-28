@@ -1,3 +1,6 @@
 import "server-only";
 
-export { createRequestSupabaseClient } from "@/infrastructure/server";
+export {
+  createRequestSupabaseClient,
+  createServiceRoleSupabaseClient,
+} from "@/infrastructure/server";

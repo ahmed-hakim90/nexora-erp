@@ -1,9 +1,23 @@
 import type { ReactNode } from "react";
+import { Boxes } from "lucide-react";
 
 import { AppShell } from "@/shared/ui";
 
+import { createErpShellChrome, resolveErpRuntimeContext } from "../../../erp-shell-model";
+
 const inventoryItems = [
   { key: "overview", label: "Overview", href: "/erp/inventory" },
+  { key: "documentation", label: "Documentation", href: "/erp/inventory/documentation" },
+  { key: "products", label: "Products", href: "/erp/inventory/products" },
+  { key: "variants", label: "Variants", href: "/erp/inventory/variants" },
+  { key: "categories", label: "Categories", href: "/erp/inventory/categories" },
+  { key: "uom-categories", label: "UOM Categories", href: "/erp/inventory/uom-categories" },
+  { key: "uoms", label: "Units of Measure", href: "/erp/inventory/uoms" },
+  { key: "warehouses", label: "Warehouses", href: "/erp/inventory/warehouses" },
+  { key: "locations", label: "Locations", href: "/erp/inventory/locations" },
+  { key: "lots", label: "Lots", href: "/erp/inventory/lots" },
+  { key: "serials", label: "Serial Numbers", href: "/erp/inventory/serials" },
+  { key: "reorder-rules", label: "Reorder Rules", href: "/erp/inventory/reorder-rules" },
   { key: "events", label: "Event Definitions", href: "/erp/inventory/events" },
   { key: "endpoints", label: "Endpoints", href: "/erp/inventory/endpoints" },
   { key: "routes", label: "Routes", href: "/erp/inventory/routes" },
@@ -19,25 +33,21 @@ const inventoryItems = [
   { key: "cycleCount", label: "Cycle Count", href: "/erp/inventory/cycle-count/new" },
 ];
 
-export function InventoryShell({
+export async function InventoryShell({
   activeKey,
   children,
 }: Readonly<{
   activeKey: string;
   children: ReactNode;
 }>) {
+  const runtime = await resolveErpRuntimeContext();
+
   return (
     <AppShell
-      activeWorkspaceKey="erp"
-      breadcrumbs={[{ label: "ERP Workspace", href: "/erp" }, { label: "Inventory" }]}
-      sidebarGroups={[
-        {
-          key: "inventory",
-          label: "Inventory",
-          items: inventoryItems.map((item) => ({ ...item, isActive: item.key === activeKey })),
-        },
-      ]}
-      workspaceOptions={[{ key: "erp", label: "ERP Workspace" }]}
+      {...createErpShellChrome("inventory", runtime)}
+      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "Inventory", href: "/erp/inventory" }]}
+      workspace={{ key: "inventory", name: "Inventory", icon: <Boxes className="size-4" /> }}
+      workspaceNav={inventoryItems.map((item) => ({ ...item, isActive: item.key === activeKey }))}
     >
       {children}
     </AppShell>

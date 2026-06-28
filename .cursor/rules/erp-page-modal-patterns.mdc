@@ -1,0 +1,23 @@
+---
+description: ERP page construction pattern for create and edit flows
+alwaysApply: true
+---
+
+# ERP Page Modal Pattern
+
+When building or changing ERP workspace pages, keep list pages as the primary workspace surface.
+
+- Prefer list-first pages: create and edit should open as a modal overlay above the list, not as a full-page form.
+- Use existing shared UI patterns such as `RecordFormDialog`, `RecordFormSection`, `PageContainer`, `PageHeader`, `PageContent`, and `EnterpriseDataTable`.
+- Keep direct URLs usable, but route them back to the list workspace:
+  - `/new` should redirect to the list route with a query like `?create=1`.
+  - `/[id]/edit` should redirect to the list route with a query like `?edit=<id>`.
+- Row actions should preserve current list filters/search/cursor when adding modal query params.
+- If an edit query references a record that is not in the current page of results, load that record directly and open it in the modal.
+- Closing a modal opened from query params should remove only the modal query params and keep the rest of the list state.
+- Keep full-page detail routes only for read/detail workflows unless the user explicitly asks for a separate form page.
+- Form inputs in modals must have visible contrast in dark mode: explicit surface/background, border, text color, focus ring, and clear spacing for checkboxes/switches.
+- Buttons and action links must not rely on border-only styling; use a visible background, foreground, border, hover state, and focus state in both light and dark themes.
+- Before adding a new modal/form abstraction, check existing module patterns and reuse the closest local implementation.
+- When building a new ERP app area or page, wire it into the existing workspace shell, navigation model, app manifest, shared tokens, and documentation surface instead of creating an isolated experience.
+- Add or update the matching feature loaders/actions/schemas and focused tests when the page depends on business data or persisted state.

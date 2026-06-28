@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { ApplicationError } from "@/core/errors";
-import type { TenantRequestContext } from "@/platform/auth/server";
+import type { BranchRequestContext } from "@/platform/auth/server";
 
 import type { ManufacturingRepository } from "../../application/ports/manufacturing.repository";
 import type { CursorPage, ManufacturingListQuery, ManufacturingMutationInput, ManufacturingRecord, ManufacturingResourceDefinition } from "../../application/types";
@@ -36,11 +36,19 @@ function normalizeValue(value: unknown) {
   return text;
 }
 
-function normalizePayload(input: ManufacturingMutationInput, context: TenantRequestContext) {
+function normalizePayload(definition: ManufacturingResourceDefinition, input: ManufacturingMutationInput, context: BranchRequestContext) {
   const payload: Record<string, unknown> = {
     tenant_id: context.tenantId,
     updated_by: context.userId,
   };
+
+  if (definition.scope === "company" || definition.scope === "branch") {
+    payload.company_id = context.companyId;
+  }
+
+  if (definition.scope === "branch") {
+    payload.branch_id = context.branchId;
+  }
 
   for (const [key, value] of Object.entries(input)) {
     payload[toSnakeCase(key)] = normalizeValue(value);
@@ -48,6 +56,24 @@ function normalizePayload(input: ManufacturingMutationInput, context: TenantRequ
 
   for (const codeKey of ["line_code", "code", "employee_code", "manufacturing_code", "version_code"]) {
     if (typeof payload[codeKey] === "string") payload[codeKey] = String(payload[codeKey]).toUpperCase();
+  }
+
+  for (const key of [
+    "bom_key",
+    "line_key",
+    "machine_key",
+    "operation_key",
+    "order_key",
+    "plan_key",
+    "product_key",
+    "routing_key",
+    "target_key",
+    "version_key",
+    "work_center_key",
+    "work_order_key",
+    "workstation_key",
+  ]) {
+    if (typeof payload[key] === "string") payload[key] = String(payload[key]).toLowerCase();
   }
 
   for (const numericKey of [
@@ -64,6 +90,9 @@ function normalizePayload(input: ManufacturingMutationInput, context: TenantRequ
     "total_standard_time_seconds",
     "total_man_time_seconds",
     "target_unit_seconds",
+    "actual_quantity",
+    "planned_quantity",
+    "standard_minutes",
   ]) {
     if (payload[numericKey] !== null && payload[numericKey] !== undefined) payload[numericKey] = Number(payload[numericKey]);
   }
@@ -90,7 +119,7 @@ function encodeCursor(record: ManufacturingRecord | undefined) {
 export class SupabaseManufacturingRepository implements ManufacturingRepository {
   constructor(
     private readonly supabase: SupabaseClient,
-    private readonly context: TenantRequestContext,
+    private readonly context: BranchRequestContext,
   ) {}
 
   async list(definition: ManufacturingResourceDefinition, query: ManufacturingListQuery): Promise<CursorPage<ManufacturingRecord>> {
@@ -101,6 +130,14 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
       .eq("tenant_id", this.context.tenantId)
       .is("deleted_at", null)
       .limit(pageSize + 1);
+
+    if (definition.scope === "company" || definition.scope === "branch") {
+      request = request.eq("company_id", this.context.companyId);
+    }
+
+    if (definition.scope === "branch") {
+      request = request.eq("branch_id", this.context.branchId);
+    }
 
     if (query.isActive !== undefined) {
       request = request.eq("is_active", query.isActive);
@@ -126,7 +163,8 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not list ${definition.title}.`, cause: error });
     }
 
-    const records = (data ?? []).map((row) => mapRow(row as unknown as Record<string, unknown>));
+    const rows = Array.isArray(data) ? data : [];
+    const records = rows.map((row: unknown) => mapRow(row as Record<string, unknown>));
     const visibleRecords = records.slice(0, pageSize);
 
     return {
@@ -137,13 +175,22 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
   }
 
   async findById(definition: ManufacturingResourceDefinition, id: string): Promise<ManufacturingRecord | null> {
-    const { data, error } = await this.supabase
+    let request = this.supabase
       .from(definition.tableName)
       .select(definition.selectColumns)
       .eq("tenant_id", this.context.tenantId)
       .eq("id", id)
-      .is("deleted_at", null)
-      .maybeSingle();
+      .is("deleted_at", null);
+
+    if (definition.scope === "company" || definition.scope === "branch") {
+      request = request.eq("company_id", this.context.companyId);
+    }
+
+    if (definition.scope === "branch") {
+      request = request.eq("branch_id", this.context.branchId);
+    }
+
+    const { data, error } = await request.maybeSingle();
 
     if (error) {
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not read ${definition.singularTitle}.`, cause: error });
@@ -155,7 +202,7 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
   async create(definition: ManufacturingResourceDefinition, input: ManufacturingMutationInput): Promise<ManufacturingRecord> {
     const { data, error } = await this.supabase
       .from(definition.tableName)
-      .insert({ ...normalizePayload(input, this.context), created_by: this.context.userId })
+      .insert({ ...normalizePayload(definition, input, this.context), created_by: this.context.userId })
       .select(definition.selectColumns)
       .single();
 
@@ -167,14 +214,22 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
   }
 
   async update(definition: ManufacturingResourceDefinition, id: string, input: ManufacturingMutationInput): Promise<ManufacturingRecord> {
-    const { data, error } = await this.supabase
+    let request = this.supabase
       .from(definition.tableName)
-      .update(normalizePayload(input, this.context))
+      .update(normalizePayload(definition, input, this.context))
       .eq("tenant_id", this.context.tenantId)
       .eq("id", id)
-      .is("deleted_at", null)
-      .select(definition.selectColumns)
-      .single();
+      .is("deleted_at", null);
+
+    if (definition.scope === "company" || definition.scope === "branch") {
+      request = request.eq("company_id", this.context.companyId);
+    }
+
+    if (definition.scope === "branch") {
+      request = request.eq("branch_id", this.context.branchId);
+    }
+
+    const { data, error } = await request.select(definition.selectColumns).single();
 
     if (error) {
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not update ${definition.singularTitle}.`, cause: error });
@@ -184,12 +239,22 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
   }
 
   async softDelete(definition: ManufacturingResourceDefinition, id: string): Promise<void> {
-    const { error } = await this.supabase
+    let request = this.supabase
       .from(definition.tableName)
       .update({ deleted_at: new Date().toISOString(), deleted_by: this.context.userId, is_active: false })
       .eq("tenant_id", this.context.tenantId)
       .eq("id", id)
       .is("deleted_at", null);
+
+    if (definition.scope === "company" || definition.scope === "branch") {
+      request = request.eq("company_id", this.context.companyId);
+    }
+
+    if (definition.scope === "branch") {
+      request = request.eq("branch_id", this.context.branchId);
+    }
+
+    const { error } = await request;
 
     if (error) {
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not delete ${definition.singularTitle}.`, cause: error });

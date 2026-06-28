@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { ApplicationError } from "@/core/errors";
 import {
   cancelInventoryTransactionAction,
   createInventoryTransactionAction,
@@ -13,7 +14,11 @@ import type {
   InventoryTransactionDetail,
   InventoryTransactionType,
 } from "@/features/inventory/public-api";
-import { EnterpriseDataTable, FieldGroup, FormGrid, FormSection, PageActions, PageContainer, PageContent, PageFooter, PageForm, PageHeader } from "@/shared/ui";
+import { INVENTORY_PERMISSIONS } from "@/features/inventory/public-api";
+import { resolveBranchRequestContext } from "@/platform/auth/server";
+import { createRequestSupabaseClient } from "@/platform/database/server";
+import { requirePermission } from "@/platform/permissions/server";
+import { EntityLookup, EnterpriseDataTable, FieldGroup, FormGrid, FormSection, PageActions, PageContainer, PageContent, PageFooter, PageForm, PageHeader } from "@/shared/ui";
 
 export const TRANSACTION_TYPE_CONFIGS: Record<
   string,
@@ -57,6 +62,57 @@ function valueToText(value: unknown): ReactNode {
   return String(value);
 }
 
+type LookupOption = Readonly<{ id: string; label: string }>;
+type TransactionLookups = Readonly<{
+  branches: readonly LookupOption[];
+  locations: readonly LookupOption[];
+  products: readonly LookupOption[];
+  units: readonly LookupOption[];
+  warehouses: readonly LookupOption[];
+}>;
+
+export async function loadTransactionLookups(): Promise<TransactionLookups> {
+  const context = await resolveBranchRequestContext("erp");
+  await Promise.all([
+    requirePermission({ context, permission: INVENTORY_PERMISSIONS.productsView }),
+    requirePermission({ context, permission: INVENTORY_PERMISSIONS.uomsView }),
+    requirePermission({ context, permission: INVENTORY_PERMISSIONS.warehousesView }),
+    requirePermission({ context, permission: INVENTORY_PERMISSIONS.locationsView }),
+  ]);
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+  const [branchResult, productResult, unitResult, warehouseResult, locationResult] = await Promise.all([
+    supabase.from("branches").select("id, code, name").eq("tenant_id", context.tenantId).is("deleted_at", null).order("name", { ascending: true }),
+    supabase.from("inventory_products").select("id, sku, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name", { ascending: true }),
+    supabase.from("inventory_uoms").select("id, uom_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name", { ascending: true }),
+    supabase.from("inventory_warehouses").select("id, warehouse_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).eq("branch_id", context.branchId).is("deleted_at", null).order("name", { ascending: true }),
+    supabase.from("inventory_locations").select("id, location_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).eq("branch_id", context.branchId).is("deleted_at", null).order("name", { ascending: true }),
+  ]);
+
+  for (const [result, message] of [
+    [branchResult, "Could not load branch lookup."],
+    [productResult, "Could not load product lookup."],
+    [unitResult, "Could not load UOM lookup."],
+    [warehouseResult, "Could not load warehouse lookup."],
+    [locationResult, "Could not load location lookup."],
+  ] as const) {
+    if (result.error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message, cause: result.error });
+  }
+
+  return {
+    branches: (branchResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.code as string} — ${row.name as string}` })),
+    locations: (locationResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.location_key as string} — ${row.name as string}` })),
+    products: (productResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.sku as string} — ${row.name as string}` })),
+    units: (unitResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.uom_key as string} — ${row.name as string}` })),
+    warehouses: (warehouseResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.warehouse_key as string} — ${row.name as string}` })),
+  };
+}
+
+function labelFor(options: readonly LookupOption[], value: unknown) {
+  if (value === null || value === undefined || value === "") return "-";
+  const text = String(value);
+  return options.find((option) => option.id === text)?.label ?? text;
+}
+
 export function transactionSlugFor(type: InventoryTransactionType) {
   return type.replaceAll("_", "-");
 }
@@ -67,7 +123,7 @@ export function getTransactionTypeConfig(slug: string) {
   return config;
 }
 
-export function InventoryTransactionFormPage({
+export async function InventoryTransactionFormPage({
   detail,
   mode,
   slug,
@@ -80,6 +136,7 @@ export function InventoryTransactionFormPage({
   const transaction = detail?.transaction;
   const line = detail?.lines[0];
   const cycleLine = detail?.cycleCountLines[0];
+  const lookups = await loadTransactionLookups();
   const action =
     mode === "create"
       ? createInventoryTransactionAction.bind(null, config.type)
@@ -91,8 +148,8 @@ export function InventoryTransactionFormPage({
       <PageForm action={action} title={config.title}>
         <FormSection description="Minimal Sprint 10 document shell and first line. Add more lines through the service layer as the workflow grows." title="Document">
           <FormGrid>
-            <FieldGroup isRequired label="Branch ID">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={transaction?.branchId ?? ""} name="branchId" required type="text" />
+            <FieldGroup isRequired label="Branch">
+              <EntityLookup label="Select branch" name="branchId" options={lookups.branches} required value={transaction?.branchId ?? ""} />
             </FieldGroup>
             <FieldGroup isRequired label="Title">
               <input className="w-full rounded-md border px-3 py-2" defaultValue={transaction?.title ?? config.title} name="title" required type="text" />
@@ -107,27 +164,27 @@ export function InventoryTransactionFormPage({
         </FormSection>
         <FormSection description="Warehouse/location IDs are validated server-side against tenant, branch, and product scope." title="Movement">
           <FormGrid>
-            <FieldGroup label="Source Warehouse ID">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.sourceWarehouseId ?? transaction?.sourceWarehouseId ?? ""} name="sourceWarehouseId" type="text" />
+            <FieldGroup label="Source Warehouse">
+              <EntityLookup label="Select source warehouse" name="sourceWarehouseId" options={lookups.warehouses} value={line?.sourceWarehouseId ?? transaction?.sourceWarehouseId ?? ""} />
             </FieldGroup>
-            <FieldGroup label="Source Location ID">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.sourceLocationId ?? transaction?.sourceLocationId ?? ""} name="sourceLocationId" type="text" />
+            <FieldGroup label="Source Location">
+              <EntityLookup label="Select source location" name="sourceLocationId" options={lookups.locations} value={line?.sourceLocationId ?? transaction?.sourceLocationId ?? ""} />
             </FieldGroup>
-            <FieldGroup label="Destination Warehouse ID">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.destinationWarehouseId ?? transaction?.destinationWarehouseId ?? ""} name="destinationWarehouseId" type="text" />
+            <FieldGroup label="Destination Warehouse">
+              <EntityLookup label="Select destination warehouse" name="destinationWarehouseId" options={lookups.warehouses} value={line?.destinationWarehouseId ?? transaction?.destinationWarehouseId ?? ""} />
             </FieldGroup>
-            <FieldGroup label="Destination Location ID">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.destinationLocationId ?? transaction?.destinationLocationId ?? ""} name="destinationLocationId" type="text" />
+            <FieldGroup label="Destination Location">
+              <EntityLookup label="Select destination location" name="destinationLocationId" options={lookups.locations} value={line?.destinationLocationId ?? transaction?.destinationLocationId ?? ""} />
             </FieldGroup>
           </FormGrid>
         </FormSection>
         <FormSection description="Sprint 10 keeps the UI simple with one editable line; services and tables support durable workflow controls." title="Line">
           <FormGrid>
-            <FieldGroup isRequired label="Product ID">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.productId ?? cycleLine?.productId ?? ""} name="productId" required type="text" />
+            <FieldGroup isRequired label="Product">
+              <EntityLookup label="Select product" name="productId" options={lookups.products} required value={line?.productId ?? cycleLine?.productId ?? ""} />
             </FieldGroup>
-            <FieldGroup isRequired label="Unit ID">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.unitId ?? cycleLine?.unitId ?? ""} name="unitId" required type="text" />
+            <FieldGroup isRequired label="Unit">
+              <EntityLookup label="Select unit" name="unitId" options={lookups.units} required value={line?.unitId ?? cycleLine?.unitId ?? ""} />
             </FieldGroup>
             {config.type === "stock_adjustment" ? (
               <FieldGroup isRequired label="Quantity Delta">
@@ -166,9 +223,19 @@ export function InventoryTransactionFormPage({
   );
 }
 
-export function InventoryTransactionDetailPage({ detail }: Readonly<{ detail: InventoryTransactionDetail }>) {
+export async function InventoryTransactionDetailPage({ detail }: Readonly<{ detail: InventoryTransactionDetail }>) {
   const transaction = detail.transaction;
   const config = getTransactionTypeConfig(transactionSlugFor(transaction.transactionType));
+  const lookups = await loadTransactionLookups();
+  const relationLabels: Record<string, readonly LookupOption[]> = {
+    branchId: lookups.branches,
+    destinationLocationId: lookups.locations,
+    destinationWarehouseId: lookups.warehouses,
+    productId: lookups.products,
+    sourceLocationId: lookups.locations,
+    sourceWarehouseId: lookups.warehouses,
+    unitId: lookups.units,
+  };
 
   return (
     <PageContainer>
@@ -187,7 +254,7 @@ export function InventoryTransactionDetailPage({ detail }: Readonly<{ detail: In
             {Object.entries(transaction).map(([key, value]) => (
               <div className="rounded-md border p-3" key={key}>
                 <dt className="font-medium">{key}</dt>
-                <dd className="mt-1 text-muted-foreground">{valueToText(value)}</dd>
+                <dd className="mt-1 text-muted-foreground">{relationLabels[key] ? labelFor(relationLabels[key], value) : valueToText(value)}</dd>
               </div>
             ))}
           </dl>
@@ -195,8 +262,8 @@ export function InventoryTransactionDetailPage({ detail }: Readonly<{ detail: In
         <EnterpriseDataTable<Record<string, unknown>>
           columns={[
             { key: "lineNumber", header: "Line", render: (record) => valueToText(record.lineNumber) },
-            { key: "productId", header: "Product", render: (record) => valueToText(record.productId) },
-            { key: "unitId", header: "Unit", render: (record) => valueToText(record.unitId) },
+            { key: "productId", header: "Product", render: (record) => labelFor(lookups.products, record.productId) },
+            { key: "unitId", header: "Unit", render: (record) => labelFor(lookups.units, record.unitId) },
             { key: "quantity", header: "Quantity", render: (record) => valueToText(record.quantity ?? record.quantityDelta) },
           ]}
           emptyMessage="No transaction lines found."

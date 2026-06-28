@@ -1,13 +1,20 @@
 import { z } from "zod";
 
 export const manufacturingResourceKeySchema = z.enum([
+  "manufacturing-products",
   "production-lines",
   "work-centers",
+  "workstations",
+  "machines",
+  "operations",
   "manufacturing-profiles",
   "line-assignments",
   "production-standards",
   "boms",
   "routing-plans",
+  "production-plans",
+  "manufacturing-orders",
+  "work-orders",
 ]);
 
 export const manufacturingListQuerySchema = z.object({

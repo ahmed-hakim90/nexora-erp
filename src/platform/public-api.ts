@@ -13,6 +13,7 @@ export * from "./background-jobs/public-api";
 export * from "./reporting/public-api";
 export * from "./printing/public-api";
 export * from "./dashboard/public-api";
+export * from "./documentation/public-api";
 export * from "./export/public-api";
 export * from "./automation/public-api";
 export * from "./cost/public-api";

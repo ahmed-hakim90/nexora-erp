@@ -1,4 +1,12 @@
+"use client";
+
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { X } from "lucide-react";
 
 import { cn } from "../utils";
 
@@ -68,31 +76,36 @@ export function ResizablePanels({ children }: Readonly<{ children: ReactNode }>)
 export function Tabs({
   tabs,
   activeKey,
+  onValueChange,
 }: Readonly<{
   tabs: readonly { key: string; label: string; content: ReactNode }[];
   activeKey: string;
+  onValueChange?: (value: string) => void;
 }>) {
   const activeTab = tabs.find((tab) => tab.key === activeKey) ?? tabs[0];
 
   return (
-    <div>
-      <div aria-label="Tabs" className="flex gap-2 border-b" role="tablist">
+    <TabsPrimitive.Root
+      onValueChange={onValueChange}
+      value={activeTab?.key}
+    >
+      <TabsPrimitive.List aria-label="Tabs" className="flex gap-2 border-b">
         {tabs.map((tab) => (
-          <button
-            aria-selected={tab.key === activeTab?.key}
-            className="px-3 py-2 text-sm"
+          <TabsPrimitive.Trigger
+            className="border-b-2 border-transparent px-3 py-2 text-sm data-[state=active]:border-[hsl(var(--accent))] data-[state=active]:font-medium"
             key={tab.key}
-            role="tab"
-            type="button"
+            value={tab.key}
           >
             {tab.label}
-          </button>
+          </TabsPrimitive.Trigger>
         ))}
-      </div>
-      <div className="pt-4" role="tabpanel">
-        {activeTab?.content}
-      </div>
-    </div>
+      </TabsPrimitive.List>
+      {tabs.map((tab) => (
+        <TabsPrimitive.Content className="pt-4" key={tab.key} value={tab.key}>
+          {tab.content}
+        </TabsPrimitive.Content>
+      ))}
+    </TabsPrimitive.Root>
   );
 }
 
@@ -116,35 +129,169 @@ export function Accordion({
 export function Drawer({
   title,
   children,
-}: Readonly<{ title: string; children: ReactNode }>) {
+  trigger,
+  open,
+  onOpenChange,
+  side = "end",
+}: Readonly<{
+  title: string;
+  children: ReactNode;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  side?: "start" | "end";
+}>) {
+  if (!trigger && open === undefined && !onOpenChange) {
+    return (
+      <aside aria-label={title} className="rounded-md border bg-[hsl(var(--surface))] p-4 shadow-sm">
+        {children}
+      </aside>
+    );
+  }
+
   return (
-    <aside aria-label={title} className="rounded-md border bg-[hsl(var(--surface))] p-4 shadow-sm">
-      {children}
-    </aside>
+    <DialogPrimitive.Root onOpenChange={onOpenChange} open={open}>
+      {trigger ? <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger> : null}
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[var(--z-overlay)] bg-black/40" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed top-0 z-[var(--z-modal)] h-dvh w-full max-w-xl overflow-auto border bg-[hsl(var(--surface))] p-6 shadow-md",
+            side === "start" ? "start-0 border-e" : "end-0 border-s",
+          )}
+        >
+          <DialogPrimitive.Title className="mb-4 text-lg font-semibold">
+            {title}
+          </DialogPrimitive.Title>
+          {children}
+          <DialogPrimitive.Close
+            aria-label="Close panel"
+            className="absolute end-4 top-4 grid size-9 place-items-center rounded-md border text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]"
+          >
+            <X aria-hidden className="size-4" />
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
 export function Dialog({
   title,
   children,
-}: Readonly<{ title: string; children: ReactNode }>) {
+  trigger,
+  open,
+  onOpenChange,
+}: Readonly<{
+  title: string;
+  children: ReactNode;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}>) {
+  if (!trigger && open === undefined && !onOpenChange) {
+    return (
+      <section aria-label={title} className="rounded-md border bg-[hsl(var(--surface))] p-6 shadow-md">
+        {children}
+      </section>
+    );
+  }
+
   return (
-    <section aria-label={title} className="rounded-md border bg-[hsl(var(--surface))] p-6 shadow-md">
-      {children}
-    </section>
+    <DialogPrimitive.Root onOpenChange={onOpenChange} open={open}>
+      {trigger ? <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger> : null}
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[var(--z-overlay)] bg-black/40" />
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[var(--z-modal)] max-h-[85dvh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg border bg-[hsl(var(--surface))] p-6 shadow-md">
+          <DialogPrimitive.Title className="mb-4 text-lg font-semibold">
+            {title}
+          </DialogPrimitive.Title>
+          {children}
+          <DialogPrimitive.Close
+            aria-label="Close dialog"
+            className="absolute end-4 top-4 grid size-9 place-items-center rounded-md border text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]"
+          >
+            <X aria-hidden className="size-4" />
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
-export function Popover({ children }: Readonly<{ children: ReactNode }>) {
-  return <div className="rounded-md border bg-[hsl(var(--surface))] p-3 shadow-sm">{children}</div>;
+export function Popover({
+  children,
+  trigger,
+}: Readonly<{ children: ReactNode; trigger?: ReactNode }>) {
+  if (!trigger) {
+    return <div className="rounded-md border bg-[hsl(var(--surface))] p-3 shadow-sm">{children}</div>;
+  }
+
+  return (
+    <PopoverPrimitive.Root>
+      <PopoverPrimitive.Trigger asChild>{trigger}</PopoverPrimitive.Trigger>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          align="start"
+          className="z-[var(--z-dropdown)] min-w-64 rounded-md border bg-[hsl(var(--surface))] p-3 shadow-md"
+          sideOffset={8}
+        >
+          {children}
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  );
 }
 
-export function Tooltip({ children }: Readonly<{ children: ReactNode }>) {
-  return <span className="rounded bg-[hsl(var(--foreground))] px-2 py-1 text-xs text-[hsl(var(--background))]">{children}</span>;
+export function Tooltip({
+  children,
+  content,
+  side = "top",
+  align = "center",
+  sideOffset = 10,
+  avoidCollisions = true,
+}: Readonly<{
+  children: ReactNode;
+  content?: ReactNode;
+  side?: ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>["side"];
+  align?: ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>["align"];
+  sideOffset?: number;
+  avoidCollisions?: boolean;
+}>) {
+  if (!content) {
+    return <span className="rounded bg-[hsl(var(--foreground))] px-2 py-1 text-xs text-[hsl(var(--background))]">{children}</span>;
+  }
+
+  return (
+    <TooltipPrimitive.Provider>
+      <TooltipPrimitive.Root>
+        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            align={align}
+            avoidCollisions={avoidCollisions}
+            className="z-[calc(var(--z-modal)+20)] rounded-md bg-[hsl(var(--foreground))] px-2.5 py-1.5 text-xs font-medium text-[hsl(var(--background))] shadow-lg"
+            side={side}
+            sideOffset={sideOffset}
+          >
+            {content}
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
+  );
 }
 
 export function ScrollableArea({ children }: Readonly<{ children: ReactNode }>) {
-  return <div className="overflow-auto">{children}</div>;
+  return (
+    <ScrollAreaPrimitive.Root className="overflow-hidden">
+      <ScrollAreaPrimitive.Viewport className="h-full w-full">
+        {children}
+      </ScrollAreaPrimitive.Viewport>
+      <ScrollAreaPrimitive.Scrollbar orientation="vertical" />
+      <ScrollAreaPrimitive.Scrollbar orientation="horizontal" />
+    </ScrollAreaPrimitive.Root>
+  );
 }
 
 export function StickyToolbar({ children }: Readonly<{ children: ReactNode }>) {

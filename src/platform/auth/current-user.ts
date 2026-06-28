@@ -1,6 +1,6 @@
 import "server-only";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { ApplicationError } from "@/core/errors";
 import type { AccessExperience } from "@/core/context";
@@ -9,13 +9,36 @@ import type { AuthenticatedUser } from "./authenticated-context";
 import { getAuthenticationProvider } from "./providers";
 import type { CurrentSession, CurrentUser, PlatformPrincipal } from "./public-api";
 
+const ACCESS_TOKEN_COOKIE = "nexora_access_token";
+const REFRESH_TOKEN_COOKIE = "nexora_refresh_token";
+const REFRESH_TOKEN_HEADER = "x-nexora-refresh-token";
+
 export async function getCurrentSession(
   requestedExperience: AccessExperience = "system",
 ): Promise<CurrentSession | null> {
   const requestHeaders = await headers();
+  const requestCookies = await cookies();
+  const authHeaders = new Headers(requestHeaders);
+
+  if (!authHeaders.get("authorization")) {
+    const accessToken = requestCookies.get(ACCESS_TOKEN_COOKIE)?.value;
+
+    if (accessToken) {
+      authHeaders.set("authorization", `Bearer ${accessToken}`);
+    }
+  }
+
+  if (!authHeaders.get(REFRESH_TOKEN_HEADER)) {
+    const refreshToken = requestCookies.get(REFRESH_TOKEN_COOKIE)?.value;
+
+    if (refreshToken) {
+      authHeaders.set(REFRESH_TOKEN_HEADER, refreshToken);
+    }
+  }
+
   const provider = getAuthenticationProvider();
   return provider.resolveSession({
-    headers: requestHeaders,
+    headers: authHeaders,
     requestedExperience,
   });
 }

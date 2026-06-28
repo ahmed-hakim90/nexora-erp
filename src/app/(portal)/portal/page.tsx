@@ -3,16 +3,10 @@ import { AppShell, PageContainer, PageHeader } from "@/shared/ui";
 export default function HrPortalShellPage() {
   return (
     <AppShell
-      activeWorkspaceKey="portal"
       breadcrumbs={[{ label: "HR Self-Service Portal" }]}
-      sidebarGroups={[
-        {
-          key: "portal",
-          label: "Portal",
-          items: [{ key: "shell", label: "Shell placeholder", isActive: true }],
-        },
-      ]}
-      workspaceOptions={[{ key: "portal", label: "HR Self-Service Portal" }]}
+      homeHref="/portal"
+      workspace={{ key: "portal", name: "HR Self-Service Portal" }}
+      workspaceNav={[{ key: "shell", label: "Overview", href: "/portal", isActive: true }]}
     >
       <PageContainer>
         <PageHeader

@@ -46,7 +46,7 @@ export async function InventoryListPage({
       <PageHeader description={config.description} title={config.title} />
       <PageFilters>
         <p className="text-sm text-muted-foreground">
-          Read-only inventory foundation pages. Search, status filters, soft-delete filtering, and cursor pagination are handled by route loaders.
+          Foundation Ready: this page reads real Supabase records with search, status filtering, soft-delete filtering, and cursor pagination.
         </p>
       </PageFilters>
       <PageContent>
@@ -66,7 +66,7 @@ export async function InventoryListPage({
           state={{ globalSearch: params.search }}
         />
       </PageContent>
-      <PageFooter>No posting UI, transfer UI, adjustment UI, production, sales, purchasing, or accounting workflow is implemented.</PageFooter>
+      <PageFooter>Foundation Ready inventory records only. Out-of-scope applications and accounting workflows are not exposed here.</PageFooter>
     </PageContainer>
   );
 }

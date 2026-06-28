@@ -20,11 +20,18 @@ import {
   INVENTORY_EVENT_DEFINITIONS,
   INVENTORY_EXPORT_CONTRACT,
   INVENTORY_FINANCE_INTEGRATION_CONTRACTS,
+  INVENTORY_FOUNDATION_ENTITIES,
   INVENTORY_FOUNDATION_CONTRACTS,
+  INVENTORY_FOUNDATION_RESOURCE_KEYS,
   INVENTORY_OPENING_BALANCE_IMPORT_CONTRACT,
   INVENTORY_PERMISSIONS,
   INVENTORY_PRODUCT_IMPORT_CONTRACT,
+  INVENTORY_QUANTITY_MODEL_CONTRACT,
   INVENTORY_REPORT_READINESS_CONTRACT,
+  INVENTORY_RESERVATION_ENGINE_CONTRACT,
+  INVENTORY_RESERVATION_LIFECYCLE_CONTRACT,
+  INVENTORY_RESERVATION_PLATFORM_INTEGRATION_CONTRACT,
+  INVENTORY_RESERVATION_TYPES,
   INVENTORY_SEARCH_PROVIDER_CONTRACT,
   inventoryModuleManifest,
   type InventoryStockBalanceContract,
@@ -38,6 +45,7 @@ import {
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260627124000_inventory_foundation.sql");
+const stabilizationMigrationPath = path.join(root, "supabase/migrations/20260628101500_stabilize_current_app_models.sql");
 
 const platformManifest = defineAppManifest({
   capabilities: [],
@@ -73,8 +81,49 @@ test("inventory foundation registers app and module manifests", () => {
   });
 
   assert.equal(inventoryAppManifest.dependencies.some((dependency) => dependency.appKey === "finance"), true);
+  assert.deepEqual(
+    INVENTORY_FOUNDATION_RESOURCE_KEYS.map((key) => `/erp/inventory/${key}`).sort(),
+    [
+      "/erp/inventory/categories",
+      "/erp/inventory/locations",
+      "/erp/inventory/lots",
+      "/erp/inventory/reorder-rules",
+      "/erp/inventory/serials",
+      "/erp/inventory/uom-categories",
+      "/erp/inventory/uoms",
+      "/erp/inventory/variants",
+      "/erp/inventory/warehouses",
+    ],
+  );
+  for (const descriptor of Object.values(INVENTORY_FOUNDATION_ENTITIES)) {
+    assert.equal(inventoryAppManifest.routes.some((route) => route.path === descriptor.basePath), true);
+    assert.match(descriptor.table, /^inventory_/);
+  }
   assert.equal(inventoryAppManifest.quickActions.length, 0);
   assert.equal(inventoryAppManifest.commands.some((command) => command.key.includes("manufacturing")), false);
+});
+
+test("inventory foundation auto-generates operational business codes", () => {
+  const expected = {
+    categories: ["categoryKey"],
+    lots: ["lotKey"],
+    "reorder-rules": ["ruleKey"],
+    serials: ["serialKey"],
+    "uom-categories": ["categoryKey"],
+    uoms: ["uomKey"],
+    variants: ["variantKey"],
+    warehouses: ["warehouseKey"],
+    locations: ["locationKey"],
+  } as const;
+
+  for (const [entityKey, fieldNames] of Object.entries(expected)) {
+    const descriptor = INVENTORY_FOUNDATION_ENTITIES[entityKey as keyof typeof INVENTORY_FOUNDATION_ENTITIES];
+    for (const fieldName of fieldNames) {
+      const field = descriptor.fields.find((candidate) => candidate.name === fieldName);
+      assert.ok(field?.autoCode, `${entityKey}.${fieldName} should be generated`);
+      assert.equal(field.autoCode.displayCase ?? "upper", "upper");
+    }
+  }
 });
 
 test("inventory product, variant, UOM, warehouse, and location contracts preserve scope", () => {
@@ -189,12 +238,14 @@ test("platform readiness contracts cover search, report, print, dashboard, and i
     "inventory_location",
     "inventory_lot",
     "inventory_serial_number",
+    "inventory_reservation",
+    "inventory_availability",
   ]);
   assert.equal(INVENTORY_REPORT_READINESS_CONTRACT.mode, "async");
   assert.equal(INVENTORY_PRODUCT_IMPORT_CONTRACT.previewRequired, true);
   assert.equal(INVENTORY_OPENING_BALANCE_IMPORT_CONTRACT.metadata?.documentContract, "inventory.opening-balance");
   assert.deepEqual(INVENTORY_EXPORT_CONTRACT.supportedFormats, ["csv", "excel", "json"]);
-  assert.equal(INVENTORY_FOUNDATION_CONTRACTS.jobReadiness.length, 8);
+  assert.equal(INVENTORY_FOUNDATION_CONTRACTS.jobReadiness.length, 11);
 });
 
 test("cost and finance integration contracts are readiness-only", () => {
@@ -233,8 +284,64 @@ test("inventory events are prepared without runtime handlers", () => {
     "InventoryLotCreated",
     "InventorySerialNumberCreated",
     "InventoryReorderRuleTriggered",
+    "InventoryReservationRequested",
+    "InventoryReservationCreated",
+    "InventoryReservationApproved",
+    "InventoryReservationReleased",
+    "InventoryReservationConsumed",
+    "InventoryReservationExpired",
+    "InventoryReservationCancelled",
+    "InventoryAvailabilityChanged",
+    "InventoryTransferIssued",
+    "InventoryTransferReceived",
   ]);
   assert.equal(INVENTORY_EVENT_DEFINITIONS.every((event) => event.source === "business-app"), true);
+});
+
+test("inventory reservation engine contracts define lifecycle, types, quantities, and platform readiness only", () => {
+  assert.deepEqual(INVENTORY_RESERVATION_LIFECYCLE_CONTRACT.transferFlow, [
+    "draft",
+    "pending_approval",
+    "approved",
+    "reserved",
+    "issued",
+    "in_transit",
+    "received",
+    "completed",
+  ]);
+  assert.deepEqual(INVENTORY_RESERVATION_TYPES, [
+    "soft_hold",
+    "hard_reservation",
+    "transfer_reservation",
+    "manufacturing_reservation",
+    "sales_reservation",
+    "service_reservation",
+    "rental_reservation",
+    "project_reservation",
+    "custom",
+  ]);
+  assert.equal(INVENTORY_QUANTITY_MODEL_CONTRACT.owner, "inventory-engine");
+  assert.equal(INVENTORY_QUANTITY_MODEL_CONTRACT.availableStoredManually, false);
+  assert.equal(INVENTORY_QUANTITY_MODEL_CONTRACT.availableFormula, "on_hand - reserved - pending_approval - outgoing - damaged - quarantine");
+  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.runtimeExecutionImplemented, false);
+  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.implementsAccounting, false);
+  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.implementsCosting, false);
+  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.implementsWarehouseExecution, false);
+  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.concurrencyStrategy.idempotencyRequired, true);
+  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.concurrencyStrategy.frontendValidationTrusted, false);
+  assert.deepEqual(INVENTORY_RESERVATION_PLATFORM_INTEGRATION_CONTRACT.integrations, [
+    "platform-events",
+    "background-jobs",
+    "audit",
+    "notifications",
+    "search",
+    "reporting",
+    "dashboard",
+    "import-export",
+    "workflow",
+    "approvals",
+  ]);
+  assert.equal(INVENTORY_FOUNDATION_CONTRACTS.reservationEngine.runtimeExecutionImplemented, false);
 });
 
 test("inventory migration creates requested tables with tenant, company, branch, lifecycle, RLS, and indexes", () => {
@@ -333,4 +440,62 @@ test("inventory foundation has no manufacturing, sales, purchasing, valuation, o
   assert.match(sql, /valuation_implemented boolean not null default false check \(valuation_implemented = false\)/);
   assert.match(sql, /accounting_posting_implemented boolean not null default false check \(accounting_posting_implemented = false\)/);
   assert.equal(INVENTORY_FOUNDATION_CONTRACTS.appManifest.key, "inventory");
+});
+
+test("inventory stabilization locks canonical inventory runtime tables", () => {
+  const decisionDoc = fs.readFileSync(path.join(root, "docs/CURRENT_APP_FOUNDATION_DECISIONS.md"), "utf8");
+  const migration = fs.readFileSync(stabilizationMigrationPath, "utf8");
+  const foundationRepository = fs.readFileSync(path.join(root, "src/features/inventory/infrastructure/repositories/inventory.repository.ts"), "utf8");
+  const transactionRepository = fs.readFileSync(path.join(root, "src/features/inventory/infrastructure/repositories/inventory-transactions.repository.ts"), "utf8");
+  const overviewLoader = fs.readFileSync(path.join(root, "src/features/inventory/routes/loaders/inventory-overview.loader.ts"), "utf8");
+  const permissions = fs.readFileSync(path.join(root, "src/features/inventory/permissions/permission-registry.ts"), "utf8");
+
+  assert.match(decisionDoc, /Canonical Inventory app\/runtime tables are the `inventory_\*` foundation tables/);
+  for (const table of ["inventory_products", "inventory_warehouses", "inventory_locations", "inventory_uoms"]) {
+    assert.match(migration, new RegExp(`references public\\.${table}\\(id\\)`));
+    assert.match(foundationRepository, new RegExp(`\\.from\\("${table}"\\)`));
+    assert.match(transactionRepository, new RegExp(`\\.from\\("${table}"\\)`));
+  }
+
+  assert.doesNotMatch(foundationRepository, /\.from\("products"\)|\.from\("warehouses"\)|\.from\("warehouse_locations"\)|\.from\("units"\)/);
+  assert.doesNotMatch(transactionRepository, /\.from\("products"\)|\.from\("warehouses"\)|\.from\("warehouse_locations"\)|\.from\("units"\)/);
+  assert.match(overviewLoader, /table: "stock_balances"/);
+  assert.match(overviewLoader, /table: "stock_ledger_entries"/);
+  assert.doesNotMatch(overviewLoader, /table: "inventory_stock_balances"|table: "inventory_stock_movements"/);
+  assert.match(permissions, /inventory\.cycle-count\.view/);
+  assert.match(migration, /inventory\.cycle-count\.post/);
+});
+
+test("inventory foundation CRUD routes and navigation use canonical app paths", () => {
+  const shell = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/_components/inventory-shell.tsx"), "utf8");
+  const resourceRoute = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/[transactionType]/page.tsx"), "utf8");
+  const newRoute = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/[transactionType]/new/page.tsx"), "utf8");
+  const detailRoute = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/[transactionType]/[id]/page.tsx"), "utf8");
+  const editRoute = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/[transactionType]/[id]/edit/page.tsx"), "utf8");
+  const foundationPage = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/_components/inventory-foundation-pages.tsx"), "utf8");
+  const foundationModal = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/_components/inventory-foundation-modal.tsx"), "utf8");
+  const transactionList = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/transactions/page.tsx"), "utf8");
+  const transactionModal = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/_components/inventory-transaction-modal.tsx"), "utf8");
+  const navigation = fs.readFileSync(path.join(root, "src/shared/workspace/erp-navigation.ts"), "utf8");
+  const actions = fs.readFileSync(path.join(root, "src/features/inventory/routes/actions/inventory-foundation.actions.ts"), "utf8");
+  const loader = fs.readFileSync(path.join(root, "src/features/inventory/routes/loaders/inventory-foundation.loader.ts"), "utf8");
+
+  for (const key of INVENTORY_FOUNDATION_RESOURCE_KEYS) {
+    assert.match(shell, new RegExp(`/erp/inventory/${key}`));
+    assert.match(navigation, new RegExp(`/erp/inventory/${key}`));
+  }
+
+  assert.match(resourceRoute, /loadInventoryFoundationWorkspace/);
+  assert.match(resourceRoute, /getInventoryFoundationRecord/);
+  assert.match(newRoute, /redirect\(`\$\{descriptor\.basePath\}\?create=1`\)/);
+  assert.match(detailRoute, /InventoryFoundationDetailPage/);
+  assert.match(editRoute, /redirect\(`\$\{descriptor\.basePath\}\?edit=\$\{encodeURIComponent\(id\)\}`\)/);
+  assert.match(foundationPage, /InventoryFoundationRecordModalLauncher/);
+  assert.match(foundationModal, /RecordFormDialog/);
+  assert.match(transactionList, /InventoryTransactionModalLauncher/);
+  assert.match(transactionModal, /RecordFormDialog/);
+  assert.match(actions, /created_by: context\.userId/);
+  assert.match(actions, /deleted_by: context\.userId/);
+  assert.match(loader, /selectColumns\(descriptor\)/);
+  assert.doesNotMatch(navigation, /\/erp\/master-data\/product-categories|\/erp\/master-data\/units|\/erp\/master-data\/warehouses|\/erp\/master-data\/warehouse-locations/);
 });

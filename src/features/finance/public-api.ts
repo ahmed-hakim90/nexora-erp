@@ -27,6 +27,29 @@ import { FINANCE_PERMISSIONS, FINANCE_PERMISSION_LIST } from "./permissions/perm
 export { financeAppManifest } from "./app.manifest";
 export { financeModuleManifest } from "./module.manifest";
 export { FINANCE_PERMISSIONS, FINANCE_PERMISSION_LIST } from "./permissions/permission-registry";
+export {
+  FINANCE_ENTITIES,
+  FINANCE_ENTITY_KEYS,
+  getFinanceEntity,
+  isFinanceEntityKey,
+} from "./application/entities";
+export {
+  buildFinanceMutationSchema,
+  financeListQuerySchema,
+} from "./application/schemas/finance.schema";
+export type {
+  FinanceCursorPage,
+  FinanceDashboardData,
+  FinanceDashboardMetric,
+  FinanceEntityDescriptor,
+  FinanceEntityKey,
+  FinanceFieldDescriptor,
+  FinanceFieldOption,
+  FinanceFieldType,
+  FinanceListQuery,
+  FinanceRecord,
+  FinanceRelationDescriptor,
+} from "./application/types";
 
 export const FINANCE_APP_KEY = defineAppKey("finance");
 

@@ -1,7 +1,9 @@
-import { getInventoryTransaction } from "@/features/inventory/routes/loaders/inventory.loader";
+import { redirect } from "next/navigation";
 
-import { InventoryShell } from "../../../_components/inventory-shell";
-import { getTransactionTypeConfig, InventoryTransactionFormPage } from "../../../_components/transaction-pages";
+import { isInventoryFoundationResourceKey } from "@/features/inventory/public-api";
+import { getInventoryFoundationEntity } from "@/features/inventory/public-api";
+
+import { getTransactionTypeConfig } from "../../../_components/transaction-pages";
 
 export default async function EditInventoryTransactionPage({
   params,
@@ -9,12 +11,12 @@ export default async function EditInventoryTransactionPage({
   params: Promise<{ id: string; transactionType: string }>;
 }>) {
   const { id, transactionType } = await params;
-  const config = getTransactionTypeConfig(transactionType);
-  const detail = await getInventoryTransaction(id);
 
-  return (
-    <InventoryShell activeKey={config.activeKey}>
-      <InventoryTransactionFormPage detail={detail} mode="edit" slug={transactionType} />
-    </InventoryShell>
-  );
+  if (isInventoryFoundationResourceKey(transactionType)) {
+    const descriptor = getInventoryFoundationEntity(transactionType);
+    redirect(`${descriptor.basePath}?edit=${encodeURIComponent(id)}`);
+  }
+
+  getTransactionTypeConfig(transactionType);
+  redirect(`/erp/inventory/transactions?transactionType=${transactionType}&edit=${encodeURIComponent(id)}`);
 }

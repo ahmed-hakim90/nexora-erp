@@ -14,6 +14,12 @@ export default function HomePage() {
           implemented.
         </p>
         <div className="flex gap-4">
+          <Link className="underline" href="/signup">
+            Sign up
+          </Link>
+          <Link className="underline" href="/login">
+            Login
+          </Link>
           <Link className="underline" href="/erp">
             ERP Workspace shell
           </Link>

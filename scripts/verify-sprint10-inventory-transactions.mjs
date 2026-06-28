@@ -29,9 +29,9 @@ const requiredPermissions = [
   "inventory.transaction.post",
   "inventory.transaction.cancel",
   "inventory.transaction.reverse",
-  "inventory.cycle_count.view",
-  "inventory.cycle_count.manage",
-  "inventory.cycle_count.post",
+  "inventory.cycle-count.view",
+  "inventory.cycle-count.manage",
+  "inventory.cycle-count.post",
 ];
 
 const requiredEvents = [
@@ -40,7 +40,7 @@ const requiredEvents = [
   "inventory.transaction.posted",
   "inventory.transaction.cancelled",
   "inventory.transaction.reversed",
-  "inventory.cycle_count.posted",
+  "inventory.cycle-count.posted",
 ];
 
 for (const table of requiredTables) {
@@ -81,6 +81,10 @@ const servicePath = resolve("src/features/inventory/application/services/invento
 const service = readFileSync(servicePath, "utf8");
 const repositoryPath = resolve("src/features/inventory/infrastructure/repositories/inventory-transactions.repository.ts");
 const repository = readFileSync(repositoryPath, "utf8");
+const foundationRepositoryPath = resolve("src/features/inventory/infrastructure/repositories/inventory.repository.ts");
+const foundationRepository = readFileSync(foundationRepositoryPath, "utf8");
+const stabilizationMigrationPath = resolve("supabase/migrations/20260628101500_stabilize_current_app_models.sql");
+const stabilizationMigration = readFileSync(stabilizationMigrationPath, "utf8");
 
 for (const className of [
   "InventoryTransactionService",
@@ -108,6 +112,21 @@ for (const required of [
 
 if (!repository.includes("rpc(\"record_inventory_transaction_posting\"")) {
   throw new Error("Inventory transaction posting records must be written through guarded RPC.");
+}
+
+for (const [canonical, legacy] of [
+  ["inventory_products", "products"],
+  ["inventory_warehouses", "warehouses"],
+  ["inventory_locations", "warehouse_locations"],
+  ["inventory_uoms", "units"],
+]) {
+  if (!stabilizationMigration.includes(`references public.${canonical}(id)`)) {
+    throw new Error(`Missing canonical FK stabilization for ${canonical}`);
+  }
+  const legacyQueryPattern = new RegExp(`\\.from\\(["']${legacy}["']\\)`);
+  if (legacyQueryPattern.test(repository) || legacyQueryPattern.test(foundationRepository)) {
+    throw new Error(`Inventory runtime repository must not validate against legacy table: ${legacy}`);
+  }
 }
 
 const srcFiles = listFiles(resolve("src")).filter((path) => /\.(ts|tsx)$/.test(path));

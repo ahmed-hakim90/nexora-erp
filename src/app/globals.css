@@ -1,73 +1,335 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/*
+ * Nexora Enterprise Design System — token foundation.
+ * See docs/ENTERPRISE_DESIGN_SYSTEM.md (sections 3–9).
+ *
+ * Tailwind v4 only loads its default theme via `@import "tailwindcss"`.
+ * Design tokens are declared in two layers:
+ *   1. `:root` / `[data-theme="dark"]` hold raw HSL triplets + raw values.
+ *      These power existing arbitrary utilities like `bg-[hsl(var(--surface))]`
+ *      and enable theme switching (dark overrides the same variable names).
+ *   2. `@theme` maps Tailwind utility tokens to those variables so that
+ *      `bg-muted`, `text-muted-foreground`, `rounded-lg`, `shadow-md`, etc. generate.
+ */
+
+@theme {
+  /* Radius (section 8) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+
+  /* Shadows (section 9) — subtle only */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow-md: 0 8px 24px rgb(15 23 42 / 0.08);
+  --shadow-lg: 0 20px 40px rgb(15 23 42 / 0.12);
+
+  /* Typography (section 6) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --text-xs: 12px;
+  --text-xs--line-height: 1.5;
+  --text-sm: 14px;
+  --text-sm--line-height: 1.5;
+  --text-base: 16px;
+  --text-base--line-height: 1.5;
+  --text-lg: 18px;
+  --text-lg--line-height: 1.4;
+  --text-xl: 20px;
+  --text-xl--line-height: 1.3;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 1.25;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 1.2;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 1.15;
+}
+
+/*
+ * Utility token mapping. `@theme inline` references the live CSS variables
+ * below, so dark-mode overrides flow through automatically.
+ */
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--border));
+  --color-ring: hsl(var(--accent));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-surface: hsl(var(--surface));
+  --color-surface-elevated: hsl(var(--surface-elevated));
+  --color-surface-muted: hsl(var(--surface-muted));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-primary: hsl(var(--primary-500));
+  --color-primary-500: hsl(var(--primary-500));
+  --color-primary-600: hsl(var(--primary-600));
+  --color-primary-700: hsl(var(--primary-700));
+
+  --color-secondary: hsl(var(--secondary-500));
+  --color-secondary-500: hsl(var(--secondary-500));
+  --color-secondary-600: hsl(var(--secondary-600));
+
+  --color-success: hsl(var(--success));
+  --color-warning: hsl(var(--warning));
+  --color-danger: hsl(var(--danger));
+  --color-info: hsl(var(--info));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-hover: hsl(var(--sidebar-hover));
+  --color-sidebar-active: hsl(var(--sidebar-active));
+  --color-sidebar-foreground: hsl(var(--sidebar-text));
+  --color-sidebar-foreground-active: hsl(var(--sidebar-text-active));
+
+  --color-module-finance: var(--module-finance);
+  --color-module-inventory: var(--module-inventory);
+  --color-module-manufacturing: var(--module-manufacturing);
+  --color-module-purchasing: var(--module-purchasing);
+  --color-module-sales: var(--module-sales);
+  --color-module-crm: var(--module-crm);
+  --color-module-hr: var(--module-hr);
+  --color-module-payroll: var(--module-payroll);
+  --color-module-fleet: var(--module-fleet);
+  --color-module-service: var(--module-service);
+  --color-module-projects: var(--module-projects);
+  --color-module-quality: var(--module-quality);
+}
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --border: 214.3 31.8% 91.4%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --surface: 0 0% 100%;
-  --surface-elevated: 210 40% 98%;
-  --accent: 221.2 83.2% 53.3%;
-  --accent-foreground: 210 40% 98%;
-  --danger: 0 84.2% 60.2%;
-  --success: 142.1 76.2% 36.3%;
-  --warning: 38 92% 50%;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.5rem;
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.08);
-  --shadow-md: 0 8px 24px rgb(15 23 42 / 0.12);
-  --motion-fast: 120ms;
+  /* Neutral palette (section 3) */
+  --background: 210 40% 98%; /* #F8FAFC */
+  --foreground: 222 47% 11%; /* #0F172A text-primary */
+  --surface: 0 0% 100%; /* #FFFFFF */
+  --surface-elevated: 0 0% 100%;
+  --surface-muted: 210 40% 96.1%; /* #F1F5F9 */
+  --surface-glass: 0 0% 100% / 0.72;
+  --border: 220 13% 91%; /* #E5E7EB */
+  --divider: 210 40% 96.1%; /* #F1F5F9 */
+  --muted: 210 40% 96.1%; /* #F1F5F9 */
+  --muted-foreground: 215 19% 35%; /* #475569 text-secondary */
+  --text-muted: 215 20% 65%; /* #94A3B8 */
+
+  /* Brand palette (section 3) */
+  --primary-500: 221 83% 53%; /* #2563EB */
+  --primary-600: 224 76% 48%; /* #1D4ED8 */
+  --primary-700: 226 71% 40%; /* #1E40AF */
+  --secondary-500: 262 83% 58%; /* #7C3AED */
+  --secondary-600: 263 70% 50%; /* #6D28D9 */
+  --accent: 221 83% 53%; /* primary-500 */
+  --accent-foreground: 0 0% 100%;
+
+  /* Semantic colors (section 3) */
+  --success: 142 76% 36%; /* #16A34A */
+  --warning: 38 92% 50%; /* #F59E0B */
+  --danger: 0 72% 51%; /* #DC2626 */
+  --info: 199 89% 48%; /* #0EA5E9 */
+
+  /* Application shell (section 10) */
+  --shell-background: 210 40% 98%; /* #F8FAFC */
+  --shell-sidebar: 222 47% 11%; /* #0F172A */
+  --shell-topbar: 0 0% 100%;
+
+  /* Sidebar (section 3) */
+  --sidebar-background: 222 47% 11%; /* #0F172A */
+  --sidebar-hover: 217 33% 17%; /* #1E293B */
+  --sidebar-active: 221 83% 53%; /* #2563EB */
+  --sidebar-text: 213 27% 84%; /* #CBD5E1 */
+  --sidebar-text-active: 0 0% 100%; /* #FFFFFF */
+
+  /* Module accent colors (section 4) — accents only */
+  --module-finance: #2563eb;
+  --module-inventory: #10b981;
+  --module-manufacturing: #f97316;
+  --module-purchasing: #06b6d4;
+  --module-sales: #8b5cf6;
+  --module-crm: #ec4899;
+  --module-hr: #14b8a6;
+  --module-payroll: #0ea5e9;
+  --module-fleet: #f59e0b;
+  --module-service: #ef4444;
+  --module-projects: #6366f1;
+  --module-quality: #84cc16;
+
+  /* Gradients (section 5) */
+  --gradient-finance: linear-gradient(135deg, #2563eb, #3b82f6);
+  --gradient-inventory: linear-gradient(135deg, #059669, #10b981);
+  --gradient-manufacturing: linear-gradient(135deg, #ea580c, #f97316);
+  --gradient-automation: linear-gradient(135deg, #7c3aed, #a855f7);
+  --gradient-system: linear-gradient(135deg, #0f172a, #334155);
+
+  /* Motion (section 28) */
+  --motion-fast: 150ms;
   --motion-normal: 200ms;
-  --motion-slow: 320ms;
+  --motion-slow: 250ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layering */
   --z-sticky: 20;
-  --z-dropdown: 40;
+  --z-dropdown: 55;
   --z-overlay: 50;
   --z-modal: 60;
+  --z-toast: 70;
+
   --container-page: 90rem;
+
+  /* Floating workspace panel density defaults. */
+  --floating-panel-body-padding: 32px;
+  --floating-panel-section-padding: 24px;
+  --floating-panel-section-gap: 24px;
+}
+
+[data-density="compact"] {
+  --floating-panel-body-padding: 20px;
+  --floating-panel-section-padding: 16px;
+  --floating-panel-section-gap: 16px;
 }
 
 [data-theme="dark"] {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --surface: 222.2 84% 4.9%;
-  --surface-elevated: 217.2 32.6% 17.5%;
-  --accent: 217.2 91.2% 59.8%;
-  --accent-foreground: 222.2 47.4% 11.2%;
+  /* Dark mode (section 3) */
+  --background: 229 84% 5%; /* #020617 */
+  --foreground: 210 40% 98%; /* #F8FAFC */
+  --surface: 222 47% 11%; /* #0F172A dark-surface */
+  --surface-elevated: 221 39% 11%; /* #111827 dark-card */
+  --surface-muted: 217 33% 17%;
+  --surface-glass: 222 47% 11% / 0.68;
+  --border: 217 33% 17%; /* #1E293B */
+  --divider: 217 33% 17%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 213 27% 84%; /* #CBD5E1 dark-text-secondary */
+  --text-muted: 215 20% 65%;
+
+  --accent: 217 91% 60%; /* #3B82F6 dark-primary */
+  --accent-foreground: 222 47% 11%;
+
+  --shell-background: 229 84% 5%;
+  --shell-sidebar: 222 47% 11%;
+  --shell-topbar: 222 47% 11%;
+
+  --sidebar-background: 222 47% 11%;
+  --sidebar-hover: 217 33% 17%;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 20px 40px rgb(0 0 0 / 0.55);
 }
 
-html,
-body {
-  min-height: 100%;
+@layer base {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    scrollbar-color: hsl(var(--text-muted) / 0.55) transparent;
+    scrollbar-width: thin;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    min-height: 2rem;
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: hsl(var(--text-muted) / 0.45);
+    background-clip: padding-box;
+    transition: background-color var(--motion-fast) var(--ease-standard);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.65);
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /* Themed default border color so bare `border` utilities match the system. */
+  *,
+  *::before,
+  *::after {
+    border-color: hsl(var(--border));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--accent));
+    outline-offset: 2px;
+  }
+
+  [dir="rtl"] {
+    text-align: start;
+  }
 }
 
-body {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-feature-settings: "rlig" 1, "calt" 1;
-  text-rendering: optimizeLegibility;
+@layer components {
+  :where(button, a)[class~="rounded-md"][class~="border"][class~="px-3"][class~="py-2"][class~="text-sm"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-color: hsl(var(--border));
+    background: hsl(var(--surface-muted));
+    color: hsl(var(--foreground));
+    font-weight: 500;
+    box-shadow: var(--shadow-sm);
+    transition:
+      background-color var(--motion-fast) var(--ease-standard),
+      border-color var(--motion-fast) var(--ease-standard),
+      color var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+
+  :where(button, a)[class~="rounded-md"][class~="border"][class~="px-3"][class~="py-2"][class~="text-sm"]:hover {
+    border-color: hsl(var(--muted-foreground) / 0.35);
+    background: hsl(var(--surface-elevated));
+    box-shadow: var(--shadow-md);
+  }
+
+  :where(button)[class~="rounded-md"][class~="border"][class~="px-3"][class~="py-2"][class~="text-sm"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
 }
 
-* {
-  border-color: hsl(var(--border));
+@keyframes floating-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-:focus-visible {
-  outline: 2px solid hsl(var(--accent));
-  outline-offset: 2px;
-}
-
-[dir="rtl"] {
-  text-align: start;
-}
-
+/* Accessibility (section 25) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -80,7 +342,7 @@ body {
 
 @media (prefers-contrast: more) {
   :root {
-    --border: 222.2 84% 4.9%;
-    --muted-foreground: 222.2 47.4% 11.2%;
+    --border: 222 47% 11%;
+    --muted-foreground: 222 47% 11%;
   }
 }

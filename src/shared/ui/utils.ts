@@ -1,9 +1,10 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 export type Direction = "ltr" | "rtl";
 
-export function cn(
-  ...values: Array<string | false | null | undefined>
-): string {
-  return values.filter(Boolean).join(" ");
+export function cn(...values: ClassValue[]): string {
+  return twMerge(clsx(values));
 }
 
 export function isRtl(direction: Direction): boolean {

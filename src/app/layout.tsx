@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 
 import { PlatformFeedbackProvider } from "@/platform/feedback/public-api";
+import { EnterpriseUiProvider } from "@/shared/ui";
 
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "Nexora Platform",
@@ -16,9 +24,9 @@ export default function RootLayout({
 }>) {
   // Root layout stays neutral. ERP and Portal route groups own their own shells.
   return (
-    <html lang="en" dir="ltr">
+    <html className={inter.variable} lang="en" dir="ltr" suppressHydrationWarning>
       <body>
-        {children}
+        <EnterpriseUiProvider>{children}</EnterpriseUiProvider>
         <PlatformFeedbackProvider />
       </body>
     </html>

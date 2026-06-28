@@ -38,7 +38,7 @@ const TRANSACTION_SUBMITTED_EVENT = defineEventName("inventory.transaction.submi
 const TRANSACTION_POSTED_EVENT = defineEventName("inventory.transaction.posted");
 const TRANSACTION_CANCELLED_EVENT = defineEventName("inventory.transaction.cancelled");
 const TRANSACTION_REVERSED_EVENT = defineEventName("inventory.transaction.reversed");
-const CYCLE_COUNT_POSTED_EVENT = defineEventName("inventory.cycle_count.posted");
+const CYCLE_COUNT_POSTED_EVENT = defineEventName("inventory.cycle-count.posted");
 
 type InventoryTransactionOutbox = Readonly<{
   enqueue(input: EnqueueEventOutboxInput): Promise<unknown>;
@@ -181,7 +181,7 @@ export class InventoryTransactionService {
     await this.recordAudit(transaction, "posted", { postingBatchId: batch.id });
     await this.publishTransactionEvent(transaction, TRANSACTION_POSTED_EVENT, "posted", { postingBatchId: batch.id });
     if (transaction.transactionType === "cycle_count") {
-      await this.publishTransactionEvent(transaction, CYCLE_COUNT_POSTED_EVENT, "cycle_count.posted", { postingBatchId: batch.id });
+      await this.publishTransactionEvent(transaction, CYCLE_COUNT_POSTED_EVENT, "cycle-count.posted", { postingBatchId: batch.id });
     }
     return transaction;
   }

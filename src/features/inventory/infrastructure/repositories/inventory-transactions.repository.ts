@@ -394,16 +394,16 @@ export class SupabaseInventoryTransactionRepository implements InventoryTransact
   async assertPostingScope(input: StockPostingLineInput & { branchId: string }): Promise<void> {
     const [product, warehouse, location, unit] = await Promise.all([
       this.supabase
-        .from("products")
-        .select("id")
+        .from("inventory_products")
+        .select("id, product_kind")
         .eq("tenant_id", this.context.tenantId)
         .eq("id", input.productId)
-        .eq("is_stockable", true)
+        .neq("product_kind", "service")
         .eq("is_active", true)
         .is("deleted_at", null)
         .maybeSingle(),
       this.supabase
-        .from("warehouses")
+        .from("inventory_warehouses")
         .select("id, branch_id")
         .eq("tenant_id", this.context.tenantId)
         .eq("id", input.warehouseId)
@@ -411,7 +411,7 @@ export class SupabaseInventoryTransactionRepository implements InventoryTransact
         .is("deleted_at", null)
         .maybeSingle(),
       this.supabase
-        .from("warehouse_locations")
+        .from("inventory_locations")
         .select("id, branch_id, warehouse_id")
         .eq("tenant_id", this.context.tenantId)
         .eq("id", input.locationId)
@@ -419,7 +419,7 @@ export class SupabaseInventoryTransactionRepository implements InventoryTransact
         .is("deleted_at", null)
         .maybeSingle(),
       this.supabase
-        .from("units")
+        .from("inventory_uoms")
         .select("id")
         .eq("tenant_id", this.context.tenantId)
         .eq("id", input.unitId)
