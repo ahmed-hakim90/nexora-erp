@@ -2,7 +2,7 @@
 
 /*
  * Nexora Enterprise Design System — token foundation.
- * See docs/ENTERPRISE_DESIGN_SYSTEM.md (sections 3–9).
+ * See docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md (section 21) and docs/06-guidelines/UI_GUIDELINES.md.
  *
  * Tailwind v4 only loads its default theme via `@import "tailwindcss"`.
  * Design tokens are declared in two layers:
@@ -173,9 +173,9 @@
 
   /* Layering */
   --z-sticky: 20;
-  --z-dropdown: 55;
   --z-overlay: 50;
   --z-modal: 60;
+  --z-dropdown: 65;
   --z-toast: 70;
 
   --container-page: 90rem;

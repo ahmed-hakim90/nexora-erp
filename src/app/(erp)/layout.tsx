@@ -1,8 +1,14 @@
-export default function ErpExperienceLayout({
+import "server-only";
+
+import { resolveBranchRequestContext } from "@/platform/auth/server";
+
+import { ErpExperienceProviders } from "./erp-experience-providers";
+
+export default async function ErpExperienceLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // ERP providers must stay here, never in the root layout or portal shell.
-  return <>{children}</>;
+  await resolveBranchRequestContext("erp");
+  return <ErpExperienceProviders>{children}</ErpExperienceProviders>;
 }

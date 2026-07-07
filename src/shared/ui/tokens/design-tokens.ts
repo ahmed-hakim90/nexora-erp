@@ -2,7 +2,7 @@
  * Programmatic mirror of the Enterprise Design System tokens.
  * The canonical runtime source is src/app/globals.css (@theme + :root).
  * These constants exist for non-CSS consumers (charts, canvas, computed styles).
- * See docs/ENTERPRISE_DESIGN_SYSTEM.md.
+ * See docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md (section 21) and docs/06-guidelines/UI_GUIDELINES.md.
  */
 
 export const typographyScale = {

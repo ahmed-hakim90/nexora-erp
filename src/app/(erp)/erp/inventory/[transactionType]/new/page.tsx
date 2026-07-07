@@ -16,5 +16,9 @@ export default async function NewInventoryTransactionPage({
   }
 
   getTransactionTypeConfig(transactionType);
+  const scannerFlows = new Set(["goods-receipt", "goods-issue", "warehouse-transfer", "cycle-count"]);
+  if (scannerFlows.has(transactionType)) {
+    redirect(`/erp/inventory/warehouse/${transactionType}`);
+  }
   redirect(`/erp/inventory/transactions?create=${transactionType}`);
 }

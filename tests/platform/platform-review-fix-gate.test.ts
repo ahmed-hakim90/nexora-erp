@@ -206,7 +206,7 @@ test("platform server barrel exports existing server helpers", () => {
 
 test("event bus and outbox layering decision is documented", () => {
   const doc = fs.readFileSync(
-    path.join(root, "docs/platform/10_EVENT_OUTBOX_LAYERING.md"),
+    path.join(root, "docs/01-platform/EVENT_BUS.md"),
     "utf8",
   );
 

@@ -6,6 +6,7 @@ import { Check, ChevronLeft, ChevronRight, FilePlus2, MoreHorizontal } from "luc
 
 import {
   AuditActivityTimeline,
+  DatePickerField,
   DropdownMenu,
   EntityLookup,
   FieldErrorText,
@@ -23,6 +24,12 @@ import {
   cn,
   fieldA11yProps,
   fieldErrorId,
+  OperatorContextBar,
+  OperatorErrorMessage,
+  OperatorProgressiveSection,
+  OperatorWizardProgress,
+  ScannerInputFrame,
+  SmartDefaultsSummary,
   type PlatformFormFieldRule,
   type RecordAuditMetadata,
   type RecordSaveStatus,
@@ -30,6 +37,7 @@ import {
 } from "@/shared/ui";
 import { displayBusinessCode } from "@/shared/business-codes";
 import { platform } from "@/platform/client";
+import { createOxOperatorError, createOxRuntimeContext, resolveOxSmartDefaults, type OxWizardState } from "@/platform/operator-experience/public-api";
 import { archiveManufacturingDailyReportAction, createManufacturingDailyReportAction, updateManufacturingDailyReportAction } from "@/features/manufacturing/routes/actions/daily-reports.actions";
 import type { ManufacturingDailyReportRecord, ManufacturingDailyReportWorkspaceData } from "@/features/manufacturing/routes/loaders/daily-reports.loader";
 
@@ -56,6 +64,21 @@ type DailyReportRecordModalLauncherProps = Omit<DailyReportRecordModalProps, "on
 function auditFromReport(report?: ManufacturingDailyReportRecord, saveType?: string): RecordAuditMetadata | null {
   if (!report) return null;
   return { createdAt: report.createdAt, createdBy: report.createdBy, saveType, status: report.status, updatedAt: report.updatedAt, updatedBy: report.updatedBy, version: report.version };
+}
+
+function dailyReportWizardState(): OxWizardState {
+  return {
+    activeStepKey: "production",
+    canSaveDraft: true,
+    canSubmit: false,
+    progressPercent: 50,
+    steps: [
+      { canSaveDraft: true, description: "Confirm date, shift, line, and product.", key: "context", label: "Context", requiredFieldNames: ["reportDate", "shiftKey", "productionLineId"], state: "complete", validationScope: "step" },
+      { canSaveDraft: true, description: "Capture production quantities and worker output.", key: "production", label: "Production", requiredFieldNames: ["actualQuantity"], state: "current", validationScope: "step" },
+      { canSaveDraft: false, description: "Review totals before saving.", key: "review", label: "Review", requiredFieldNames: [], state: "pending", validationScope: "task" },
+    ],
+    wizardKey: "manufacturing.daily-production.operator-wizard",
+  };
 }
 
 export function DailyReportRecordModalLauncher({ autoOpen, closeHref, label, data, report, previousHref, nextHref }: DailyReportRecordModalLauncherProps) {
@@ -196,15 +219,41 @@ function DailyReportRecordModal({ data, onOpenChange, open, report, previousHref
     </>
   );
   const statusBadge = <StatusBadge status={savedReport?.status ?? report?.status ?? "draft"} />;
+  const oxContext = createOxRuntimeContext({
+    branchId: report?.branchId ?? null,
+    companyId: report?.companyId ?? null,
+    experience: "erp",
+    productionLineName: lookupOptionLabel(data.lines, report?.productionLineId),
+    roleKey: "production-supervisor",
+    shiftKey: report?.shiftKey ?? null,
+    shiftName: report?.shiftKey ?? null,
+    supervisorName: lookupOptionLabel(data.workers, report?.supervisorRefId),
+    tenantId: report?.tenantId ?? "current-tenant",
+    transactionDate: report?.reportDate,
+  });
+  const smartDefaults = resolveOxSmartDefaults(
+    [
+      { confidence: "high", contextKey: "transactionDate", fieldName: "reportDate", key: "dpr.default-date", label: "Report date", requiresConfirmation: true, source: "context" },
+      { confidence: "medium", contextKey: "shiftName", fieldName: "shiftKey", key: "dpr.default-shift", label: "Shift", requiresConfirmation: true, source: "context" },
+      { confidence: "medium", contextKey: "productionLineName", fieldName: "productionLineId", key: "dpr.default-line", label: "Production line", requiresConfirmation: true, source: "context" },
+    ],
+    oxContext,
+  );
 
   return (
     <RecordFormDialog actions={actionControls} auditMetadata={<div className="space-y-2"><SaveStatusIndicator status={saveStatus} /><SaveAuditMetadata metadata={auditMetadata} /></div>} centerControls={centerControls} isDirty={isDirty} onOpenChange={onOpenChange} open={open} size="wide" status={<>{statusBadge}<ValidationStatusBadge errorCount={validation.allErrorList.length} isValid={validation.isValid} show={validation.hasValidationAttempted} /></>} subtitle="Capture production facts, worker output, and lifecycle status for the current page." title={title} trigger={trigger}>
       <div className="space-y-[var(--floating-panel-section-gap)]">
+        <OperatorContextBar context={oxContext} />
+        <OperatorWizardProgress state={dailyReportWizardState()} />
+        <SmartDefaultsSummary defaults={smartDefaults} />
         <RecordFormSection>
           <form className="space-y-4" onBlur={validation.validateOnBlur} onInput={(event) => { setSaveStatus("dirty"); setIsDirty(true); persistLocalDraft(); validation.validateOnInput(event); }} ref={formRef}>
+            <OperatorProgressiveSection category="essential" description="Scan the work order or production order first when available, then confirm the production context." title="Essential Production Context">
+              <ScannerInputFrame label="Work order or production order" placeholder="Scan work order, production order, or type code" />
+            </OperatorProgressiveSection>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <ReadOnlyCodeField defaultValue={report?.reportKey} label="Report Code" name="reportKey" />
-              <Field defaultValue={report?.reportDate} error={validation.errors.reportDate} isRequired label="Report Date" name="reportDate" type="date" />
+              <DatePickerField defaultValue={report?.reportDate ?? ""} error={validation.errors.reportDate} isRequired label="Report Date" name="reportDate" {...validation.fieldProps("reportDate")} />
               <Field defaultValue={report?.shiftKey} error={validation.errors.shiftKey} isRequired label="Shift" name="shiftKey" />
               <SelectField defaultValue={report?.manufacturingProductId} error={validation.errors.manufacturingProductId} isRequired label="Product" name="manufacturingProductId" options={data.products} />
               <SelectField defaultValue={report?.productionLineId} error={validation.errors.productionLineId} isRequired label="Production Line" name="productionLineId" options={data.lines} />
@@ -225,7 +274,7 @@ function DailyReportRecordModal({ data, onOpenChange, open, report, previousHref
             <label className="block space-y-1 text-sm"><span className="font-medium">Notes</span><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2" defaultValue={report?.notes ?? ""} name="notes" /></label>
           </form>
         </RecordFormSection>
-        {error ? <p className="rounded-md border border-[hsl(var(--danger))] p-3 text-sm text-[hsl(var(--danger))]" role="alert">{error}</p> : null}
+        {error ? <OperatorErrorMessage error={createOxOperatorError({ code: "DPR_SAVE_FAILED", fieldLabel: "Daily Production Report", problem: "Daily production report could not be saved.", reason: error, fix: "Review the highlighted production fields, keep your entered data, and try saving again." })} /> : null}
         <RecordFormSection><h3 className="text-sm font-medium">Audit / Activity</h3><AuditActivityTimeline events={activityEvents} /></RecordFormSection>
       </div>
     </RecordFormDialog>
@@ -238,6 +287,11 @@ function setFieldValue(field: unknown, value: string) {
 
 function StatusBadge({ status }: Readonly<{ status: string }>) {
   return <span className="rounded-full border px-2 py-0.5 text-xs capitalize text-muted-foreground">{status}</span>;
+}
+
+function lookupOptionLabel(options: readonly { id: string; label: string }[], id?: string | null) {
+  if (!id) return null;
+  return options.find((option) => option.id === id)?.label ?? null;
 }
 
 function Field({ defaultValue, error, isRequired, label, name, type = "text", warning }: Readonly<{ defaultValue?: string | number | null; error?: string; isRequired?: boolean; label: string; name: string; type?: string; warning?: string }>) {

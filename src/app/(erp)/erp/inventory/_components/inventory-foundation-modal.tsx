@@ -1,7 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { type ReactNode } from "react";
 
 import type { InventoryFoundationDescriptor, InventoryFoundationField } from "@/features/inventory/public-api";
 import {
@@ -10,14 +9,23 @@ import {
   updateInventoryFoundationRecordAction,
 } from "@/features/inventory/routes/actions/inventory-foundation.actions";
 import type { InventoryFoundationWorkspaceData } from "@/features/inventory/routes/loaders/inventory-foundation.loader";
+import { resolveFoundationLookupProviderKey } from "@/platform/operator-experience/lookup-registry";
 import { displayBusinessCode } from "@/shared/business-codes";
-import { EntityLookup, FieldGroup, FormGrid, RecordFormDialog, RecordFormSection } from "@/shared/ui";
+import { DatePicker, EntityLookup, FieldGroup, FormGrid, RecordFormDialog, RecordFormSection, useRecordFormModal } from "@/shared/ui";
 
 type FoundationRow = Record<string, unknown>;
 
+function objectToAttributeLines(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+  return Object.entries(value)
+    .map(([key, attributeValue]) => `${key}: ${String(attributeValue ?? "")}`)
+    .join("\n");
+}
+
 function fieldValue(record: FoundationRow | undefined, field: InventoryFoundationField) {
   const value = record?.[field.column];
-  if (field.type === "json") return value && typeof value === "object" ? JSON.stringify(value, null, 2) : "{}";
+  if (field.type === "json") return objectToAttributeLines(value);
+  if (field.type === "tags") return Array.isArray(value) ? value.join("\n") : "";
   if (field.type === "checkbox") return value === true;
   return value === null || value === undefined ? "" : String(value);
 }
@@ -49,7 +57,21 @@ function FieldControl({
   }
 
   if (field.type === "lookup" && field.lookup) {
+    const providerKey = resolveFoundationLookupProviderKey(field.lookup);
+    const currentValue = typeof value === "string" ? value : "";
+    if (providerKey) {
+      return (
+        <EntityLookup
+          label={`Select ${field.label}`}
+          name={field.name}
+          providerKey={providerKey}
+          required={field.required}
+          value={currentValue}
+        />
+      );
+    }
     const options = lookups[field.lookup] ?? [];
+    const lookupValue = currentValue || (field.required && options.length === 1 ? options[0]?.id ?? "" : "");
     return (
       <EntityLookup
         disabled={field.required && options.length === 0}
@@ -58,7 +80,7 @@ function FieldControl({
         name={field.name}
         options={options}
         required={field.required}
-        value={String(value)}
+        value={lookupValue}
       />
     );
   }
@@ -87,7 +109,41 @@ function FieldControl({
   }
 
   if (field.type === "json") {
-    return <textarea className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30" defaultValue={String(value)} name={field.name} />;
+    return (
+      <div className="space-y-1.5">
+        <textarea
+          className="min-h-28 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+          defaultValue={String(value)}
+          name={field.name}
+          placeholder={"Color: Red\nSize: Large\nMaterial: Steel"}
+        />
+        <p className="text-xs text-muted-foreground">Enter one attribute per line using name: value.</p>
+      </div>
+    );
+  }
+
+  if (field.type === "tags") {
+    return (
+      <div className="space-y-1.5">
+        <textarea
+          className="min-h-24 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+          defaultValue={String(value)}
+          name={field.name}
+          placeholder="One value per line"
+        />
+        <p className="text-xs text-muted-foreground">Use business codes or statuses, one per line. UUIDs are not required.</p>
+      </div>
+    );
+  }
+
+  if (field.type === "date") {
+    return (
+      <DatePicker
+        defaultValue={String(value)}
+        name={field.name}
+        required={field.required}
+      />
+    );
   }
 
   return (
@@ -120,21 +176,13 @@ export function InventoryFoundationRecordModalLauncher({
   record?: FoundationRow;
   trigger?: ReactNode;
 }>) {
-  const router = useRouter();
-  const [open, setOpen] = useState(Boolean(autoOpen));
-  const [isDirty, setIsDirty] = useState(false);
-  const formId = useId();
+  const { formId, handleOpenChange, isDirty, markDirty, open } = useRecordFormModal({ autoOpen, closeHref });
   const title = `${record ? "Edit" : "Create"} ${descriptor.singular}`;
   const saveAction = record
     ? updateInventoryFoundationRecordAction.bind(null, descriptor.key, String(record.id))
     : async (formData: FormData) => {
         await createInventoryFoundationRecordAction(descriptor.key, formData);
       };
-
-  function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
-    if (!nextOpen && closeHref) router.push(closeHref);
-  }
 
   return (
     <RecordFormDialog
@@ -161,7 +209,7 @@ export function InventoryFoundationRecordModalLauncher({
           action={saveAction}
           className="space-y-4"
           id={formId}
-          onInput={() => setIsDirty(true)}
+          onInput={markDirty}
         >
           <FormGrid>
             {descriptor.fields.map((field) => (

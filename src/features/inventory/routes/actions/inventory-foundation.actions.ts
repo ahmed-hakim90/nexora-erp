@@ -76,7 +76,12 @@ function toPayload(
     let value = input[field.name];
     if (field.name.endsWith("Key") && typeof value === "string") value = value.toLowerCase();
     if (field.name === "sku" && typeof value === "string") value = value.toUpperCase();
+    if (field.name === "huNumber" && typeof value === "string") value = value.toUpperCase();
     payload[field.column] = value ?? null;
+  }
+
+  if (descriptor.key === "handling-units" || descriptor.key === "handling-unit-contents") {
+    payload.branch_id = context.branchId;
   }
 
   if ("status" in payload) {

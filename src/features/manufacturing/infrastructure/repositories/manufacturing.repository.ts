@@ -76,6 +76,26 @@ function normalizePayload(definition: ManufacturingResourceDefinition, input: Ma
     if (typeof payload[key] === "string") payload[key] = String(payload[key]).toLowerCase();
   }
 
+  if (typeof payload.code !== "string") {
+    const sourceKey =
+      definition.key === "production-lines" ? "line_key"
+      : definition.key === "work-centers" ? "work_center_key"
+      : definition.key === "workstations" ? "workstation_key"
+      : definition.key === "machines" ? "machine_key"
+      : null;
+    if (sourceKey && typeof payload[sourceKey] === "string") payload.code = payload[sourceKey];
+  }
+
+  if (definition.key === "production-plans" && typeof payload.plan_key === "string") {
+    payload.plan_number ??= payload.plan_key;
+    payload.document_number ??= payload.plan_key;
+  }
+
+  if (definition.key === "manufacturing-orders" && typeof payload.order_key === "string") {
+    payload.order_number ??= payload.order_key;
+    payload.document_number ??= payload.order_key;
+  }
+
   for (const numericKey of [
     "display_order",
     "daily_working_hours",
@@ -92,6 +112,7 @@ function normalizePayload(definition: ManufacturingResourceDefinition, input: Ma
     "target_unit_seconds",
     "actual_quantity",
     "planned_quantity",
+    "priority",
     "standard_minutes",
   ]) {
     if (payload[numericKey] !== null && payload[numericKey] !== undefined) payload[numericKey] = Number(payload[numericKey]);

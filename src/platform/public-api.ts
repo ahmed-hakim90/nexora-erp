@@ -20,6 +20,8 @@ export * from "./cost/public-api";
 export * from "./numbering/public-api";
 export * from "./files/public-api";
 export * from "./experience/public-api";
+export * from "./operator-experience/public-api";
+export * from "./operator-experience/warehouse-execution";
 export * from "./branding/public-api";
 export * from "./app-registry/public-api";
 export * from "./navigation/public-api";

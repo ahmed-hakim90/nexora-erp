@@ -1,10 +1,8 @@
 "use client";
 
 import {
-  createContext,
   type ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -13,23 +11,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import type { PermissionKey } from "@/platform/permissions/public-api";
 
+import type { CompanyDateFormat } from "../dates/date-utils";
+import { defaultDateFormatForLocale } from "../dates/date-utils";
 import type { Direction } from "../utils";
+import {
+  EnterpriseUiContext,
+  type EnterpriseUiContextValue,
+  type Locale,
+  type ResolvedTheme,
+  type ThemePreference,
+  usePermission,
+} from "./enterprise-ui-context";
 
-export type Locale = "en" | "ar";
-export type ThemePreference = "light" | "dark" | "system";
-export type ResolvedTheme = Exclude<ThemePreference, "system">;
+export type { EnterpriseUiContextValue, Locale, ResolvedTheme, ThemePreference } from "./enterprise-ui-context";
+export { useEnterpriseTheme, useEnterpriseUi, usePermission } from "./enterprise-ui-context";
 
-export type EnterpriseUiContextValue = Readonly<{
-  locale: Locale;
-  direction: Direction;
-  permissions: ReadonlySet<PermissionKey>;
-  hasPermission: (permission: PermissionKey) => boolean;
-  resolvedTheme: ResolvedTheme;
-  setTheme: (theme: ThemePreference) => void;
-  theme: ThemePreference;
-}>;
-
-const EnterpriseUiContext = createContext<EnterpriseUiContextValue | null>(null);
 const THEME_STORAGE_KEY = "nexora-theme";
 
 function getSystemTheme(): ResolvedTheme {
@@ -42,11 +38,13 @@ function getSystemTheme(): ResolvedTheme {
 
 export function EnterpriseUiProvider({
   children,
+  dateFormat,
   locale = "en",
   direction = locale === "ar" ? "rtl" : "ltr",
   permissions = [],
 }: Readonly<{
   children: ReactNode;
+  dateFormat?: CompanyDateFormat;
   locale?: Locale;
   direction?: Direction;
   permissions?: readonly PermissionKey[];
@@ -99,8 +97,11 @@ export function EnterpriseUiProvider({
     return () => mediaQuery.removeEventListener("change", applyTheme);
   }, [theme]);
 
+  const resolvedDateFormat = dateFormat ?? defaultDateFormatForLocale(locale);
+
   const contextValue = useMemo<EnterpriseUiContextValue>(
     () => ({
+      dateFormat: resolvedDateFormat,
       direction,
       hasPermission: (permission) => permissionSet.has(permission),
       locale,
@@ -109,7 +110,7 @@ export function EnterpriseUiProvider({
       setTheme,
       theme,
     }),
-    [direction, locale, permissionSet, resolvedTheme, setTheme, theme],
+    [direction, locale, permissionSet, resolvedDateFormat, resolvedTheme, setTheme, theme],
   );
 
   return (
@@ -119,25 +120,6 @@ export function EnterpriseUiProvider({
       </EnterpriseUiContext.Provider>
     </QueryClientProvider>
   );
-}
-
-export function useEnterpriseUi(): EnterpriseUiContextValue {
-  const context = useContext(EnterpriseUiContext);
-
-  if (!context) {
-    throw new Error("useEnterpriseUi must be used inside EnterpriseUiProvider.");
-  }
-
-  return context;
-}
-
-export function usePermission(permission: PermissionKey): boolean {
-  return useEnterpriseUi().hasPermission(permission);
-}
-
-export function useEnterpriseTheme() {
-  const { resolvedTheme, setTheme, theme } = useEnterpriseUi();
-  return { resolvedTheme, setTheme, theme };
 }
 
 export function PermissionGate({

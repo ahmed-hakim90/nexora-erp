@@ -1,12 +1,15 @@
 import "server-only";
 
+import { cache } from "react";
+
 import type { AccessExperience } from "@/core/context";
 import { ApplicationError } from "@/core/errors";
 import { resolveRequestContext } from "@/core/context/server";
+import { createRequestSupabaseClient } from "@/platform/database/server";
 import {
+  getCurrentEmployee,
   requireBranch,
   requireCompany,
-  requireEmployee,
   requireTenant,
 } from "@/platform/tenancy/server";
 
@@ -175,7 +178,7 @@ export async function resolveCompanyRequestContext(
   };
 }
 
-export async function resolveBranchRequestContext(
+export const resolveBranchRequestContext = cache(async function resolveBranchRequestContext(
   experience: AccessExperience,
 ): Promise<BranchRequestContext> {
   const context = await resolveCompanyRequestContext(experience);
@@ -185,13 +188,43 @@ export async function resolveBranchRequestContext(
     ...context,
     branchId,
   };
+});
+
+async function resolveLinkedEmployeeId(
+  context: TenantRequestContext,
+): Promise<string | null> {
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+  const { data, error } = await supabase
+    .from("hr_employees")
+    .select("id")
+    .eq("tenant_id", context.tenantId)
+    .eq("user_id", context.userId)
+    .is("deleted_at", null)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data?.id) {
+    return null;
+  }
+
+  return String(data.id);
 }
 
 export async function resolveEmployeeRequestContext(
   experience: AccessExperience,
 ): Promise<EmployeeRequestContext> {
   const context = await resolveTenantRequestContext(experience);
-  const employeeId = await requireEmployee();
+  const employeeId = (await getCurrentEmployee()) ?? (await resolveLinkedEmployeeId(context));
+
+  if (!employeeId) {
+    throw new ApplicationError({
+      code: "AUTHORIZATION_ERROR",
+      correlationId: context.correlationId,
+      message: "Employee context is required.",
+    });
+  }
 
   return {
     ...context,

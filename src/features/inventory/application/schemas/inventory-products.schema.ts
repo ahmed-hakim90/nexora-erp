@@ -3,15 +3,20 @@ import { z } from "zod";
 const optionalText = z.preprocess((value) => value === "" ? null : value, z.string().trim().min(1).nullable());
 const requiredText = z.string().trim().min(1, "This field is required.");
 const optionalNumber = z.preprocess((value) => value === "" || value === null || typeof value === "undefined" ? null : value, z.coerce.number().min(0, "Use zero or a positive number.").nullable());
+const optionalPositiveInteger = z.preprocess((value) => value === "" || value === null || typeof value === "undefined" ? null : value, z.coerce.number().int("Use a whole number.").min(1, "Use one or a positive whole number.").nullable());
 const requiredNumber = z.coerce.number().min(0, "Use zero or a positive number.");
 const optionalBoolean = z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean());
 const slugText = z.preprocess((value) => value === "" ? null : value, z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase words separated by dashes.").nullable());
 
 export const inventoryProductStatusValues = ["draft", "active", "inactive", "locked", "archived"] as const;
 export const inventoryProductKindValues = ["stockable", "consumable", "service", "asset", "rental", "kit"] as const;
-export const inventoryTrackingModeValues = ["none", "lot", "serial"] as const;
+export const inventoryTrackingModeValues = ["none", "quantity_only", "lot", "serial", "lot_serial"] as const;
 export const inventoryReservationPolicyValues = ["none", "soft", "hard"] as const;
 export const inventoryOnlineStatusValues = ["draft", "ready", "published", "hidden", "archived"] as const;
+export const inventorySerialSourceValues = ["nexora_generated", "supplier", "manual"] as const;
+export const inventorySerialGenerationTimingValues = ["on_receipt", "on_production_completion", "on_packing", "manual"] as const;
+export const inventoryWarrantyStartsFromValues = ["invoice_date", "delivery_date", "manual_activation"] as const;
+export const inventoryCycleCountClassValues = ["A", "B", "C"] as const;
 
 function csvToArray(value: unknown) {
   if (Array.isArray(value)) return value;
@@ -69,11 +74,15 @@ export const inventoryProductMutationSchema = z.object({
   canonicalUrl: optionalText.optional(),
   categoryId: requiredText,
   commissionRate: requiredNumber.default(0),
+  commercialName: optionalText.optional(),
   costObjectKey: optionalText.optional(),
   countryOfOrigin: optionalText.optional(),
   coverImageUrl: optionalText.optional(),
   currencyId: optionalText.optional(),
+  cycleCountClass: z.preprocess((value) => value === "" ? null : value, z.enum(inventoryCycleCountClassValues).nullable()).optional(),
   defaultLocationId: optionalText.optional(),
+  defaultPickingStrategy: optionalText.optional(),
+  defaultPutawayStrategy: optionalText.optional(),
   defaultWarehouseId: optionalText.optional(),
   description: optionalText.optional(),
   discountAllowed: optionalBoolean.default(false),
@@ -96,6 +105,12 @@ export const inventoryProductMutationSchema = z.object({
   isService: optionalBoolean.default(false),
   isStockable: optionalBoolean.default(true),
   length: optionalNumber.optional(),
+  lotExpirySupported: optionalBoolean.default(false),
+  lotInternalSupported: optionalBoolean.default(false),
+  lotManufacturingDateSupported: optionalBoolean.default(false),
+  lotQcRequired: optionalBoolean.default(false),
+  lotShelfLifeSupported: optionalBoolean.default(false),
+  lotSupplierSupported: optionalBoolean.default(false),
   manualUrls: z.preprocess(csvToArray, z.array(z.string().url("Enter a valid URL.")).default([])),
   maximumStockQty: optionalNumber.optional(),
   minimumStockQty: requiredNumber.default(0),
@@ -118,9 +133,16 @@ export const inventoryProductMutationSchema = z.object({
   productKey: requiredText.regex(/^[a-z0-9][a-z0-9._-]*$/, "Use lowercase letters, numbers, dots, dashes, or underscores."),
   productKind: z.enum(inventoryProductKindValues),
   productTypeKey: optionalText.optional(),
+  packagingCartonQty: optionalPositiveInteger.optional(),
+  packagingInnerBoxQty: optionalPositiveInteger.optional(),
+  packagingLooseUnits: optionalBoolean.default(true),
+  packagingPalletCartonQty: optionalPositiveInteger.optional(),
   purchasePrice: requiredNumber.default(0),
   purchaseUomId: optionalText.optional(),
   reorderPointQty: optionalNumber.optional(),
+  allowNegativeStock: optionalBoolean.default(false),
+  requiresQcBeforeRelease: optionalBoolean.default(false),
+  requiresReservation: optionalBoolean.default(false),
   reservationPolicy: z.enum(inventoryReservationPolicyValues),
   retailPrice: requiredNumber.default(0),
   salesUomId: optionalText.optional(),
@@ -128,6 +150,11 @@ export const inventoryProductMutationSchema = z.object({
   seoDescription: optionalText.optional(),
   seoKeywords: z.preprocess(csvToArray, z.array(z.string()).default([])),
   seoTitle: optionalText.optional(),
+  searchKeywords: z.preprocess(csvToArray, z.array(z.string()).default([])),
+  serialAllowManualOverride: optionalBoolean.default(false),
+  serialDuplicateValidation: optionalBoolean.default(true),
+  serialGenerationTiming: z.preprocess((value) => value === "" ? null : value, z.enum(inventorySerialGenerationTimingValues).nullable()).optional(),
+  serialSource: z.preprocess((value) => value === "" ? null : value, z.enum(inventorySerialSourceValues).nullable()).optional(),
   shippingClass: optionalText.optional(),
   shortName: optionalText.optional(),
   sku: requiredText,
@@ -138,6 +165,9 @@ export const inventoryProductMutationSchema = z.object({
   trackingMode: z.enum(inventoryTrackingModeValues),
   videoUrls: z.preprocess(csvToArray, z.array(z.string().url("Enter a valid URL.")).default([])),
   volume: optionalNumber.optional(),
+  warrantyDurationDays: optionalPositiveInteger.optional(),
+  warrantyEligible: optionalBoolean.default(false),
+  warrantyStartsFrom: z.preprocess((value) => value === "" ? null : value, z.enum(inventoryWarrantyStartsFromValues).nullable()).optional(),
   weight: optionalNumber.optional(),
   wholesalePrice: requiredNumber.default(0),
   width: optionalNumber.optional(),
@@ -148,5 +178,29 @@ export const inventoryProductMutationSchema = z.object({
 
   if (value.maximumStockQty !== null && value.reorderPointQty !== null && value.maximumStockQty !== undefined && value.reorderPointQty !== undefined && value.reorderPointQty > value.maximumStockQty) {
     context.addIssue({ code: "custom", message: "Reorder point must be less than or equal to maximum stock.", path: ["reorderPointQty"] });
+  }
+
+  const tracksSerial = value.trackingMode === "serial" || value.trackingMode === "lot_serial";
+  const tracksLot = value.trackingMode === "lot" || value.trackingMode === "lot_serial";
+  if (tracksSerial && !value.serialSource) {
+    context.addIssue({ code: "custom", message: "Choose a serial source for serial-tracked products.", path: ["serialSource"] });
+  }
+  if (tracksSerial && !value.serialGenerationTiming) {
+    context.addIssue({ code: "custom", message: "Choose when serial numbers will be generated.", path: ["serialGenerationTiming"] });
+  }
+  if (!tracksSerial && (value.serialSource || value.serialGenerationTiming || value.serialAllowManualOverride)) {
+    context.addIssue({ code: "custom", message: "Serial policy is only available when tracking includes serial numbers.", path: ["trackingMode"] });
+  }
+  if (!tracksLot && (value.lotSupplierSupported || value.lotInternalSupported || value.lotExpirySupported || value.lotManufacturingDateSupported || value.lotQcRequired || value.lotShelfLifeSupported)) {
+    context.addIssue({ code: "custom", message: "Lot policy metadata is only available when tracking includes lots.", path: ["trackingMode"] });
+  }
+  if (value.packagingPalletCartonQty !== null && value.packagingPalletCartonQty !== undefined && (value.packagingCartonQty === null || value.packagingCartonQty === undefined)) {
+    context.addIssue({ code: "custom", message: "Define carton quantity before pallet quantity.", path: ["packagingCartonQty"] });
+  }
+  if (value.packagingCartonQty !== null && value.packagingCartonQty !== undefined && (value.packagingInnerBoxQty === null || value.packagingInnerBoxQty === undefined)) {
+    context.addIssue({ code: "custom", message: "Define inner box quantity before carton quantity.", path: ["packagingInnerBoxQty"] });
+  }
+  if (value.warrantyEligible && (!value.warrantyDurationDays || !value.warrantyStartsFrom)) {
+    context.addIssue({ code: "custom", message: "Warranty duration and start basis are required for warranty-eligible products.", path: ["warrantyDurationDays"] });
   }
 });

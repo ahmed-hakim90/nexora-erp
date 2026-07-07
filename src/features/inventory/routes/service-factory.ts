@@ -1,11 +1,12 @@
 import "server-only";
 
-import { resolveTenantRequestContext } from "@/platform/auth/server";
+import { resolveBranchRequestContext, resolveCompanyRequestContext, resolveTenantRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { OutboxService } from "@/platform/integration/server";
 import { createBusinessDocumentServices } from "@/features/business-documents/public-api";
 
 import { InventoryFoundationService } from "../application/services/inventory-foundation.service";
+import { InventoryCatalogLookupService } from "../application/services/inventory-catalog-lookup.service";
 import {
   CycleCountService,
   GoodsIssueService,
@@ -15,7 +16,11 @@ import {
   WarehouseTransferService,
 } from "../application/services/inventory-transaction.service";
 import { StockPostingService } from "../application/services/stock-posting.service";
+import { InventoryProjectionService } from "../application/services/inventory-projection.service";
 import { SupabaseInventoryRepository } from "../infrastructure/repositories/inventory.repository";
+import { SupabaseInventoryProjectionRepository } from "../infrastructure/repositories/inventory-projection.repository";
+import { SupabaseInventoryCatalogLookupRepository } from "../infrastructure/repositories/inventory-catalog-lookup.repository";
+import { SupabaseInventoryEntityLookupRepository } from "../infrastructure/repositories/inventory-entity-lookup.repository";
 import { SupabaseInventoryTransactionRepository } from "../infrastructure/repositories/inventory-transactions.repository";
 
 export async function createInventoryFoundationService() {
@@ -54,4 +59,21 @@ export async function createInventoryTransactionServices() {
     transactionService: new InventoryTransactionService(...args),
     warehouseTransferService: new WarehouseTransferService(...args),
   };
+}
+
+export async function createInventoryCatalogLookupService() {
+  const context = await resolveBranchRequestContext("erp");
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+  const repository = new SupabaseInventoryCatalogLookupRepository(supabase, context);
+  const entityLookupRepository = new SupabaseInventoryEntityLookupRepository(supabase, context);
+
+  return new InventoryCatalogLookupService(context, repository, entityLookupRepository);
+}
+
+export async function createInventoryProjectionService() {
+  const context = await resolveCompanyRequestContext("erp");
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+  const repository = new SupabaseInventoryProjectionRepository(supabase, context);
+
+  return new InventoryProjectionService(context, repository);
 }

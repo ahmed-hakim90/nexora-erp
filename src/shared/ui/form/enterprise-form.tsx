@@ -1,5 +1,7 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
+import { LabelWithHelp } from "../help/help-hint";
+import type { BilingualHelp } from "../help/help-types";
 import { Dialog, Drawer, Grid, Stack } from "../layout";
 import { cn } from "../utils";
 
@@ -129,21 +131,22 @@ export function FieldGroup({
   label,
   description,
   error,
+  help,
   isRequired,
   children,
 }: Readonly<{
   label: string;
   description?: string;
   error?: string;
+  help?: BilingualHelp;
   isRequired?: boolean;
   children: ReactNode;
 }>) {
   return (
     <label className="block space-y-1 text-sm">
-      <span className="font-medium">
-        {label}
-        {isRequired ? <span aria-hidden="true"> *</span> : null}
-      </span>
+      <LabelWithHelp help={help} isRequired={isRequired}>
+        <span className="font-medium">{label}</span>
+      </LabelWithHelp>
       {description ? <span className="block text-muted-foreground">{description}</span> : null}
       {children}
       {error ? <span className="block text-[hsl(var(--danger))]">{error}</span> : null}

@@ -34,6 +34,7 @@ import {
   INVENTORY_RESERVATION_TYPES,
   INVENTORY_SEARCH_PROVIDER_CONTRACT,
   inventoryModuleManifest,
+  buildInventoryFoundationMutationSchema,
   type InventoryStockBalanceContract,
 } from "@/features/inventory/public-api";
 import { financeAppManifest } from "@/features/finance/public-api";
@@ -85,6 +86,9 @@ test("inventory foundation registers app and module manifests", () => {
     INVENTORY_FOUNDATION_RESOURCE_KEYS.map((key) => `/erp/inventory/${key}`).sort(),
     [
       "/erp/inventory/categories",
+      "/erp/inventory/handling-unit-contents",
+      "/erp/inventory/handling-unit-types",
+      "/erp/inventory/handling-units",
       "/erp/inventory/locations",
       "/erp/inventory/lots",
       "/erp/inventory/reorder-rules",
@@ -106,9 +110,9 @@ test("inventory foundation registers app and module manifests", () => {
 test("inventory foundation auto-generates operational business codes", () => {
   const expected = {
     categories: ["categoryKey"],
-    lots: ["lotKey"],
+    lots: ["lotNumber"],
     "reorder-rules": ["ruleKey"],
-    serials: ["serialKey"],
+    serials: ["serialNumber"],
     "uom-categories": ["categoryKey"],
     uoms: ["uomKey"],
     variants: ["variantKey"],
@@ -124,6 +128,29 @@ test("inventory foundation auto-generates operational business codes", () => {
       assert.equal(field.autoCode.displayCase ?? "upper", "upper");
     }
   }
+});
+
+test("inventory variant attributes use user-friendly key value lines", () => {
+  const descriptor = INVENTORY_FOUNDATION_ENTITIES.variants;
+  const modal = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/_components/inventory-foundation-modal.tsx"), "utf8");
+  const pages = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/_components/inventory-foundation-pages.tsx"), "utf8");
+  const schema = buildInventoryFoundationMutationSchema(descriptor);
+  const parsed = schema.parse({
+    attributes: "Color: Red\nSize: Large",
+    name: "Red Large",
+    productId: "product-1",
+    sku: "RED-L",
+    status: "active",
+    trackingMode: "none",
+    variantKey: "red-large",
+  });
+
+  assert.equal(descriptor.fields.find((field) => field.name === "attributes")?.label, "Attributes");
+  assert.deepEqual(parsed.attributes, { Color: "Red", Size: "Large" });
+  assert.doesNotMatch(modal, /Attributes JSON|defaultValue=\{String\(value\)\} name=\{field\.name\} \/>/);
+  assert.doesNotMatch(pages, /Attributes JSON/);
+  assert.match(modal, /Color: Red\\nSize: Large\\nMaterial: Steel/);
+  assert.match(pages, /Color: Red\\nSize: Large\\nMaterial: Steel/);
 });
 
 test("inventory product, variant, UOM, warehouse, and location contracts preserve scope", () => {
@@ -165,7 +192,7 @@ test("inventory product, variant, UOM, warehouse, and location contracts preserv
   });
   const warehouse = defineInventoryWarehouse({
     ...scope,
-    defaultLocationKey: "main-bin",
+    defaultReceivingLocationKey: "main-bin",
     name: "Main Warehouse",
     status: "active",
     warehouseKey: "main",
@@ -173,10 +200,14 @@ test("inventory product, variant, UOM, warehouse, and location contracts preserv
   });
   const location = defineInventoryLocation({
     ...scope,
+    barcode: "FG-A-01-B-03",
+    pickable: true,
+    qcRequired: false,
+    receivable: false,
+    shippable: false,
     locationKey: "main-bin",
     locationKind: "bin",
     name: "Main Bin",
-    reservable: true,
     status: "active",
     warehouseKey: warehouse.warehouseKey,
   });
@@ -238,6 +269,10 @@ test("platform readiness contracts cover search, report, print, dashboard, and i
     "inventory_location",
     "inventory_lot",
     "inventory_serial_number",
+    "inventory_document",
+    "inventory_ledger_entry",
+    "inventory_handling_unit",
+    "inventory_handling_unit_type",
     "inventory_reservation",
     "inventory_availability",
   ]);
@@ -323,7 +358,7 @@ test("inventory reservation engine contracts define lifecycle, types, quantities
   assert.equal(INVENTORY_QUANTITY_MODEL_CONTRACT.owner, "inventory-engine");
   assert.equal(INVENTORY_QUANTITY_MODEL_CONTRACT.availableStoredManually, false);
   assert.equal(INVENTORY_QUANTITY_MODEL_CONTRACT.availableFormula, "on_hand - reserved - pending_approval - outgoing - damaged - quarantine");
-  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.runtimeExecutionImplemented, false);
+  assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.runtimeExecutionImplemented, true);
   assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.implementsAccounting, false);
   assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.implementsCosting, false);
   assert.equal(INVENTORY_RESERVATION_ENGINE_CONTRACT.implementsWarehouseExecution, false);
@@ -341,7 +376,7 @@ test("inventory reservation engine contracts define lifecycle, types, quantities
     "workflow",
     "approvals",
   ]);
-  assert.equal(INVENTORY_FOUNDATION_CONTRACTS.reservationEngine.runtimeExecutionImplemented, false);
+  assert.equal(INVENTORY_FOUNDATION_CONTRACTS.reservationEngine.runtimeExecutionImplemented, true);
 });
 
 test("inventory migration creates requested tables with tenant, company, branch, lifecycle, RLS, and indexes", () => {
@@ -443,7 +478,7 @@ test("inventory foundation has no manufacturing, sales, purchasing, valuation, o
 });
 
 test("inventory stabilization locks canonical inventory runtime tables", () => {
-  const decisionDoc = fs.readFileSync(path.join(root, "docs/CURRENT_APP_FOUNDATION_DECISIONS.md"), "utf8");
+  const decisionDoc = fs.readFileSync(path.join(root, "docs/05-decisions/ADR-012-App-Foundation-Decisions.md"), "utf8");
   const migration = fs.readFileSync(stabilizationMigrationPath, "utf8");
   const foundationRepository = fs.readFileSync(path.join(root, "src/features/inventory/infrastructure/repositories/inventory.repository.ts"), "utf8");
   const transactionRepository = fs.readFileSync(path.join(root, "src/features/inventory/infrastructure/repositories/inventory-transactions.repository.ts"), "utf8");
@@ -492,6 +527,8 @@ test("inventory foundation CRUD routes and navigation use canonical app paths", 
   assert.match(editRoute, /redirect\(`\$\{descriptor\.basePath\}\?edit=\$\{encodeURIComponent\(id\)\}`\)/);
   assert.match(foundationPage, /InventoryFoundationRecordModalLauncher/);
   assert.match(foundationModal, /RecordFormDialog/);
+  assert.match(foundationPage, /options\.length === 1/);
+  assert.match(foundationModal, /options\.length === 1/);
   assert.match(transactionList, /InventoryTransactionModalLauncher/);
   assert.match(transactionModal, /RecordFormDialog/);
   assert.match(actions, /created_by: context\.userId/);

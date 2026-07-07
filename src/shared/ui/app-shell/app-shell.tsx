@@ -37,7 +37,7 @@ import {
   type CommandPaletteItem,
 } from "../primitives";
 import { Popover, Tooltip } from "../layout";
-import { useEnterpriseTheme } from "../providers";
+import { useEnterpriseTheme } from "../providers/enterprise-ui-context";
 import { cn, type Direction } from "../utils";
 import {
   ApplicationLauncher,
@@ -49,9 +49,16 @@ import {
   type WorkspaceNavItem,
 } from "./workspace-nav";
 import type { AppRegistrySnapshot } from "@/platform/app-registry/public-api";
-import type { ThemePreference } from "../providers";
+import type { ThemePreference } from "../providers/enterprise-ui-context";
 
-export type { WorkspaceIdentity, WorkspaceNavItem } from "./workspace-nav";
+export type { WorkspaceIdentity, WorkspaceNavItem } from "./workspace-navigation.types";
+export { EnterpriseWorkspaceNavigation } from "./enterprise-workspace-navigation";
+export type {
+  EnterpriseWorkspaceNavigationProps,
+  WorkspaceNavigationBadge,
+  WorkspaceNavigationGroupKey,
+  WorkspaceNavigationItem,
+} from "./workspace-navigation.types";
 
 export type NavigationItem = Readonly<{
   key: string;
@@ -613,7 +620,7 @@ export function AppShell({
         ) : null}
 
         <div className="flex min-h-0 min-w-0 flex-col">
-          <header className="sticky top-0 z-[50] shrink-0 border-b border-white/10 bg-[hsl(var(--shell-topbar))]/88 backdrop-blur-xl">
+          <header className="sticky top-0 z-[50] shrink-0 border-b border-[hsl(var(--border))] bg-[hsl(var(--shell-topbar))] shadow-sm">
             <div className="flex h-14 min-w-0 items-center gap-2 px-4 lg:px-6">
               {hasSidebar ? (
                 <Button
@@ -700,6 +707,7 @@ export function AppShell({
               </TopbarIconButton>
 
               <Popover
+                align="end"
                 trigger={
                   <TopbarIconButton label="Open notifications" tooltip="Notifications">
                     <Bell aria-hidden className="size-4" />

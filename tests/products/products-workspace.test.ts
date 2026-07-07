@@ -21,19 +21,15 @@ const productMasterMigrationPath = path.join(root, "supabase/migrations/20260628
 
 test("products workspace exposes the required enterprise tabs and columns", () => {
   for (const tab of [
-    "Overview",
-    "Variants",
+    "General",
+    "Classification",
+    "Tracking",
+    "Packaging",
     "Inventory",
-    "Warehouses",
-    "Locations",
-    "Lots",
-    "Serial Numbers",
-    "Reorder Rules",
+    "Warranty",
+    "Channels",
     "Attachments",
-    "Timeline",
     "Audit",
-    "Comments",
-    "Relations",
   ]) {
     assert.ok(PRODUCT_WORKSPACE_TABS.includes(tab as never), `${tab} tab is missing`);
   }
@@ -46,9 +42,9 @@ test("products workspace exposes the required enterprise tabs and columns", () =
     "type",
     "uom",
     "tracking",
-    "stock",
-    "reserved",
-    "available",
+    "packaging",
+    "inventoryPolicy",
+    "warranty",
     "status",
     "updatedAt",
     "actions",
@@ -278,25 +274,25 @@ test("inventory product list and modal expose requested UX metadata without raw 
   const route = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/products/page.tsx"), "utf8");
   const panel = fs.readFileSync(path.join(root, "src/app/(erp)/erp/inventory/products/product-record-panel.tsx"), "utf8");
 
-  for (const column of ["Image", "SKU", "Barcode", "Name", "Category", "Type", "Base UOM", "Stockable", "Sellable", "Purchasable", "Online Visible", "Status", "Updated"]) {
+  for (const column of ["Image", "SKU", "Product Name", "Category", "Type", "Base UOM", "Tracking", "Packaging", "Inventory Policy", "Warranty", "Status", "Updated"]) {
     assert.match(route, new RegExp(column));
   }
 
-  for (const filter of ["categoryId", "productKind", "onlineStatus", "trackingMode", "stockable", "sellable", "purchasable", "hasVariants", "hasSerialTracking", "hasLotTracking"]) {
+  for (const filter of ["categoryId", "productKind", "onlineStatus", "trackingMode", "warehouseId", "stockable", "hasVariants", "hasSerialTracking", "hasLotTracking"]) {
     assert.match(route, new RegExp(`name="${filter}"`));
   }
 
-  for (const tab of ["General", "Units", "Inventory", "Pricing", "Physical / Shipping", "Online", "Media", "Audit"]) {
+  for (const tab of ["General", "Classification", "Tracking", "Packaging", "Inventory", "Warranty", "Channels", "Attachments", "Audit"]) {
     assert.match(panel, new RegExp(`label: "${tab}"`));
   }
 
-  for (const lookup of ["Category", "Subcategory", "Supplier", "Base UOM", "Default Warehouse", "Default Location", "Currency", "Tax Definition"]) {
+  for (const lookup of ["Category", "Subcategory", "UOM", "Default Warehouse"]) {
     assert.match(panel, new RegExp(`label="${lookup}"|label: "${lookup}"`));
   }
 
   assert.match(panel, /How this works/);
   assert.match(panel, /RecordFormDialog/);
   assert.match(panel, /Tabs/);
-  assert.doesNotMatch(panel, /FloatingPanel|workspace panel|minimized dock|Stock valuation|Accounting posting|Cost Object Key|Finance Dimension Key/);
+  assert.doesNotMatch(panel, /FloatingPanel|workspace panel|minimized dock|Stock valuation|Accounting posting|Cost Object Key|Finance Dimension Key|Product Type Key/);
   assert.doesNotMatch(route, /\.from\("products"\)|from "@\/features\/products|from "\.\/products-workspace"|<ProductsWorkspace|PRODUCTS,/);
 });

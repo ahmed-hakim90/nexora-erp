@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { resolveManufacturingLookupProviderKey } from "@/platform/operator-experience/lookup-registry";
 import type { ManufacturingResourceDefinition } from "@/features/manufacturing/public-api";
 import {
   createManufacturingRecordAction,
@@ -31,6 +32,7 @@ import {
 } from "@/features/manufacturing/routes/loaders/operational.loader";
 import { getManufacturingRecord } from "@/features/manufacturing/routes/loaders/manufacturing.loader";
 import {
+  DatePicker,
   EntityLookup,
   EnterpriseDataTable,
   FieldGroup,
@@ -47,6 +49,7 @@ import {
 import { displayBusinessCode } from "@/shared/business-codes";
 
 import { ManufacturingRecordModalLauncher } from "./manufacturing-record-modal";
+import { ManufacturingDetailWorkspace } from "./manufacturing-detail-workspace";
 
 type ListResult = Readonly<{
   records: readonly Record<string, unknown>[];
@@ -86,6 +89,19 @@ function LookupInput({
   isRequired: boolean;
   options: readonly { id: string; label: string; meta?: string }[];
 }>) {
+  const providerKey = resolveManufacturingLookupProviderKey(fieldName);
+  if (providerKey) {
+    return (
+      <EntityLookup
+        label="Select related record"
+        name={fieldName}
+        placeholder="Search by name or code..."
+        providerKey={providerKey}
+        required={isRequired}
+        value={defaultValue == null ? "" : String(defaultValue)}
+      />
+    );
+  }
   return (
     <EntityLookup
       emptyMessage="No related records found."
@@ -299,6 +315,12 @@ export function ManufacturingFormPage({
                       value="true"
                     />
                   </>
+                ) : field.type === "date" ? (
+                  <DatePicker
+                    defaultValue={record?.[field.name] == null ? "" : String(record[field.name])}
+                    name={field.name}
+                    required={field.isRequired}
+                  />
                 ) : (
                   <input
                     className="w-full rounded-md border px-3 py-2"
@@ -627,33 +649,19 @@ export async function ManufacturingDetailPage({
       <PageHeader description={definition.description} title={`${definition.singularTitle} Detail`}>
         <PageActions>
           {record ? (
-            <>
-              <a className="rounded-md border px-3 py-2 text-sm" href={`${definition.basePath}/${record.id}/edit`}>
-                Edit
-              </a>
-              <form action={softDeleteManufacturingRecordAction.bind(null, definition.key, String(record.id))}>
-                <button className="rounded-md border px-3 py-2 text-sm" type="submit">
-                  Archive
-                </button>
-              </form>
-            </>
+            <form action={softDeleteManufacturingRecordAction.bind(null, definition.key, String(record.id))}>
+              <button className="rounded-md border px-3 py-2 text-sm" type="submit">
+                Archive
+              </button>
+            </form>
           ) : null}
         </PageActions>
       </PageHeader>
       <PageContent>
-        <section className="rounded-md border bg-[hsl(var(--surface))] p-4">
-          {errorMessage ? <p className="text-sm text-[hsl(var(--danger))]">{errorMessage}</p> : null}
-          {record ? (
-            <dl className="grid gap-3 text-sm md:grid-cols-2">
-              {Object.entries(record).map(([key, value]) => (
-                <div className="rounded-md border p-3" key={key}>
-                  <dt className="font-medium">{key}</dt>
-                  <dd className="mt-1 text-muted-foreground">{renderDetailValue(definition, lookupOptions, key, value)}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </section>
+        {errorMessage ? <p className="text-sm text-[hsl(var(--danger))]">{errorMessage}</p> : null}
+        {record ? (
+          <ManufacturingDetailWorkspace definition={definition} lookupOptions={lookupOptions} record={record} />
+        ) : null}
         {record ? <OperationalSection definition={definition} record={record} /> : null}
       </PageContent>
       <PageFooter>Foundation Ready manufacturing record. Out-of-scope payroll, incentives, costing, and inventory posting are not exposed here.</PageFooter>

@@ -100,7 +100,7 @@ export function RecordFormSection({
   return (
     <section
       className={cn(
-        "space-y-4 rounded-2xl border bg-[hsl(var(--surface-muted))]/45 p-[var(--floating-panel-section-padding)] shadow-sm",
+        "space-y-4 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))]/55 p-[var(--floating-panel-section-padding)] shadow-sm",
         className,
       )}
     >

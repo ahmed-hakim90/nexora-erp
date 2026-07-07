@@ -7,6 +7,7 @@ import type { PermissionKey } from "@/platform/permissions/public-api";
 import { INVENTORY_PERMISSIONS } from "@/features/inventory/public-api";
 
 import type { ManufacturingResourceDefinition } from "../../application/types";
+import { formatManufacturingRelationLabel, MANUFACTURING_RELATION_LABEL_CONTRACTS } from "../../presentation/relation-labels";
 import { MANUFACTURING_PERMISSIONS } from "../../permissions/permission-registry";
 
 export type ManufacturingLookupOption = Readonly<{
@@ -28,11 +29,11 @@ type LookupConfig = Readonly<{
 
 const lookupConfigs: Record<string, LookupConfig | readonly LookupConfig[]> = {
   bomId: {
-    labelColumn: "bom_key",
-    metaColumn: "version_key",
+    labelColumn: "bom_number",
+    metaColumn: "version_code",
     permission: MANUFACTURING_PERMISSIONS.bomView,
     scope: "company",
-    select: "id, bom_key, version_key",
+    select: "id, bom_number, version_code, bom_key, version_key",
     table: "manufacturing_boms",
   },
   defaultLineId: {
@@ -42,6 +43,30 @@ const lookupConfigs: Record<string, LookupConfig | readonly LookupConfig[]> = {
     scope: "branch",
     select: "id, line_key, name",
     table: "manufacturing_lines",
+  },
+  crewAssignmentId: {
+    labelColumn: "reason",
+    metaColumn: "status",
+    permission: MANUFACTURING_PERMISSIONS.crewView,
+    scope: "branch",
+    select: "id, reason, status",
+    table: "manufacturing_crew_assignments",
+  },
+  machineId: {
+    labelColumn: "name",
+    metaColumn: "code",
+    permission: MANUFACTURING_PERMISSIONS.machinesView,
+    scope: "branch",
+    select: "id, code, name, machine_key",
+    table: "manufacturing_machines",
+  },
+  operationPlanId: {
+    labelColumn: "operation_name",
+    metaColumn: "operation_code",
+    permission: MANUFACTURING_PERMISSIONS.operationsView,
+    scope: "branch",
+    select: "id, operation_code, operation_name, status",
+    table: "manufacturing_operation_plans",
   },
   employeeId: {
     labelColumn: "name_en",
@@ -78,11 +103,11 @@ const lookupConfigs: Record<string, LookupConfig | readonly LookupConfig[]> = {
     table: "manufacturing_lines",
   },
   manufacturingOrderId: {
-    labelColumn: "order_key",
-    metaColumn: "status",
+    labelColumn: "order_number",
+    metaColumn: "document_number",
     permission: MANUFACTURING_PERMISSIONS.executionView,
     scope: "branch",
-    select: "id, order_key, status",
+    select: "id, order_number, document_number, order_key, status",
     table: "manufacturing_orders",
   },
   manufacturingProductId: {
@@ -142,27 +167,43 @@ const lookupConfigs: Record<string, LookupConfig | readonly LookupConfig[]> = {
     table: "manufacturing_products",
   },
   routingId: {
-    labelColumn: "routing_key",
-    metaColumn: "version_key",
+    labelColumn: "routing_number",
+    metaColumn: "version_code",
     permission: MANUFACTURING_PERMISSIONS.routingView,
     scope: "company",
-    select: "id, routing_key, version_key",
+    select: "id, routing_number, version_code, routing_key, version_key",
     table: "manufacturing_routings",
+  },
+  shiftId: {
+    labelColumn: "name",
+    metaColumn: "shift_key",
+    permission: MANUFACTURING_PERMISSIONS.workersView,
+    scope: "branch",
+    select: "id, shift_key, name",
+    table: "production_shifts",
+  },
+  uomId: {
+    labelColumn: "name",
+    metaColumn: "uom_key",
+    permission: INVENTORY_PERMISSIONS.productsView,
+    scope: "company",
+    select: "id, uom_key, name",
+    table: "inventory_uoms",
   },
   workCenterId: {
     labelColumn: "name",
-    metaColumn: "work_center_key",
+    metaColumn: "code",
     permission: MANUFACTURING_PERMISSIONS.workCentersView,
     scope: "branch",
-    select: "id, work_center_key, name",
+    select: "id, code, work_center_key, name",
     table: "manufacturing_work_centers",
   },
   workstationId: {
     labelColumn: "name",
-    metaColumn: "workstation_key",
+    metaColumn: "code",
     permission: MANUFACTURING_PERMISSIONS.workstationsView,
     scope: "branch",
-    select: "id, workstation_key, name",
+    select: "id, code, workstation_key, name",
     table: "manufacturing_workstations",
   },
 };
@@ -180,7 +221,44 @@ function isMissingLookupSourceError(error: unknown) {
   return code === "PGRST205" || code === "PGRST204" || code === "42P01" || /could not find (the )?(table|column)/i.test(message);
 }
 
+const relationLabelByTable: Record<string, keyof typeof MANUFACTURING_RELATION_LABEL_CONTRACTS> = {
+  employees: "employee",
+  inventory_products: "product",
+  inventory_uoms: "uom",
+  manufacturing_boms: "bom",
+  manufacturing_crew_assignments: "crewAssignment",
+  manufacturing_lines: "productionLine",
+  manufacturing_machines: "machine",
+  manufacturing_operation_plans: "operation",
+  manufacturing_orders: "manufacturingOrder",
+  manufacturing_routings: "routing",
+  manufacturing_work_centers: "workCenter",
+  manufacturing_workstations: "workstation",
+  products: "product",
+};
+
 function formatOption(row: Record<string, unknown>, config: LookupConfig): ManufacturingLookupOption {
+  const relationKey = relationLabelByTable[config.table];
+  if (relationKey) {
+    const label = formatManufacturingRelationLabel(MANUFACTURING_RELATION_LABEL_CONTRACTS[relationKey], {
+      ...row,
+      code: row.code ?? row[`${config.metaColumn}`] ?? row[`${config.labelColumn}`],
+      name: row[config.labelColumn] ?? row.name,
+      sku: row.sku ?? row.product_key,
+      employee_code: row.employee_code,
+      name_en: row.name_en,
+      bom_number: row.bom_number ?? row.bom_key,
+      version_code: row.version_code ?? row.version_key,
+      routing_number: row.routing_number ?? row.routing_key,
+      order_number: row.order_number ?? row.order_key,
+      document_number: row.document_number ?? row.order_key,
+      operation_code: row.operation_code ?? row.operation_key,
+      operation_name: row.operation_name ?? row.name,
+      uom_key: row.uom_key,
+    });
+    return { id: String(row.id), label };
+  }
+
   const label = String(row[config.labelColumn] ?? row.id);
   const metaValue = row[config.metaColumn];
   const meta = metaValue == null ? undefined : String(metaValue);

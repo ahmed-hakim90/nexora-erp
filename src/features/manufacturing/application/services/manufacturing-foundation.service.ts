@@ -124,9 +124,13 @@ export class ManufacturingFoundationService {
 
 export class ProductionLineService extends ManufacturingFoundationService {}
 export class WorkCenterService extends ManufacturingFoundationService {}
+export class WorkstationService extends ManufacturingFoundationService {}
+export class MachineService extends ManufacturingFoundationService {}
 export class ManufacturingProfileService extends ManufacturingFoundationService {}
 export class ManufacturingLineAssignmentService extends ManufacturingFoundationService {}
 export class SupervisorAssignmentService extends ManufacturingFoundationService {}
 export class ProductionStandardService extends ManufacturingFoundationService {}
 export class ManufacturingBomService extends ManufacturingFoundationService {}
 export class ManufacturingRoutingService extends ManufacturingFoundationService {}
+export class ProductionPlanService extends ManufacturingFoundationService {}
+export class ManufacturingOrderService extends ManufacturingFoundationService {}

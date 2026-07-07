@@ -13,8 +13,13 @@ import {
   MANUFACTURING_PERMISSION_LIST,
   manufacturingAppManifest,
 } from "@/features/manufacturing/public-api";
+import {
+  HR_PERMISSION_LIST,
+  hrAppManifest,
+} from "@/features/hr/public-api";
 import type { AppRegistrySnapshot } from "@/platform/app-registry/public-api";
 import type { PermissionKey } from "@/platform/permissions/public-api";
+import { buildAppCapabilityPlatformModel } from "@/shared/workspace/app-capability-platform";
 import { WORKSPACE_APP_CATALOG } from "@/shared/workspace/app-catalog";
 import { buildHomeWorkspace } from "@/shared/workspace/home-workspace-model";
 import {
@@ -29,11 +34,13 @@ const manifests = [
   financeAppManifest,
   inventoryAppManifest,
   manufacturingAppManifest,
+  hrAppManifest,
 ] as const;
 const grantedPermissions = new Set<PermissionKey>([
   ...FINANCE_PERMISSION_LIST,
   ...INVENTORY_PERMISSION_LIST,
   ...MANUFACTURING_PERMISSION_LIST,
+  ...HR_PERMISSION_LIST,
 ]);
 const snapshot: AppRegistrySnapshot = {
   entitlements: manifests.map((manifest) => ({
@@ -149,4 +156,78 @@ test("workspace search finds manifest commands and navigation with permission fi
   assert.equal(allowed.records.some((record) => record.commandKey === "finance.open"), true);
   assert.equal(allowed.records.some((record) => record.entityId === "finance.launcher"), true);
   assert.equal(restricted.records.some((record) => record.commandKey === "finance.open"), false);
+});
+
+test("workspace search finds platform capability contributions with permission filtering", async () => {
+  const workspace = buildHomeWorkspace({
+    catalog: WORKSPACE_APP_CATALOG,
+    context: {
+      branchId,
+      companyId,
+      experience: "erp",
+      grantedPermissions,
+      tenantId,
+    },
+    snapshot,
+  });
+  const capabilities = buildAppCapabilityPlatformModel(manifests);
+  const registry = createWorkspaceSearchRegistry({
+    apps: workspace.allApps,
+    capabilities: [
+      ...capabilities.reports,
+      ...capabilities.prints,
+      ...capabilities.dashboards,
+      ...capabilities.settings,
+      ...capabilities.notifications,
+    ],
+    commands: manifests.flatMap((manifest) => manifest.commands),
+    navigation: manifests.flatMap((manifest) => manifest.navigation),
+  });
+  const allowed = await runWorkspaceSearch(
+    registry,
+    {
+      branchId,
+      companyId,
+      experience: "erp",
+      tenantId,
+      term: "manufacturing notification",
+    },
+    {
+      branchId,
+      companyId,
+      experience: "erp",
+      grantedPermissions,
+      tenantId,
+    },
+  );
+  const restricted = await runWorkspaceSearch(
+    registry,
+    {
+      branchId,
+      companyId,
+      experience: "erp",
+      tenantId,
+      term: "manufacturing notification",
+    },
+    {
+      branchId,
+      companyId,
+      experience: "erp",
+      grantedPermissions: new Set(),
+      tenantId,
+    },
+  );
+
+  assert.equal(
+    allowed.records.some((record) => record.entityId === "manufacturing.foundation.notification-readiness"),
+    true,
+  );
+  assert.equal(
+    allowed.records.find((record) => record.entityId === "manufacturing.foundation.notification-readiness")?.href,
+    "/erp/notifications",
+  );
+  assert.equal(
+    restricted.records.some((record) => record.entityId === "manufacturing.foundation.notification-readiness"),
+    false,
+  );
 });

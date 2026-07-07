@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { Database } from "lucide-react";
 
+import { INVENTORY_PERMISSIONS } from "@/features/inventory/public-api";
 import { AppShell } from "@/shared/ui";
 
-import { createErpShellChrome, resolveErpRuntimeContext } from "../../../erp-shell-model";
+import { resolveErpShellRuntime } from "../../../erp-security.server";
+import { createErpShellChrome } from "../../../erp-shell-model";
 
 const masterDataItems = [
   { key: "products", label: "Products", href: "/erp/master-data/products" },
@@ -25,7 +27,10 @@ export async function MasterDataShell({
   activeKey: string;
   children: ReactNode;
 }>) {
-  const runtime = await resolveErpRuntimeContext();
+  const runtime = await resolveErpShellRuntime({
+    appKey: "inventory",
+    permission: INVENTORY_PERMISSIONS.productsView,
+  });
 
   return (
     <AppShell

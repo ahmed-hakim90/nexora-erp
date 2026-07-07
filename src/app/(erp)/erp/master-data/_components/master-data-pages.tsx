@@ -1,6 +1,17 @@
 import type { ReactNode } from "react";
 
+import { updateBrandAction } from "@/features/brands/routes/actions/brands.actions";
+import { updateCustomerAction } from "@/features/customers/routes/actions/customers.actions";
+import { updatePriceListAction } from "@/features/price-lists/routes/actions/price-lists.actions";
+import { updateProductAction } from "@/features/products/routes/actions/products.actions";
+import { updateProductCategoryAction } from "@/features/product-categories/routes/actions/product-categories.actions";
+import { updateSupplierAction } from "@/features/suppliers/routes/actions/suppliers.actions";
+import { updateTaxProfileAction } from "@/features/tax-profiles/routes/actions/tax-profiles.actions";
+import { updateUnitAction } from "@/features/units/routes/actions/units.actions";
+import { updateWarehouseAction } from "@/features/warehouses/routes/actions/warehouses.actions";
+import { updateWarehouseLocationAction } from "@/features/warehouse-locations/routes/actions/warehouse-locations.actions";
 import {
+  DatePicker,
   EnterpriseDataTable,
   FieldGroup,
   FormGrid,
@@ -13,6 +24,8 @@ import {
   PageForm,
   PageHeader,
 } from "@/shared/ui";
+
+import { MasterDataDetailWorkspace } from "./master-data-detail-workspace";
 
 type PageConfig = Readonly<{
   key: string;
@@ -34,6 +47,21 @@ function valueToText(value: unknown): ReactNode {
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
 }
+
+const MASTER_DATA_UPDATE_ACTIONS: Readonly<
+  Record<string, (id: string, formData: FormData) => Promise<unknown>>
+> = {
+  brands: updateBrandAction,
+  customers: updateCustomerAction,
+  "price-lists": updatePriceListAction,
+  products: updateProductAction,
+  "product-categories": updateProductCategoryAction,
+  suppliers: updateSupplierAction,
+  "tax-profiles": updateTaxProfileAction,
+  units: updateUnitAction,
+  warehouses: updateWarehouseAction,
+  "warehouse-locations": updateWarehouseLocationAction,
+};
 
 export async function MasterDataListPage({
   config,
@@ -123,6 +151,12 @@ export function MasterDataFormPage({
                       value="true"
                     />
                   </>
+                ) : field.type === "date" ? (
+                  <DatePicker
+                    defaultValue={record?.[field.name] == null ? "" : String(record[field.name])}
+                    name={field.name}
+                    required={field.isRequired}
+                  />
                 ) : (
                   <input
                     className="w-full rounded-md border px-3 py-2"
@@ -177,31 +211,21 @@ export async function MasterDataDetailPage({
 
   return (
     <PageContainer>
-      <PageHeader description={config.description} title={`${config.title} Detail`}>
-        <PageActions>
-          {record ? (
-            <a className="rounded-md border px-3 py-2 text-sm" href={`${config.basePath}/${record.id}/edit`}>
-              Edit
-            </a>
-          ) : null}
-        </PageActions>
-      </PageHeader>
+      <PageHeader description={config.description} title={`${config.title} Detail`} />
       <PageContent>
-        <section className="rounded-md border bg-[hsl(var(--surface))] p-4">
-          {errorMessage ? <p className="text-sm text-[hsl(var(--danger))]">{errorMessage}</p> : null}
-          {record ? (
-            <dl className="grid gap-3 text-sm md:grid-cols-2">
-              {Object.entries(record).map(([key, value]) => (
-                <div className="rounded-md border p-3" key={key}>
-                  <dt className="font-medium">{key}</dt>
-                  <dd className="mt-1 text-muted-foreground">{valueToText(value)}</dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-        </section>
+        {errorMessage ? <p className="text-sm text-[hsl(var(--danger))]">{errorMessage}</p> : null}
+        {record ? (
+          <MasterDataDetailWorkspace
+            canManage={Boolean(MASTER_DATA_UPDATE_ACTIONS[config.key])}
+            configKey={config.key}
+            entityLabel={String(record.name ?? record.code ?? config.title)}
+            fields={config.formFields}
+            record={record}
+            updateAction={MASTER_DATA_UPDATE_ACTIONS[config.key] ?? (async () => undefined)}
+          />
+        ) : null}
       </PageContent>
-      <PageFooter>Detail placeholder only. No downstream transactions are implemented in Sprint 5.</PageFooter>
+      <PageFooter>Inline editing uses the platform profile workspace. List create/edit still uses modal or form routes.</PageFooter>
     </PageContainer>
   );
 }

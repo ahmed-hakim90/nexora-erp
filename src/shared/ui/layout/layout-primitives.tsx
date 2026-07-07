@@ -8,6 +8,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { X } from "lucide-react";
 
+import { tabTriggerClassName } from "../patterns/nav-tabs";
 import { cn } from "../utils";
 
 export function Container({
@@ -89,10 +90,16 @@ export function Tabs({
       onValueChange={onValueChange}
       value={activeTab?.key}
     >
-      <TabsPrimitive.List aria-label="Tabs" className="flex gap-2 border-b">
+      <TabsPrimitive.List
+        aria-label="Tabs"
+        className="flex flex-wrap gap-1 border-b border-[hsl(var(--border))] pb-px"
+      >
         {tabs.map((tab) => (
           <TabsPrimitive.Trigger
-            className="border-b-2 border-transparent px-3 py-2 text-sm data-[state=active]:border-[hsl(var(--accent))] data-[state=active]:font-medium"
+            className={cn(
+              tabTriggerClassName(false),
+              "data-[state=active]:border-[hsl(var(--accent))] data-[state=active]:bg-[hsl(var(--muted))]/50 data-[state=active]:font-semibold data-[state=active]:text-foreground",
+            )}
             key={tab.key}
             value={tab.key}
           >
@@ -220,9 +227,18 @@ export function Dialog({
 }
 
 export function Popover({
+  align = "start",
   children,
+  contentClassName,
+  sideOffset = 8,
   trigger,
-}: Readonly<{ children: ReactNode; trigger?: ReactNode }>) {
+}: Readonly<{
+  align?: ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>["align"];
+  children: ReactNode;
+  contentClassName?: string;
+  sideOffset?: ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>["sideOffset"];
+  trigger?: ReactNode;
+}>) {
   if (!trigger) {
     return <div className="rounded-md border bg-[hsl(var(--surface))] p-3 shadow-sm">{children}</div>;
   }
@@ -232,9 +248,12 @@ export function Popover({
       <PopoverPrimitive.Trigger asChild>{trigger}</PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
-          align="start"
-          className="z-[var(--z-dropdown)] min-w-64 rounded-md border bg-[hsl(var(--surface))] p-3 shadow-md"
-          sideOffset={8}
+          align={align}
+          className={cn(
+            "z-[var(--z-dropdown)] w-max min-w-[min(16rem,calc(100vw-1rem))] max-w-[min(34rem,calc(100vw-1rem),var(--radix-popover-content-available-width))] max-h-[min(32rem,var(--radix-popover-content-available-height))] overflow-auto rounded-md border bg-[hsl(var(--surface))] p-3 shadow-md",
+            contentClassName,
+          )}
+          sideOffset={sideOffset}
         >
           {children}
         </PopoverPrimitive.Content>

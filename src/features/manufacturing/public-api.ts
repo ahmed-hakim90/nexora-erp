@@ -1,17 +1,23 @@
 export { manufacturingAppManifest } from "./app.manifest";
 export * from "./foundation-contracts";
+export * from "./sprint3-foundation";
+export { formatManufacturingRelationLabel, MANUFACTURING_RELATION_LABEL_CONTRACTS } from "./presentation/relation-labels";
 export { manufacturingModuleManifest } from "./module.manifest";
 export { MANUFACTURING_PERMISSIONS, MANUFACTURING_PERMISSION_LIST } from "./permissions/permission-registry";
 export {
   createManufacturingBomService,
   createManufacturingFoundationService,
   createManufacturingLineAssignmentService,
+  createManufacturingOrderService,
+  createMachineService,
   createManufacturingProfileService,
   createManufacturingRoutingService,
   createProductionLineService,
+  createProductionPlanService,
   createProductionStandardService,
   createSupervisorAssignmentService,
   createWorkCenterService,
+  createWorkstationService,
 } from "./routes/service-factory";
 export {
   MANUFACTURING_RESOURCE_DEFINITIONS,

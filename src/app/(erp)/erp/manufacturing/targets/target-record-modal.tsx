@@ -9,7 +9,7 @@ import {
   updateManufacturingTargetAction,
 } from "@/features/manufacturing/routes/actions/targets.actions";
 import type { ManufacturingTargetsWorkspaceData, TargetLookupOption } from "@/features/manufacturing/routes/loaders/targets.loader";
-import { EntityLookup, FieldGroup, FormGrid, RecordFormDialog, RecordFormSection } from "@/shared/ui";
+import { DatePicker, EntityLookup, FieldGroup, FormGrid, RecordFormDialog, RecordFormSection } from "@/shared/ui";
 
 export type ManufacturingTargetType = "product" | "line" | "worker";
 
@@ -27,7 +27,11 @@ function Field({
 }: Readonly<{ defaultValue?: string | number | null; isRequired?: boolean; label: string; name: string; type?: string }>) {
   return (
     <FieldGroup isRequired={isRequired} label={label}>
-      <input className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30" defaultValue={defaultValue ?? ""} name={name} required={isRequired} type={type} />
+      {type === "date" ? (
+        <DatePicker defaultValue={defaultValue == null ? "" : String(defaultValue)} name={name} required={isRequired} />
+      ) : (
+        <input className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30" defaultValue={defaultValue ?? ""} name={name} required={isRequired} type={type} />
+      )}
     </FieldGroup>
   );
 }

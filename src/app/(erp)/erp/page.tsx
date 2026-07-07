@@ -2,12 +2,16 @@ import {
   createErpShellContext,
   createErpShellModel,
   createErpShellSnapshot,
-  resolveErpRuntimeContext,
 } from "../erp-shell-model";
+import { requirePlatformCapabilityAccess } from "../erp-platform-capability.server";
 import { EnterpriseHomeWorkspace } from "./home-workspace";
+import { loadCurrentWorkspacePreferences } from "@/shared/workspace/preferences.server";
 
 export default async function ErpWorkspaceShellPage() {
-  const runtime = await resolveErpRuntimeContext();
+  const [{ runtime }, initialPreferences] = await Promise.all([
+    requirePlatformCapabilityAccess("search"),
+    loadCurrentWorkspacePreferences(),
+  ]);
   const snapshot = createErpShellSnapshot(runtime);
   const context = createErpShellContext("/erp", runtime);
   const shellModel = createErpShellModel("/erp", runtime);
@@ -27,6 +31,7 @@ export default async function ErpWorkspaceShellPage() {
         userName: runtime.userName,
         workspaceName: "ERP Workspace",
       }}
+      initialPreferences={initialPreferences}
       navigation={navigation}
       shell={shellModel}
       snapshot={snapshot}

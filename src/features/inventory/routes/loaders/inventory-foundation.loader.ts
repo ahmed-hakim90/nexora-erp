@@ -6,6 +6,8 @@ import { createRequestSupabaseClient } from "@/platform/database/server";
 import { requirePermission } from "@/platform/permissions/server";
 
 import { getInventoryFoundationEntity, type InventoryFoundationDescriptor } from "../../application/foundation-entities";
+import { resolveFoundationLookupProviderKey } from "@/platform/operator-experience/lookup-registry";
+import { hydrateLookupOptions } from "@/shared/workspace/entity-lookup-runtime.server";
 import { inventoryFoundationListQuerySchema } from "../../application/schemas/inventory-foundation.schema";
 
 type FoundationRow = Record<string, unknown>;
@@ -45,42 +47,31 @@ function selectColumns(descriptor: InventoryFoundationDescriptor) {
   return Array.from(new Set([...BASE_COLUMNS.split(", "), ...fieldColumns])).join(", ");
 }
 
-function lookupLabel(row: FoundationRow, keyColumn: string, nameColumn = "name") {
-  const key = row[keyColumn];
-  const name = row[nameColumn];
-  return [key, name].filter((value) => typeof value === "string" && value.length > 0).join(" — ");
-}
-
-async function loadLookupData(
-  supabase: ReturnType<typeof createRequestSupabaseClient>,
-  context: Awaited<ReturnType<typeof resolveCompanyRequestContext>>,
+async function buildFoundationLookups(
+  descriptor: InventoryFoundationDescriptor,
+  records: readonly FoundationRow[],
 ) {
-  const [branches, categories, locations, lots, products, uomCategories, variants, warehouses] = await Promise.all([
-    supabase.from("branches").select("id, code, name").eq("tenant_id", context.tenantId).is("deleted_at", null).order("name"),
-    supabase.from("inventory_product_categories").select("id, category_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name"),
-    supabase.from("inventory_locations").select("id, location_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name"),
-    supabase.from("inventory_lots").select("id, lot_key").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("lot_key"),
-    supabase.from("inventory_products").select("id, product_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name"),
-    supabase.from("inventory_uom_categories").select("id, category_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name"),
-    supabase.from("inventory_product_variants").select("id, variant_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name"),
-    supabase.from("inventory_warehouses").select("id, warehouse_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name"),
-  ]);
-
-  const failed = [branches, categories, locations, lots, products, uomCategories, variants, warehouses].find((result) => result.error);
-  if (failed?.error) {
-    throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not load inventory lookup data.", cause: failed.error });
+  const idsByLookupKey = new Map<string, Set<string>>();
+  for (const record of records) {
+    for (const field of descriptor.fields) {
+      if (field.type !== "lookup" || !field.lookup) continue;
+      const value = record[field.column];
+      if (value === null || value === undefined || value === "") continue;
+      const bucket = idsByLookupKey.get(field.lookup) ?? new Set<string>();
+      bucket.add(String(value));
+      idsByLookupKey.set(field.lookup, bucket);
+    }
   }
 
-  return {
-    branches: (branches.data ?? []).map((row) => ({ id: row.id as string, label: lookupLabel(row as FoundationRow, "code") })),
-    categories: (categories.data ?? []).map((row) => ({ id: row.id as string, label: lookupLabel(row as FoundationRow, "category_key") })),
-    locations: (locations.data ?? []).map((row) => ({ id: row.id as string, label: lookupLabel(row as FoundationRow, "location_key") })),
-    lots: (lots.data ?? []).map((row) => ({ id: row.id as string, label: row.lot_key as string })),
-    products: (products.data ?? []).map((row) => ({ id: row.id as string, label: lookupLabel(row as FoundationRow, "product_key") })),
-    uomCategories: (uomCategories.data ?? []).map((row) => ({ id: row.id as string, label: lookupLabel(row as FoundationRow, "category_key") })),
-    variants: (variants.data ?? []).map((row) => ({ id: row.id as string, label: lookupLabel(row as FoundationRow, "variant_key") })),
-    warehouses: (warehouses.data ?? []).map((row) => ({ id: row.id as string, label: lookupLabel(row as FoundationRow, "warehouse_key") })),
-  };
+  const lookups: Record<string, InventoryFoundationLookupOption[]> = {};
+  await Promise.all(
+    [...idsByLookupKey.entries()].map(async ([lookupKey, ids]) => {
+      const providerKey = resolveFoundationLookupProviderKey(lookupKey);
+      if (!providerKey) return;
+      lookups[lookupKey] = [...await hydrateLookupOptions(providerKey, [...ids])];
+    }),
+  );
+  return lookups;
 }
 
 export async function loadInventoryFoundationWorkspace(resource: string, query: unknown = {}): Promise<InventoryFoundationWorkspaceData> {
@@ -110,10 +101,7 @@ export async function loadInventoryFoundationWorkspace(resource: string, query: 
   const cursor = decodeCursor(parsed.cursor);
   if (cursor) request = request.or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`);
 
-  const [recordResult, lookups] = await Promise.all([
-    request.order("created_at", { ascending: false }).order("id", { ascending: false }),
-    loadLookupData(supabase, context),
-  ]);
+  const recordResult = await request.order("created_at", { ascending: false }).order("id", { ascending: false });
 
   if (recordResult.error) {
     throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not load ${descriptor.title}.`, cause: recordResult.error });
@@ -121,10 +109,11 @@ export async function loadInventoryFoundationWorkspace(resource: string, query: 
 
   const records = (recordResult.data ?? []) as unknown as FoundationRow[];
   const visibleRecords = records.slice(0, pageSize);
+  const resolvedLookups = await buildFoundationLookups(descriptor, visibleRecords);
 
   return {
     descriptor,
-    lookups,
+    lookups: resolvedLookups,
     nextCursor: records.length > pageSize ? encodeCursor(visibleRecords.at(-1)) : null,
     pageSize,
     records: visibleRecords,
@@ -137,7 +126,7 @@ export async function getInventoryFoundationRecord(resource: string, id: string)
   await requirePermission({ context, permission: descriptor.viewPermission });
 
   const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
-  const [recordResult, lookups] = await Promise.all([
+  const [recordResult] = await Promise.all([
     supabase
       .from(descriptor.table)
       .select(selectColumns(descriptor))
@@ -146,12 +135,13 @@ export async function getInventoryFoundationRecord(resource: string, id: string)
       .eq("id", id)
       .is("deleted_at", null)
       .single(),
-    loadLookupData(supabase, context),
   ]);
 
   if (recordResult.error) {
     throw new ApplicationError({ code: "NOT_FOUND", message: `${descriptor.singular} was not found.`, cause: recordResult.error });
   }
 
-  return { descriptor, lookups, record: recordResult.data as unknown as FoundationRow };
+  const record = recordResult.data as unknown as FoundationRow;
+  const lookups = await buildFoundationLookups(descriptor, [record]);
+  return { descriptor, lookups, record };
 }

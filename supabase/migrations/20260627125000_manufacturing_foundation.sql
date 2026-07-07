@@ -438,6 +438,16 @@ create table if not exists public.manufacturing_worker_targets (
   check (deleted_at is null or deleted_by is not null)
 );
 
+-- Reconcile legacy manufacturing_boms from 20260625160000 before v2 indexes.
+alter table public.manufacturing_boms add column if not exists company_id uuid references public.companies(id) on delete restrict;
+alter table public.manufacturing_boms add column if not exists branch_id uuid references public.branches(id) on delete restrict;
+alter table public.manufacturing_boms add column if not exists manufacturing_product_id uuid references public.manufacturing_products(id) on delete restrict;
+alter table public.manufacturing_boms add column if not exists bom_key text;
+alter table public.manufacturing_boms add column if not exists version_key text;
+alter table public.manufacturing_boms add column if not exists components jsonb not null default '[]'::jsonb;
+alter table public.manufacturing_boms add column if not exists inventory_quantity_owner text not null default 'inventory';
+alter table public.manufacturing_boms add column if not exists cost_calculation_owner text not null default 'cost-engine';
+
 create unique index if not exists manufacturing_products_scope_key_uq on public.manufacturing_products (tenant_id, company_id, coalesce(branch_id, '00000000-0000-0000-0000-000000000000'::uuid), product_key) where deleted_at is null;
 create unique index if not exists manufacturing_work_centers_scope_key_uq on public.manufacturing_work_centers (tenant_id, company_id, branch_id, work_center_key) where deleted_at is null;
 create unique index if not exists manufacturing_lines_scope_key_uq on public.manufacturing_lines (tenant_id, company_id, branch_id, line_key) where deleted_at is null;

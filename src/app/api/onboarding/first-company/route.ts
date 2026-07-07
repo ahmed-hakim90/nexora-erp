@@ -10,6 +10,13 @@ const REFRESH_TOKEN_COOKIE = "nexora_refresh_token";
 const TENANT_COOKIE = "nexora_tenant_id";
 const COMPANY_COOKIE = "nexora_company_id";
 const BRANCH_COOKIE = "nexora_branch_id";
+const TENANT_ADMIN_BOOTSTRAP_APP_KEYS = [
+  "administration",
+  "finance",
+  "inventory",
+  "manufacturing",
+  "hr",
+] as const;
 
 const signupSchema = z.object({
   companyName: z.string().trim().min(2).max(120),
@@ -122,6 +129,26 @@ async function grantTenantAdminPermissions(params: {
 
   if (insertError) {
     throw insertError;
+  }
+}
+
+async function grantTenantAdminAppAccess(params: {
+  serviceRole: ReturnType<typeof createServiceRoleSupabaseClient>;
+  tenantId: string;
+  userId: string;
+}) {
+  const { error } = await params.serviceRole.from("user_app_access").insert(
+    TENANT_ADMIN_BOOTSTRAP_APP_KEYS.map((appKey) => ({
+      app_key: appKey,
+      created_by: params.userId,
+      tenant_id: params.tenantId,
+      updated_by: params.userId,
+      user_id: params.userId,
+    })),
+  );
+
+  if (error) {
+    throw error;
   }
 }
 
@@ -485,6 +512,7 @@ export async function POST(request: Request) {
         .from("branches")
         .insert({
           code: "MAIN",
+          company_id: company.id,
           created_by: userId,
           name: "Main Branch",
           tenant_id: tenant.id,
@@ -563,6 +591,14 @@ export async function POST(request: Request) {
         throw error;
       }
     });
+
+    await runOnboardingStep("Grant tenant admin app access", () =>
+      grantTenantAdminAppAccess({
+        serviceRole,
+        tenantId: tenant.id,
+        userId,
+      }),
+    );
 
     await runOnboardingStep("Seed master data", () =>
       seedMasterData({

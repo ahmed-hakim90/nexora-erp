@@ -24,7 +24,7 @@ export const Button = forwardRef<
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md border font-medium text-foreground shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-md border font-medium text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--surface))] disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm",
         variant === "primary" &&
           "border-[hsl(var(--accent))] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]",
@@ -46,7 +46,7 @@ export const Input = forwardRef<HTMLInputElement, ComponentPropsWithoutRef<"inpu
     return (
       <input
         className={cn(
-          "h-10 w-full rounded-md border bg-[hsl(var(--surface))] px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]",
+          "h-10 w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--surface))]",
           className,
         )}
         ref={ref}

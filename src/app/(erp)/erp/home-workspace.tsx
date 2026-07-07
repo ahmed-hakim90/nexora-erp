@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import type { AppRegistrySnapshot } from "@/platform/app-registry/public-api";
+import { PLATFORM_FEATURE_FLAGS } from "@/platform/feature-flags/public-api";
 import type { CommandDefinition, NavigationContribution } from "@/platform/navigation/public-api";
 import type { PermissionKey } from "@/platform/permissions/public-api";
 import {
@@ -25,9 +26,11 @@ import {
 } from "@/shared/ui";
 import {
   WORKSPACE_APP_CATALOG,
+  buildAppCapabilityPlatformModel,
   buildHomeWorkspace,
   useWorkspacePreferences,
   type HomeWorkspaceModel,
+  type WorkspacePreferences,
   type WorkspaceAppModel,
 } from "@/shared/workspace/public-api";
 
@@ -39,6 +42,7 @@ export function EnterpriseHomeWorkspace({
   navigation,
   shell,
   context,
+  initialPreferences,
 }: Readonly<{
   snapshot: AppRegistrySnapshot;
   commands: readonly CommandDefinition[];
@@ -58,14 +62,21 @@ export function EnterpriseHomeWorkspace({
     userName: string;
     permissions: readonly string[];
   };
+  initialPreferences?: Readonly<{
+    persisted: boolean;
+    preferences: WorkspacePreferences;
+  }>;
 }>) {
   const enterpriseUi = useEnterpriseUi();
-  const [preferences, preferenceActions] = useWorkspacePreferences();
+  const [preferences, preferenceActions] = useWorkspacePreferences({
+    databasePersisted: initialPreferences?.persisted,
+    initialPreferences: initialPreferences?.preferences,
+  });
   const registryContext = useMemo(
     () => ({
       branchId: context.branchId,
       companyId: context.companyId,
-      enabledFeatureFlags: new Set<string>(),
+      enabledFeatureFlags: new Set<string>([PLATFORM_FEATURE_FLAGS.foundationShell]),
       experience: "erp" as const,
       grantedPermissions: new Set(context.permissions as readonly PermissionKey[]),
       tenantId: context.tenantId,
@@ -86,6 +97,10 @@ export function EnterpriseHomeWorkspace({
   const commandItems = useMemo(
     () => createWorkspaceCommandItems(shell.commandItems, workspace),
     [shell.commandItems, workspace],
+  );
+  const capabilityPlatform = useMemo(
+    () => buildAppCapabilityPlatformModel(snapshot.manifests),
+    [snapshot.manifests],
   );
 
   function openApp(app: WorkspaceAppModel) {
@@ -117,6 +132,14 @@ export function EnterpriseHomeWorkspace({
       globalSearchSlot={
         <GlobalSearchPanel
           apps={workspace.allApps}
+          capabilities={[
+            ...capabilityPlatform.reports,
+            ...capabilityPlatform.prints,
+            ...capabilityPlatform.dashboards,
+            ...capabilityPlatform.settings,
+            ...capabilityPlatform.featureFlags,
+            ...capabilityPlatform.notifications,
+          ]}
           commands={commands}
           context={context}
           navigation={navigation}

@@ -1,0 +1,63 @@
+---
+description: Enterprise Edit Mode v2 for profile and detail workspaces
+alwaysApply: true
+---
+
+# Enterprise Edit Mode v2
+
+Canonical references:
+
+- `docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md` (sections 7–8)
+- `docs/06-guidelines/EDIT_MODE_V2_STANDARD.md`
+- `docs/06-guidelines/INLINE_EDITING_STANDARD.md`
+
+## Core Principle
+
+Profile and detail pages have two modes only: **View** and **Edit**.
+
+- View Mode: one **Edit** action.
+- Edit Mode: inline editors + **Cancel** / **Save Changes** with **Unsaved changes** indicator.
+
+List pages keep the modal pattern (`RecordFormDialog`).
+
+## Required Platform Components
+
+Use shared components from `@/shared/ui`:
+
+- `EditablePage` — page-level View/Edit bar, batch save, workflow dialog
+- `EditableProfileWorkspace` — profile sections on top of `EditablePage`
+- `EditableSectionCard`, `EditableFieldGrid`, `EditableField`
+- `useEditablePage` — draft state, changed fields, keyboard shortcuts
+- `CrossEngineLookupWorkflow` — generic lookup workflow dialog
+- `EntityLookup`, `DatePicker` / `DatePickerField`
+- `platform.feedback` — success/error toasts
+
+## Field Ownership
+
+| Ownership | Behavior |
+|-----------|----------|
+| `entity` | Direct inline edit, batch save |
+| `versioned` | Inline edit, versioned save semantics |
+| `cross-engine` | **Change** opens in-page workflow modal via `renderWorkflow` |
+| `readonly` | Visible, muted, lock when denied |
+
+Never use `workflowHref` or `router.push` for cross-engine edits.
+
+## Save Rules
+
+- One **Save Changes** saves all changed entity/versioned fields together.
+- Use `saveStrategy="changed-only"` only for patch endpoints.
+- **Cancel** restores original values.
+- Unsaved navigation shows **Save Changes**, **Discard**, **Continue Editing**.
+
+## Prohibited
+
+- Full-page edit navigation for profile/detail fields
+- Module-local edit mode implementations
+- Native date inputs
+- Cross-engine field mutation without workflow dialog
+- Hiding data when permission is denied
+
+## New Screens
+
+Every new profile/detail workspace across all business apps must use Edit Mode v2.

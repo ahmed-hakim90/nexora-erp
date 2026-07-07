@@ -1,0 +1,21 @@
+# No Native Date Inputs
+
+Never use the native HTML date input in Nexora ERP UI.
+
+## Forbidden
+
+```tsx
+<input type="date" />
+<input type={field.type === "date" ? "date" : "text"} />
+```
+
+## Required
+
+Use the shared enterprise date components from `@/shared/ui`:
+
+- `DatePicker` — single date in forms and filters
+- `DatePickerField` — labeled form field with validation styling
+- `DateRangePickerField` — range selection in one control
+- `DateFilterInput` / `DateRangeFilterInput` — list/report filter bars
+
+Form values must remain ISO `YYYY-MM-DD` for server compatibility. Display formatting comes from locale and company date format via `EnterpriseUiProvider`.

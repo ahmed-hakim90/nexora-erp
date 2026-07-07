@@ -3,6 +3,11 @@ export {
   PlatformError,
   toSafePlatformError,
 } from "./application-error";
+export {
+  isAuthorizationError,
+  resolveOperatorSafeSecurityMessage,
+  sanitizeOperatorMessage,
+} from "./operator-security-messages";
 export type {
   ApplicationErrorCode,
   PlatformErrorCode,

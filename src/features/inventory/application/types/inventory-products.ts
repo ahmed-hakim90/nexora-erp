@@ -1,8 +1,12 @@
 export type InventoryProductStatus = "draft" | "active" | "inactive" | "locked" | "archived";
 export type InventoryProductKind = "stockable" | "consumable" | "service" | "asset" | "rental" | "kit";
-export type InventoryTrackingMode = "none" | "lot" | "serial";
+export type InventoryTrackingMode = "none" | "quantity_only" | "lot" | "serial" | "lot_serial";
 export type InventoryReservationPolicy = "none" | "soft" | "hard";
 export type InventoryOnlineStatus = "draft" | "ready" | "published" | "hidden" | "archived";
+export type InventorySerialSource = "nexora_generated" | "supplier" | "manual";
+export type InventorySerialGenerationTiming = "on_receipt" | "on_production_completion" | "on_packing" | "manual";
+export type InventoryWarrantyStartsFrom = "invoice_date" | "delivery_date" | "manual_activation";
+export type InventoryCycleCountClass = "A" | "B" | "C";
 
 export type InventoryProductListQuery = Readonly<{
   categoryId?: string;
@@ -38,6 +42,7 @@ export type InventoryProductRecord = Readonly<{
   sku: string;
   barcode: string | null;
   name: string;
+  commercialName: string | null;
   nameAr: string | null;
   shortName: string | null;
   description: string | null;
@@ -101,6 +106,30 @@ export type InventoryProductRecord = Readonly<{
   hasVariants: boolean;
   hasSerialTracking: boolean;
   hasLotTracking: boolean;
+  serialSource: InventorySerialSource | null;
+  serialGenerationTiming: InventorySerialGenerationTiming | null;
+  serialDuplicateValidation: boolean;
+  serialAllowManualOverride: boolean;
+  lotSupplierSupported: boolean;
+  lotInternalSupported: boolean;
+  lotExpirySupported: boolean;
+  lotManufacturingDateSupported: boolean;
+  lotQcRequired: boolean;
+  lotShelfLifeSupported: boolean;
+  packagingLooseUnits: boolean;
+  packagingInnerBoxQty: number | null;
+  packagingCartonQty: number | null;
+  packagingPalletCartonQty: number | null;
+  allowNegativeStock: boolean;
+  requiresReservation: boolean;
+  requiresQcBeforeRelease: boolean;
+  defaultPutawayStrategy: string | null;
+  defaultPickingStrategy: string | null;
+  cycleCountClass: InventoryCycleCountClass | null;
+  warrantyEligible: boolean;
+  warrantyDurationDays: number | null;
+  warrantyStartsFrom: InventoryWarrantyStartsFrom | null;
+  searchKeywords: readonly string[];
   isDiscountable: boolean;
   isOnlineVisible: boolean;
   categoryLabel: string | null;

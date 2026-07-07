@@ -1,14 +1,25 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { Button, Tabs } from "@/shared/ui";
+import {
+  Button,
+  CrossEngineLookupWorkflow,
+  EditableProfileWorkspace,
+  Tabs,
+  buildCrossEngineFormData,
+  inferProfileFieldOwnership,
+  mapSimpleFieldType,
+  useEditablePageContext,
+  type ProfileFieldDefinition,
+  type ProfileSectionDefinition,
+} from "@/shared/ui";
 import { displayBusinessCode } from "@/shared/business-codes";
-import type { FinanceFieldDescriptor } from "@/features/finance/public-api";
-import { archiveFinanceRecordAction } from "@/features/finance/routes/actions/finance.actions";
+import type { FinanceFieldDescriptor, FinanceRelationDescriptor } from "@/features/finance/public-api";
+import { archiveFinanceRecordAction, updateFinanceRecordAction } from "@/features/finance/routes/actions/finance.actions";
 
-import { FinanceEntityDrawer, type FinanceRelationOptions } from "./finance-entity-drawer";
+import type { FinanceRelationOptions } from "./finance-entity-drawer";
 
 type FinanceRecord = Record<string, unknown>;
 
@@ -22,6 +33,7 @@ type FinanceDetailViewProps = Readonly<{
   record: FinanceRecord;
   fields: readonly FinanceFieldDescriptor[];
   relationLinks: readonly RelationLink[];
+  relations?: readonly FinanceRelationDescriptor[];
   relationOptions?: FinanceRelationOptions;
   statusField: "status" | "is_active";
   canManage: boolean;
@@ -42,6 +54,39 @@ function formatTimestamp(value: unknown): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function financeFieldsToProfileFields(
+  fields: readonly FinanceFieldDescriptor[],
+  record: FinanceRecord,
+  relations: readonly FinanceRelationDescriptor[] = [],
+  relationOptions: FinanceRelationOptions = {},
+): readonly ProfileFieldDefinition[] {
+  const relationByField = new Map(relations.map((relation) => [relation.field, relation]));
+
+  return fields.map((field) => {
+    const relation = relationByField.get(field.name);
+    const ownership = field.autoCode
+      ? "readonly"
+      : relation
+        ? "cross-engine"
+        : inferProfileFieldOwnership(field.name);
+    const options = relation ? relationOptions[relation.field] : undefined;
+
+    return {
+      autosave: field.type === "textarea",
+      editorType: mapSimpleFieldType(field.type),
+      formatDisplay: (value: unknown) => display(value, field),
+      isRequired: field.required,
+      label: field.label,
+      lookupOptions: options?.map((option) => ({ id: option.value, label: option.label })),
+      name: field.name,
+      ownership,
+      selectOptions: field.options,
+      workflowKey: relation ? `${relation.field}-assignment` : undefined,
+      workflowTitle: relation ? `${relation.label} Assignment` : undefined,
+    } satisfies ProfileFieldDefinition;
+  });
+}
+
 export function FinanceDetailView({
   entityKey,
   singular,
@@ -50,7 +95,8 @@ export function FinanceDetailView({
   record,
   fields,
   relationLinks,
-  relationOptions,
+  relations = [],
+  relationOptions = {},
   statusField,
   canManage,
 }: FinanceDetailViewProps) {
@@ -61,6 +107,21 @@ export function FinanceDetailView({
 
   const id = String(record.id);
   const statusValue = statusField === "status" ? record.status : record.isActive;
+  const profileFields = useMemo(
+    () => financeFieldsToProfileFields(fields, record, relations, relationOptions),
+    [fields, record, relations, relationOptions],
+  );
+  const sections = useMemo<readonly ProfileSectionDefinition[]>(
+    () => [
+      {
+        key: "general",
+        title: "General Information",
+        description: "Finance master fields owned by this record.",
+        fields: profileFields,
+      },
+    ],
+    [profileFields],
+  );
 
   function archive() {
     setError(null);
@@ -76,14 +137,28 @@ export function FinanceDetailView({
   }
 
   const overview = (
-    <dl className="grid gap-3 sm:grid-cols-2">
-      {fields.map((field) => (
-        <div className="rounded-md border p-3" key={field.name}>
-          <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{field.label}</dt>
-          <dd className="mt-1 text-sm">{display(record[field.name], field)}</dd>
-        </div>
-      ))}
-    </dl>
+    <EditableProfileWorkspace
+      canEdit={canManage}
+      entityId={id}
+      entityLabel={String(record.name ?? singular)}
+      entityType={`finance_${entityKey.replaceAll("-", "_")}`}
+      fields={profileFields}
+      lastUpdated={formatTimestamp(record.updatedAt)}
+      record={record}
+      renderWorkflow={(fieldName) => (
+        <FinanceCrossEngineWorkflow
+          entityKey={entityKey}
+          fieldName={fieldName}
+          id={id}
+          profileFields={profileFields}
+          record={record}
+        />
+      )}
+      sections={sections}
+      showAuditSection={false}
+      onSave={async (formData) => updateFinanceRecordAction(entityKey, id, formData)}
+      onSaved={() => router.refresh()}
+    />
   );
 
   const timeline = (
@@ -149,18 +224,17 @@ export function FinanceDetailView({
     );
 
   const audit = (
-    <dl className="grid gap-3 sm:grid-cols-2">
-      <AuditRow label="Identifier" value={id} />
-      <AuditRow label="Tenant" value={display(record.tenantId)} />
-      <AuditRow label="Company" value={display(record.companyId)} />
-      <AuditRow label="Created by" value={display(record.createdBy)} />
-      <AuditRow label="Created at" value={formatTimestamp(record.createdAt)} />
-      <AuditRow label="Updated by" value={display(record.updatedBy)} />
-      <AuditRow label="Updated at" value={formatTimestamp(record.updatedAt)} />
-      <AuditRow label="Version" value={display(record.version)} />
-      <AuditRow label="Status" value={display(statusValue)} />
-      <AuditRow label="Metadata" value={display(record.metadata)} />
-    </dl>
+    <EditableProfileWorkspace
+      canEdit={false}
+      entityId={id}
+      entityLabel={String(record.name ?? singular)}
+      entityType={`finance_${entityKey.replaceAll("-", "_")}`}
+      fields={profileFields}
+      record={record}
+      sections={[]}
+      showAuditSection
+      onSave={async () => undefined}
+    />
   );
 
   const tabs = [
@@ -191,17 +265,6 @@ export function FinanceDetailView({
         </div>
         {canManage ? (
           <div className="flex items-center gap-2">
-            <FinanceEntityDrawer
-              entityKey={entityKey}
-              fields={fields}
-              mode="edit"
-              record={record}
-              recordId={id}
-              relationOptions={relationOptions}
-              singular={singular}
-              triggerLabel="Edit"
-              triggerVariant="primary"
-            />
             <Button disabled={isPending} onClick={archive} variant="danger">
               {isPending ? "Archiving…" : "Archive"}
             </Button>
@@ -222,11 +285,35 @@ export function FinanceDetailView({
   );
 }
 
-function AuditRow({ label, value }: Readonly<{ label: string; value: string }>) {
+function FinanceCrossEngineWorkflow({
+  entityKey,
+  fieldName,
+  id,
+  profileFields,
+  record,
+}: Readonly<{
+  entityKey: string;
+  fieldName: string;
+  id: string;
+  profileFields: readonly ProfileFieldDefinition[];
+  record: FinanceRecord;
+}>) {
+  const page = useEditablePageContext();
+  const router = useRouter();
+  const field = profileFields.find((candidate) => candidate.name === fieldName);
+  if (!field) return null;
+
   return (
-    <div className="rounded-md border p-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-1 break-all text-sm">{value}</dd>
-    </div>
+    <CrossEngineLookupWorkflow
+      currentValue={record[fieldName]}
+      field={field}
+      onCancel={() => page?.closeWorkflow()}
+      onSubmit={async (value) => {
+        const formData = buildCrossEngineFormData(record, profileFields, fieldName, value);
+        await updateFinanceRecordAction(entityKey, id, formData);
+        page?.closeWorkflow();
+        router.refresh();
+      }}
+    />
   );
 }

@@ -8,7 +8,7 @@ import {
   updateInventoryTransactionAction,
 } from "@/features/inventory/routes/actions/inventory-transactions.actions";
 import type { InventoryTransactionDetail, InventoryTransactionType } from "@/features/inventory/public-api";
-import { EntityLookup, FieldGroup, FormGrid, RecordFormDialog, RecordFormSection } from "@/shared/ui";
+import { EntityLookup, FieldGroup, FormGrid, RecordFormDialog, RecordFormSection, DatePicker } from "@/shared/ui";
 
 import type { TRANSACTION_TYPE_CONFIGS } from "./transaction-pages";
 
@@ -81,7 +81,7 @@ export function InventoryTransactionModalLauncher({
                 <input className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30" defaultValue={transaction?.title ?? config.title} name="title" required type="text" />
               </FieldGroup>
               <FieldGroup label="Date">
-                <input className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30" defaultValue={transaction?.transactionDate ?? ""} name="transactionDate" type="date" />
+                <DatePicker defaultValue={transaction?.transactionDate ?? ""} name="transactionDate" />
               </FieldGroup>
               <FieldGroup isRequired={config.type === "stock_adjustment"} label="Reason">
                 <input className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30" defaultValue={transaction?.reason ?? ""} name="reason" required={config.type === "stock_adjustment"} type="text" />

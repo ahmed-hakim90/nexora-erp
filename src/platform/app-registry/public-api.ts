@@ -44,6 +44,7 @@ export type AppCapabilityType =
   | "print"
   | "dashboard"
   | "setting"
+  | "notification"
   | "workflow"
   | "approval"
   | "search"
@@ -100,6 +101,7 @@ export type AppManifest = Readonly<{
   prints: readonly AppCapability[];
   dashboards: readonly AppCapability[];
   settings: readonly AppCapability[];
+  notifications?: readonly AppCapability[];
   statuses?: readonly string[];
   dependencies: readonly AppDependency[];
   capabilities: readonly AppCapability[];

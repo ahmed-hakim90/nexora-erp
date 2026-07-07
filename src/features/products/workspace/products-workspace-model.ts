@@ -17,7 +17,7 @@ const INVENTORY_APP_KEY = defineAppKey("inventory");
 
 export type ProductWorkspaceStatus = "active" | "inactive" | "draft" | "archived";
 export type ProductWorkspaceType = "stockable" | "raw-material" | "spare-part" | "service" | "asset";
-export type ProductTrackingMode = "none" | "lot" | "serial";
+export type ProductTrackingMode = "none" | "quantity_only" | "lot" | "serial" | "lot_serial";
 export type ProductReservationPolicy = "none" | "soft" | "hard";
 export type ProductSortKey = "sku" | "name" | "category" | "stock" | "available" | "updatedAt";
 export type ProductDensity = "compact" | "comfortable" | "spacious";
@@ -170,19 +170,15 @@ export type ProductWorkspaceView = Readonly<{
 }>;
 
 export const PRODUCT_WORKSPACE_TABS = [
-  "Overview",
-  "Variants",
+  "General",
+  "Classification",
+  "Tracking",
+  "Packaging",
   "Inventory",
-  "Warehouses",
-  "Locations",
-  "Lots",
-  "Serial Numbers",
-  "Reorder Rules",
+  "Warranty",
+  "Channels",
   "Attachments",
-  "Timeline",
   "Audit",
-  "Comments",
-  "Relations",
 ] as const;
 
 export const PRODUCT_WORKSPACE_COLUMNS = [
@@ -193,9 +189,9 @@ export const PRODUCT_WORKSPACE_COLUMNS = [
   "type",
   "uom",
   "tracking",
-  "stock",
-  "reserved",
-  "available",
+  "packaging",
+  "inventoryPolicy",
+  "warranty",
   "status",
   "updatedAt",
   "actions",

@@ -1,6 +1,6 @@
 -- Stabilization gate for the three current apps.
 -- Inventory app/runtime references now align to inventory_* canonical tables.
--- Finance and Manufacturing canonical decisions are documented in docs/CURRENT_APP_FOUNDATION_DECISIONS.md.
+-- Finance and Manufacturing canonical decisions are documented in docs/05-decisions/ADR-012-App-Foundation-Decisions.md.
 
 alter table public.inventory_transactions
   drop constraint if exists inventory_transactions_source_warehouse_id_fkey,
@@ -125,7 +125,7 @@ create policy inventory_cycle_count_lines_update_member_permission on public.inv
   using (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and public.has_permission('inventory.cycle-count.manage', tenant_id))
   with check (is_active = true and deleted_at is null and public.is_tenant_member(tenant_id) and exists (select 1 from public.tenants t where t.id = tenant_id and t.is_active = true and t.deleted_at is null) and public.has_permission('inventory.cycle-count.manage', tenant_id));
 
-insert into public.permission_definitions (permission_key, name, description, risk_level)
+insert into public.permissions (permission_key, label, description, risk_level)
 values
   ('inventory.cycle-count.view', 'View Cycle Counts', 'View inventory cycle count records.', 'standard'),
   ('inventory.cycle-count.manage', 'Manage Cycle Counts', 'Create and update draft cycle counts.', 'standard'),

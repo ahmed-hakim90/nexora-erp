@@ -1,0 +1,66 @@
+---
+description: Enterprise inline editing standard for profile and detail workspaces
+alwaysApply: true
+---
+
+# Enterprise Inline Editing Pattern
+
+Adopt contextual inline editing across Nexora profile, detail, and master-record workspaces.
+
+Canonical references:
+- `docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md` (sections 7–8)
+- `docs/06-guidelines/INLINE_EDITING_STANDARD.md`
+
+## Core Principle
+
+Everything looks editable. Not everything is directly editable.
+
+- Fields owned by the current entity: inline save via `EditableField`.
+- Fields owned by another engine: open the correct workflow via `onWorkflowOpen` — never direct DB updates.
+
+## Required Platform Components
+
+Use shared components from `@/shared/ui`:
+
+- `EditableField` — single-field inline editing
+- `EditableSectionCard` — sectioned profile/detail cards
+- `useEditableField` — save/validation state
+- `EntityLookup` — all relations (never expose raw IDs)
+- `DatePicker` / `DatePickerField` — all dates (never `<input type="date">`)
+- `platform.feedback` — success/error toasts (never Sonner directly)
+
+## Profile And Detail Pages
+
+- Every profile is a workspace with independently editable sections.
+- Use `EditableSectionCard` with header actions: Edit, History, Audit, Collapse.
+- Replace monolithic edit pages with tabbed/sectioned inline editing.
+- List pages still use `RecordFormDialog` modal pattern for create/edit.
+
+## Permissions
+
+- Lack of permission → visible read-only field with lock icon and tooltip.
+- Hide fields only when security policy requires it.
+- Enforce permissions server-side and via RLS — not UI-only.
+
+## Saving
+
+- Validate client + server + business rules.
+- Record audit: who, when, old value, new value, reason.
+- Optimistic update where safe.
+- Refresh only the affected section — never full page reload.
+
+## Auto Save
+
+Allowed only for notes, descriptions, and comments. Never for financial, assignment, contract, payroll, or inventory values.
+
+## Prohibited
+
+- Standalone full-page edit routes for simple master/profile data
+- Module-local inline edit primitives
+- Raw UUID fields for relations
+- Native date inputs
+- Direct cross-engine field mutation from inline editors
+
+## New Screens
+
+Every new screen across Platform, HR, Finance, SCM, Manufacturing, CRM, Commerce, Fleet, Projects, Service, and POS must follow this pattern unless a wizard or document lifecycle explicitly requires otherwise.

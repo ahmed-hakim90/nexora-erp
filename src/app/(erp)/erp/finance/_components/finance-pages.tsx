@@ -236,6 +236,7 @@ export async function FinanceDetailPage({
       fields={descriptor.fields}
       record={record}
       relationLinks={relationLinks}
+      relations={descriptor.relations}
       relationOptions={relationOptions}
       singular={descriptor.singular}
       statusField={descriptor.statusField}

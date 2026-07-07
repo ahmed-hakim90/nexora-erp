@@ -1,0 +1,74 @@
+---
+description: Enforce Platform UX Constitution, Review Gate, and Component Policy on all UI work
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Platform UX Review Gate — Cursor Enforcement
+
+Before generating or modifying **any UI** (pages, components, forms, tables, modals, dashboards, profiles), validate against Nexora platform UX governance.
+
+## Mandatory References (read when touching UI)
+
+1. [Nexora Platform UX Constitution](../../docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md) — supreme UX authority
+2. [Platform UX Review Gate](../../docs/06-guidelines/PLATFORM_UX_REVIEW_GATE.md) — pre-merge checklist
+3. [Platform Component Policy](../../docs/06-guidelines/PLATFORM_COMPONENT_POLICY.md) — frozen reusable components
+4. [Inline Editing Standard](../../docs/06-guidelines/INLINE_EDITING_STANDARD.md)
+5. [Edit Mode v2 Standard](../../docs/06-guidelines/EDIT_MODE_V2_STANDARD.md)
+6. [ADR-021 Platform UX Constitution](../../docs/03-architecture/adr/ADR-021_PLATFORM_UX_CONSTITUTION.md)
+
+Also apply: [ERP Page Modal Pattern](erp-page-modal-patterns.mdc) · [No Native Date Inputs](no-native-date-inputs.mdc)
+
+## Pre-Implementation Checklist (UI work)
+
+When creating or changing screens, confirm:
+
+- [ ] **Navigation** — route in app navigation; correct permission; shell wrapper (`PageContainer`, `HrShell`, etc.)
+- [ ] **Page type** — list-first for operational CRUD; modal create/edit (`?create=1`, `?edit=id`)
+- [ ] **Components** — `EnterpriseDataTable`, `EntityLookup`, `DatePicker`, `RecordFormDialog`, `EditableField` from `@/shared/ui`
+- [ ] **No native date** — never `<input type="date" />`
+- [ ] **No raw UUIDs** — `EntityLookup` for all relations
+- [ ] **Styled selects** — `Select` or `nativeSelectClassName` in dark mode
+- [ ] **Permissions** — `requirePermission` in loaders/actions; lock icon when read-only
+- [ ] **Cross-engine** — `ownership="cross-engine"` + workflow opener; no silent cross-domain mutation
+- [ ] **States** — loading, empty, error, skeleton where appropriate
+- [ ] **Tokens** — `hsl(var(--surface))`, `--border`, `--foreground`; visible buttons in dark mode
+- [ ] **Audit / notifications** — on business-critical mutations per module pattern
+
+## Forbidden Without Exception (ADR-021)
+
+- Module-local table, form, date, or lookup implementations
+- Full-page `/new` or `/edit` routes for simple master data (use list + modal)
+- Read-only-only profile pages without inline edit path
+- Direct Sonner/toast imports in apps (use `platform.feedback`)
+- Redesigning unrelated pages when task is scoped elsewhere
+
+## When Shipping UI
+
+1. Self-score against [Design Review Process](../../docs/06-guidelines/DESIGN_REVIEW_PROCESS.md) (target ≥ 85/100).
+2. Note [UX Migration Tracker](../../docs/06-guidelines/UX_MIGRATION_TRACKER.md) row if module % changes.
+3. Document Review Gate exceptions in PR — no silent bypass.
+
+## Architecture Boundaries (unchanged by UX)
+
+UX governance does **not** permit:
+
+- Changing business logic or runtime ownership to "fix" UI
+- Bypassing attendance, leave, payroll, or inventory engines
+- Payroll calculation or localization changes under UX tasks
+
+## Quick Component Map
+
+| Need | Use |
+| --- | --- |
+| List | `EnterpriseDataTable` |
+| Relation field | `EntityLookup` |
+| Date | `DatePicker` / `DatePickerField` |
+| Create/edit modal | `RecordFormDialog` |
+| Profile field | `EditableField` / `EditableSectionCard` |
+| Dashboard metric | `KpiCard` / `DashboardTemplate` |
+| Filters | `FilterBar`, `SearchBar` |
+| Approval UI | `ApprovalCard` |
+
+If a needed primitive is missing, propose platform extension — do not fork in `src/features/`.

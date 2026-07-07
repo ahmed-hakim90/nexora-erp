@@ -6,7 +6,7 @@ import {
   type InventoryProductRecord,
   type InventoryProductWorkspaceData,
 } from "@/features/inventory/routes/loaders/inventory-products.loader";
-import { EnterpriseDataTable, PageActions, PageContainer, PageContent, PageFilters, PageHeader } from "@/shared/ui";
+import { Button, EnterpriseDataTable, PageActions, PageContainer, PageContent, PageFilters, PageHeader } from "@/shared/ui";
 
 import { InventoryShell } from "../_components/inventory-shell";
 import { ProductRecordModalLauncher } from "./product-record-panel";
@@ -14,7 +14,15 @@ import { ProductRecordModalLauncher } from "./product-record-panel";
 const statusOptions = ["draft", "active", "inactive", "locked", "archived"] as const;
 const onlineStatusOptions = ["draft", "ready", "published", "hidden", "archived"] as const;
 const kindOptions = ["stockable", "consumable", "service", "asset", "rental", "kit"] as const;
-const trackingOptions = ["none", "lot", "serial"] as const;
+const trackingOptions = ["none", "quantity_only", "lot", "serial", "lot_serial"] as const;
+const densityOptions = ["Comfortable", "Compact", "Spacious"] as const;
+const sortOptions = [
+  { label: "Last updated", value: "updated" },
+  { label: "Product name", value: "name" },
+  { label: "SKU", value: "sku" },
+  { label: "Status", value: "status" },
+] as const;
+
 function buildHref(params: Record<string, string | undefined>, overrides: Record<string, string | null | undefined>) {
   const next = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -26,6 +34,36 @@ function buildHref(params: Record<string, string | undefined>, overrides: Record
   }
   const query = next.toString();
   return query ? `/erp/inventory/products?${query}` : "/erp/inventory/products";
+}
+
+function formatNumber(value: number | null | undefined) {
+  return new Intl.NumberFormat("en", { maximumFractionDigits: 2 }).format(value ?? 0);
+}
+
+function formatLabel(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+function productInitials(product: Pick<InventoryProductRecord, "name" | "sku">) {
+  const fromName = product.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("");
+  return (fromName || product.sku.slice(0, 2)).toUpperCase();
+}
+
+function buildProductKpis(records: readonly InventoryProductRecord[]) {
+  const active = records.filter((record) => record.status === "active").length;
+  const inactive = records.filter((record) => record.status === "inactive" || record.status === "archived").length;
+  const tracked = records.filter((record) => record.trackingMode !== "none" || record.hasLotTracking || record.hasSerialTracking).length;
+  const packaged = records.filter((record) => record.packagingInnerBoxQty || record.packagingCartonQty || record.packagingPalletCartonQty).length;
+  const warrantyReady = records.filter((record) => record.warrantyEligible).length;
+
+  return [
+    { label: "Total Products", value: records.length, detail: `${records.length} loaded in this view` },
+    { label: "Active Products", value: active, detail: "Available for operations" },
+    { label: "Tracked Products", value: tracked, detail: "Quantity, lot, serial, or lot + serial policy" },
+    { label: "Packaged Products", value: packaged, detail: "Inner box, carton, or pallet policy" },
+    { label: "Warranty Ready", value: warrantyReady, detail: "Metadata prepared for future warranty" },
+    { label: "Inactive Products", value: inactive, detail: "Inactive or archived" },
+  ] as const;
 }
 
 export default async function InventoryProductsPage({
@@ -61,28 +99,44 @@ export default async function InventoryProductsPage({
   const previousProduct = selectedIndex > 0 ? data.records[selectedIndex - 1] : undefined;
   const nextProduct = selectedIndex >= 0 ? data.records[selectedIndex + 1] : undefined;
   const closeHref = buildHref(params, { create: null, edit: null });
+  const kpis = buildProductKpis(data.records);
 
   return (
     <InventoryShell activeKey="products">
-      <PageContainer className="max-w-[96rem]">
+      <PageContainer className="max-w-[100rem]">
         <PageHeader
-          description="Define internal, inventory, pricing-readiness, online, media, and audit data for canonical inventory products."
+          description={`${data.records.length} products loaded. Manage product master definitions, tracking policy, packaging policy, inventory behavior contracts, warranty metadata, and search readiness.`}
           title="Product Master"
         >
           <PageActions>
-            <Link className="rounded-md border px-3 py-2 text-sm" href={buildHref(params, { create: "1", edit: null })}>
+            <Link
+              className="inline-flex h-10 items-center justify-center rounded-md border border-[hsl(var(--accent))] bg-[hsl(var(--accent))] px-4 text-sm font-medium text-[hsl(var(--accent-foreground))] shadow-sm transition-colors"
+              href={buildHref(params, { create: "1", edit: null })}
+            >
               New Product
             </Link>
+            <button className="rounded-md border px-3 py-2 text-sm" type="button">Import</button>
+            <button className="rounded-md border px-3 py-2 text-sm" type="button">Export</button>
           </PageActions>
         </PageHeader>
 
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          {kpis.map((kpi) => (
+            <article className="rounded-md border bg-[hsl(var(--surface))] p-4" key={kpi.label}>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{kpi.label}</p>
+              <p className="mt-3 text-2xl font-semibold text-foreground">{formatNumber(kpi.value)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{kpi.detail}</p>
+            </article>
+          ))}
+        </section>
+
         <PageFilters>
-          <form className="grid gap-3 md:grid-cols-4 xl:grid-cols-6" action="/erp/inventory/products">
+          <form className="grid gap-3 lg:grid-cols-[minmax(16rem,2fr)_repeat(5,minmax(9rem,1fr))] xl:grid-cols-[minmax(18rem,2fr)_repeat(7,minmax(9rem,1fr))]" action="/erp/inventory/products">
             <input
               className="rounded-md border bg-background px-3 py-2 text-sm"
               defaultValue={params.search ?? ""}
               name="search"
-              placeholder="Search SKU, barcode, name, online title, category"
+              placeholder="Search SKU, barcode, internal name, commercial name, keywords"
             />
             <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.categoryId ?? ""} name="categoryId">
               <option value="">All categories</option>
@@ -93,66 +147,100 @@ export default async function InventoryProductsPage({
             <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.productKind ?? ""} name="productKind">
               <option value="">All product types</option>
               {kindOptions.map((kind) => (
-                <option key={kind} value={kind}>{kind}</option>
+                <option key={kind} value={kind}>{formatLabel(kind)}</option>
               ))}
             </select>
             <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.status ?? ""} name="status">
               <option value="">All statuses</option>
               {statusOptions.map((status) => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-            <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.onlineStatus ?? ""} name="onlineStatus">
-              <option value="">All online statuses</option>
-              {onlineStatusOptions.map((status) => (
-                <option key={status} value={status}>{status}</option>
+                <option key={status} value={status}>{formatLabel(status)}</option>
               ))}
             </select>
             <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.trackingMode ?? ""} name="trackingMode">
               <option value="">All tracking modes</option>
               {trackingOptions.map((mode) => (
-                <option key={mode} value={mode}>{mode}</option>
+                <option key={mode} value={mode}>{formatLabel(mode)}</option>
+              ))}
+            </select>
+            <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.warehouseId ?? ""} name="warehouseId">
+              <option value="">All warehouses</option>
+              {data.warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>{warehouse.label}</option>
+              ))}
+            </select>
+            <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.onlineStatus ?? ""} name="onlineStatus">
+              <option value="">All online statuses</option>
+              {onlineStatusOptions.map((status) => (
+                <option key={status} value={status}>{formatLabel(status)}</option>
+              ))}
+            </select>
+            <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.sort ?? "updated"} name="sort">
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <select className="rounded-md border bg-background px-3 py-2 text-sm" defaultValue={params.density ?? "Comfortable"} name="density">
+              {densityOptions.map((density) => (
+                <option key={density} value={density}>{density}</option>
               ))}
             </select>
             <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.stockable === "true"} name="stockable" type="checkbox" value="true" /> Stockable</label>
-            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.sellable === "true"} name="sellable" type="checkbox" value="true" /> Sellable</label>
-            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.purchasable === "true"} name="purchasable" type="checkbox" value="true" /> Purchasable</label>
-            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.hasVariants === "true"} name="hasVariants" type="checkbox" value="true" /> Has variants</label>
-            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.hasSerialTracking === "true"} name="hasSerialTracking" type="checkbox" value="true" /> Has serial</label>
-            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.hasLotTracking === "true"} name="hasLotTracking" type="checkbox" value="true" /> Has lot</label>
-            <button className="rounded-md border bg-[hsl(var(--primary))] px-3 py-2 text-sm text-[hsl(var(--primary-foreground))]" type="submit">
+            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.hasVariants === "true"} name="hasVariants" type="checkbox" value="true" /> Variants</label>
+            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.hasLotTracking === "true"} name="hasLotTracking" type="checkbox" value="true" /> Lot</label>
+            <label className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"><input defaultChecked={params.hasSerialTracking === "true"} name="hasSerialTracking" type="checkbox" value="true" /> Serial</label>
+            <Button type="submit" variant="primary">
               Apply Filters
-            </button>
+            </Button>
+            <Link className="rounded-md border px-3 py-2 text-center text-sm" href="/erp/inventory/products">Reset</Link>
           </form>
         </PageFilters>
 
         <PageContent>
           <EnterpriseDataTable<InventoryProductRecord>
             columns={[
-              { key: "image", header: "Image", render: (record) => record.coverImageUrl ? <Image alt={record.name} className="size-10 rounded-md border object-cover" height={40} src={record.coverImageUrl} width={40} /> : <div className="grid size-10 place-items-center rounded-md border bg-[hsl(var(--muted))] text-xs text-muted-foreground">No img</div> },
-              { key: "sku", header: "SKU", render: (record) => record.sku },
-              { key: "barcode", header: "Barcode", render: (record) => record.barcode ?? "—" },
-              { key: "name", header: "Name", render: (record) => record.name },
+              { key: "image", header: "Image", render: (record) => record.coverImageUrl ? <Image alt={record.name} className="size-10 rounded-md border object-cover" height={40} src={record.coverImageUrl} width={40} /> : <div className="grid size-10 place-items-center rounded-md border bg-[hsl(var(--muted))] text-xs font-semibold text-muted-foreground">{productInitials(record)}</div> },
+              { key: "sku", header: "SKU", render: (record) => <span className="font-mono text-xs font-semibold">{record.sku}</span> },
+              { key: "name", header: "Product Name", render: (record) => (
+                <div className="min-w-44">
+                  <Link className="font-medium text-[hsl(var(--accent))] hover:underline" href={buildHref(params, { edit: record.id })}>{record.name}</Link>
+                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{record.description ?? record.onlineTitle ?? "No description"}</p>
+                </div>
+              ) },
               { key: "category", header: "Category", render: (record) => record.categoryLabel ?? "—" },
-              { key: "kind", header: "Type", render: (record) => record.productKind },
+              { key: "kind", header: "Type", render: (record) => formatLabel(record.productKind) },
               { key: "uom", header: "Base UOM", render: (record) => record.baseUomLabel ?? "—" },
-              { key: "stockable", header: "Stockable", render: (record) => record.isStockable ? "Yes" : "No" },
-              { key: "sellable", header: "Sellable", render: (record) => record.isSellable ? "Yes" : "No" },
-              { key: "purchasable", header: "Purchasable", render: (record) => record.isPurchasable ? "Yes" : "No" },
-              { key: "online", header: "Online Visible", render: (record) => record.isOnlineVisible ? "Yes" : "No" },
-              { key: "status", header: "Status", render: (record) => record.status },
+              { key: "tracking", header: "Tracking", render: (record) => formatLabel(record.trackingMode) },
+              { key: "packaging", header: "Packaging", render: (record) => record.packagingPalletCartonQty ? `Pallet (${record.packagingPalletCartonQty} cartons)` : record.packagingCartonQty ? `Carton (${record.packagingCartonQty})` : record.packagingInnerBoxQty ? `Inner Box (${record.packagingInnerBoxQty})` : "Loose Units" },
+              { key: "inventoryPolicy", header: "Inventory Policy", render: (record) => [record.requiresReservation ? "Reservation" : null, record.requiresQcBeforeRelease ? "QC" : null, record.allowNegativeStock ? "Negative stock" : null, record.cycleCountClass ? `Class ${record.cycleCountClass}` : null].filter(Boolean).join(" / ") || "Standard" },
+              { key: "warranty", header: "Warranty", render: (record) => record.warrantyEligible ? `${record.warrantyDurationDays ?? "Configured"} days` : "Not eligible" },
+              { key: "status", header: "Status", render: (record) => <span className="rounded-full border px-2 py-0.5 text-xs capitalize">{formatLabel(record.status)}</span> },
               { key: "updated", header: "Updated", render: (record) => new Date(record.updatedAt).toLocaleDateString() },
             ]}
-            emptyMessage="No inventory products found. Create the first product with a real UOM to activate this workspace."
+            bulkActions={[
+              { key: "archive", label: "Archive selected", isDisabled: true },
+              { key: "export-selected", label: "Export selected", isDisabled: true },
+            ]}
+            columnVisibilityControls={<button className="rounded-md border px-3 py-2 text-sm" type="button">Column Chooser</button>}
+            emptyMessage="No products match this view. Create a product or reset filters to review the full product catalog."
             errorMessage={errorMessage}
+            exportAction={<button className="rounded-md border px-3 py-2 text-sm" type="button">Export</button>}
             getRowId={(record) => record.id}
             pagination={{ mode: "cursor", pageSize: data.pageSize, nextCursor: data.nextCursor }}
+            printAction={<button className="rounded-md border px-3 py-2 text-sm" type="button">Print Label</button>}
             records={data.records}
             rowActions={(record) => [
-              { key: "read", label: "Read", href: buildHref(params, { edit: record.id }) },
-              { key: "edit", label: "Edit", href: buildHref(params, { edit: record.id }) },
+              { key: "open", label: "Open", href: buildHref(params, { edit: record.id }) },
+              { key: "duplicate", label: "Duplicate", isDisabled: true },
+              { key: "policy", label: "Review Policy", href: buildHref(params, { edit: record.id }) },
+            ]}
+            savedViews={[
+              { key: "all", label: "All Products", isActive: !params.status && !params.hasLotTracking && !params.hasSerialTracking },
+              { key: "active", label: "Active", isActive: params.status === "active" },
+              { key: "tracked", label: "Tracked", isActive: params.hasLotTracking === "true" || params.hasSerialTracking === "true" },
+              { key: "variants", label: "Variants", isActive: params.hasVariants === "true" },
             ]}
             state={{
+              activeSavedViewKey: params.view,
               filters: [
                 params.categoryId ? { key: "category", label: "Category", value: data.categories.find((category) => category.id === params.categoryId)?.label ?? "Selected" } : null,
                 params.productKind ? { key: "type", label: "Type", value: params.productKind } : null,
@@ -161,6 +249,7 @@ export default async function InventoryProductsPage({
                 params.trackingMode ? { key: "tracking", label: "Tracking", value: params.trackingMode } : null,
               ].filter((filter): filter is { key: string; label: string; value: string } => filter !== null),
               globalSearch: params.search,
+              sorting: [{ columnKey: params.sort ?? "updated", direction: "desc" }],
             }}
           />
         </PageContent>

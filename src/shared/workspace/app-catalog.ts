@@ -25,6 +25,7 @@ export type WorkspaceCatalogApp = Readonly<{
   estimatedRelease?: string;
   href?: string;
   docsHref?: string;
+  requiredPermission?: string;
   order: number;
 }>;
 
@@ -75,21 +76,6 @@ export const PLANNED_BUSINESS_APPS = [
     kind: "business",
     name: "CRM",
     order: 130,
-    phase: "Phase 3",
-    status: "planned",
-  },
-  {
-    category: "hr",
-    dependencies: ["Employee Directory", "Security Foundation"],
-    description: "Employee records, organization structures, leave readiness, and workforce documents.",
-    docsHref: "/docs/apps/hr",
-    estimatedRelease: "After Enterprise Access Phase",
-    gradient: "from-rose-500/20 via-pink-500/10 to-transparent",
-    icon: "id-card",
-    key: "hr",
-    kind: "business",
-    name: "HR",
-    order: 140,
     phase: "Phase 3",
     status: "planned",
   },
@@ -339,7 +325,7 @@ export const PLATFORM_APPS = [
     description: "Reusable dashboard definitions, KPI widgets, and foundation readiness cards.",
     docsHref: "/docs/platform/dashboard",
     gradient: "from-indigo-500/20 via-blue-500/10 to-transparent",
-    href: "/erp",
+    href: "/erp/dashboard",
     icon: "layout-dashboard",
     key: "platform-dashboard",
     kind: "platform",
@@ -394,6 +380,7 @@ export const PLATFORM_APPS = [
     description: "Notification contracts, preferences, delivery mapping, and in-app notification surfaces.",
     docsHref: "/docs/platform/notifications",
     gradient: "from-amber-500/20 via-yellow-500/10 to-transparent",
+    href: "/erp/notifications",
     icon: "bell",
     key: "platform-notifications",
     kind: "platform",
@@ -406,6 +393,7 @@ export const PLATFORM_APPS = [
     description: "Tenant, company, branch, app, and user workspace settings.",
     docsHref: "/docs/platform/settings",
     gradient: "from-zinc-500/20 via-slate-500/10 to-transparent",
+    href: "/erp/settings",
     icon: "settings",
     key: "platform-settings",
     kind: "platform",
@@ -418,12 +406,14 @@ export const PLATFORM_APPS = [
     description: "Administration hub for tenants, roles, users, entitlements, and app operations.",
     docsHref: "/docs/platform/administration",
     gradient: "from-red-500/20 via-orange-500/10 to-transparent",
+    href: "/erp/admin/users",
     icon: "shield",
     key: "platform-administration",
     kind: "platform",
     name: "Administration",
     order: 80,
-    status: "planned",
+    requiredPermission: "platform.admin.access",
+    status: "ready",
   },
   {
     category: "platform",
@@ -466,6 +456,7 @@ export const PLATFORM_APPS = [
     description: "Feature flag definitions, staged rollout controls, and gated app capabilities.",
     docsHref: "/docs/platform/feature-flags",
     gradient: "from-lime-500/20 via-green-500/10 to-transparent",
+    href: "/erp/feature-flags",
     icon: "flag",
     key: "platform-feature-flags",
     kind: "platform",

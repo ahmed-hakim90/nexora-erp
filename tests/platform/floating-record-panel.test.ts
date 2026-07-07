@@ -200,7 +200,7 @@ test("erp shell header and workspace nav stay compact and icon-first", () => {
   assert.match(appShell, /function UserMenuControl/);
   assert.match(appShell, /className="sticky top-0 z-\[50\]/);
   assert.match(appShell, /className="flex h-14/);
-  assert.match(globals, /--z-dropdown: 55/);
+  assert.match(globals, /--z-dropdown: 65/);
   assert.match(appShell, /label="Open command palette"/);
   assert.match(appShell, /label="Open notifications"/);
   assert.match(appShell, /Open context switcher/);
@@ -211,10 +211,11 @@ test("erp shell header and workspace nav stay compact and icon-first", () => {
   assert.match(launcher, /title=\{triggerLabel\}/);
   assert.doesNotMatch(launcher, /hidden sm:inline">\{triggerLabel\}/);
 
-  assert.match(workspaceNav, /sticky top-14 z-\[45\]/);
-  assert.match(workspaceNav, /fullLabel\?: string/);
-  assert.match(workspaceNav, /Tooltip content=\{item\.fullLabel \?\? item\.label\}/);
-  assert.match(workspaceNav, /Open more workspace pages/);
+  assert.match(read("src/shared/ui/app-shell/enterprise-workspace-navigation.tsx"), /sticky top-14 z-\[45\]/);
+  assert.match(workspaceNav, /EnterpriseWorkspaceNavigation/);
+  assert.match(workspaceNav, /workspaceNavItemsToNavigationItems/);
+  assert.match(read("src/shared/ui/app-shell/enterprise-workspace-navigation.tsx"), /GroupNavigationControl/);
+  assert.match(read("src/shared/ui/app-shell/enterprise-workspace-navigation.tsx"), /Quick Access/);
 
   assert.match(manufacturingShell, /label: "DPR"/);
   assert.match(manufacturingShell, /fullLabel: "Daily Production Report"/);

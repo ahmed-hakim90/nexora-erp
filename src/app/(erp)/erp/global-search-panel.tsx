@@ -5,20 +5,23 @@ import { useEffect, useMemo, useState } from "react";
 import type { CommandDefinition, NavigationContribution } from "@/platform/navigation/public-api";
 import type { PermissionKey } from "@/platform/permissions/public-api";
 import type { SearchResult } from "@/platform/search/public-api";
-import { Input } from "@/shared/ui";
+import { EmptyState, Input } from "@/shared/ui";
 import {
   createWorkspaceSearchRegistry,
   runWorkspaceSearch,
+  type PlatformCapabilityContribution,
   type WorkspaceAppModel,
 } from "@/shared/workspace/public-api";
 
 export function GlobalSearchPanel({
   apps,
+  capabilities = [],
   commands,
   navigation,
   context,
 }: Readonly<{
   apps: readonly WorkspaceAppModel[];
+  capabilities?: readonly PlatformCapabilityContribution[];
   commands: readonly CommandDefinition[];
   navigation: readonly NavigationContribution[];
   context: {
@@ -36,8 +39,8 @@ export function GlobalSearchPanel({
     [commands],
   );
   const registry = useMemo(
-    () => createWorkspaceSearchRegistry({ apps, commands, navigation }),
-    [apps, commands, navigation],
+    () => createWorkspaceSearchRegistry({ apps, capabilities, commands, navigation }),
+    [apps, capabilities, commands, navigation],
   );
 
   useEffect(() => {
@@ -98,12 +101,7 @@ export function GlobalSearchPanel({
       </p>
       {isSearching ? <p className="text-sm text-muted-foreground">Searching...</p> : null}
       {!isSearching && term.trim().length >= 2 && results.length === 0 ? (
-        <div className="rounded-md border border-dashed p-4">
-          <p className="text-sm font-medium">No results found</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Runtime document and record indexes are not connected yet.
-          </p>
-        </div>
+        <EmptyState message="Runtime document and record indexes are not connected yet." />
       ) : null}
       {results.length > 0 ? (
         <div className="max-h-80 space-y-1 overflow-auto">

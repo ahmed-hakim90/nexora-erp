@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ApplicationError } from "@/core/errors";
+import { recordAuthorizationDenial } from "@/platform/audit/server";
 import { createRequestSupabaseClient } from "@/infrastructure/server";
 import type { TenantRequestContext } from "@/platform/auth/server";
 import {
@@ -21,6 +22,8 @@ export type ServerPermissionCheck = Readonly<{
   requestedDataScope?: DataScope;
   resource?: ProtectedResource;
   resolverSource?: PermissionResolverSource;
+  denialSource?: string;
+  denialResource?: string;
 }>;
 
 async function hasLegacyServerPermission(params: {
@@ -80,6 +83,20 @@ export async function requirePermission(params: ServerPermissionCheck): Promise<
   const allowed = await hasServerPermission(params);
 
   if (!allowed) {
+    await recordAuthorizationDenial({
+      context: params.context,
+      metadata: params.resource
+        ? {
+            resourceId: params.resource.key ?? null,
+            resourceType: params.resource.ownerKey,
+          }
+        : undefined,
+      permission: params.permission,
+      reason: "missing-permission",
+      requestedResource: params.denialResource ?? params.resource?.ownerKey ?? params.denialSource,
+      source: params.denialSource ?? "platform.permissions",
+    });
+
     throw new ApplicationError({
       code: "AUTHORIZATION_ERROR",
       message: "Required permission is missing.",

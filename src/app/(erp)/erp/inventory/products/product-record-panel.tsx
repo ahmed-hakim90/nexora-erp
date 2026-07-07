@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, FilePlus2, MoreHorizontal } from "lucide-rea
 
 import {
   AuditActivityTimeline,
+  Button,
+  DatePicker,
   DropdownMenu,
   EntityLookup,
   FieldErrorText,
@@ -28,23 +30,34 @@ import {
   type RecordAuditMetadata,
   type RecordSaveStatus,
   usePlatformFormValidation,
+  OperatorContextBar,
+  OperatorErrorMessage,
+  OperatorProgressiveSection,
+  ScannerInputFrame,
+  SmartDefaultsSummary,
 } from "@/shared/ui";
 import { displayBusinessCode } from "@/shared/business-codes";
 import { platform } from "@/platform/client";
+import { createOxOperatorError, createOxRuntimeContext, resolveOxSmartDefaults } from "@/platform/operator-experience/public-api";
 import { archiveInventoryProductAction, createInventoryProductAction, updateInventoryProductAction } from "@/features/inventory/routes/actions/inventory-products.actions";
 import type { InventoryProductRecord, InventoryProductWorkspaceData } from "@/features/inventory/routes/loaders/inventory-products.loader";
 
 const statusOptions = ["draft", "active", "inactive", "locked", "archived"] as const;
 const kindOptions = ["stockable", "consumable", "service", "asset", "rental", "kit"] as const;
-const trackingOptions = ["none", "lot", "serial"] as const;
+const trackingOptions = ["none", "quantity_only", "lot", "serial", "lot_serial"] as const;
 const reservationOptions = ["none", "soft", "hard"] as const;
 const onlineStatusOptions = ["draft", "ready", "published", "hidden", "archived"] as const;
+const serialSourceOptions = ["nexora_generated", "supplier", "manual"] as const;
+const serialTimingOptions = ["on_receipt", "on_production_completion", "on_packing", "manual"] as const;
+const warrantyStartsFromOptions = ["invoice_date", "delivery_date", "manual_activation"] as const;
+const cycleCountClassOptions = ["A", "B", "C"] as const;
 const productCodeConfig = { prefix: "PROD", scope: "company" } as const;
 
 const productFieldRules: readonly PlatformFormFieldRule[] = [
   { label: "Product Code", name: "productKey", serverAliases: ["product_key"] },
   { label: "SKU", name: "sku", required: true },
-  { label: "Product Name", name: "name", required: true },
+  { label: "Internal Name", name: "name", required: true },
+  { label: "Commercial Name", name: "commercialName", serverAliases: ["commercial_name"] },
   { label: "Product Type", name: "productKind", required: true, serverAliases: ["product_kind"] },
   { label: "Category", name: "categoryId", required: true, serverAliases: ["category_id", "product_category_id"] },
   { label: "Base UOM", name: "baseUomId", required: true, serverAliases: ["base_uom_id"] },
@@ -52,6 +65,10 @@ const productFieldRules: readonly PlatformFormFieldRule[] = [
   { label: "Reservation", name: "reservationPolicy", required: true, serverAliases: ["reservation_policy"] },
   { label: "Status", name: "status", required: true },
   { label: "Barcode", name: "barcode", serverAliases: ["barcode"] },
+  { label: "Inner Box Quantity", name: "packagingInnerBoxQty", validate: positiveIntegerField },
+  { label: "Carton Quantity", name: "packagingCartonQty", validate: positiveIntegerField },
+  { label: "Pallet Cartons", name: "packagingPalletCartonQty", validate: positiveIntegerField },
+  { label: "Warranty Duration", name: "warrantyDurationDays", validate: positiveIntegerField },
   { label: "Online Slug", name: "onlineSlug", serverAliases: ["online_slug"], validate: (value, formData) => formData.get("onlineEnabled") === "on" && value.trim().length === 0 ? "Enter a slug before enabling online visibility." : null },
   { label: "Purchase Price", name: "purchasePrice", validate: nonNegativeField },
   { label: "Retail Price", name: "retailPrice", validate: nonNegativeField },
@@ -77,6 +94,12 @@ const productFieldRules: readonly PlatformFormFieldRule[] = [
 function nonNegativeField(value: string) {
   if (!value.trim()) return null;
   return Number(value) < 0 ? "Use zero or a positive number." : null;
+}
+
+function positiveIntegerField(value: string) {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? null : "Use a positive whole number.";
 }
 
 type SaveIntent = "Save" | "SaveNew" | "SaveClose";
@@ -118,7 +141,7 @@ export function ProductRecordModalLauncher({ autoOpen, closeHref, label, data, p
       previousHref={previousHref}
       product={product}
       title={title}
-      trigger={autoOpen ? undefined : <button className="rounded-md border bg-[hsl(var(--primary))] px-3 py-2 text-sm text-[hsl(var(--primary-foreground))] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]" type="button">{label ?? title}</button>}
+      trigger={autoOpen ? undefined : <Button type="button" variant="primary">{label ?? title}</Button>}
     />
   );
 }
@@ -128,7 +151,7 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [saveStatus, setSaveStatus] = useState<RecordSaveStatus>("idle");
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState("overview");
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedProduct, setSavedProduct] = useState<InventoryProductRecord | undefined>(product);
@@ -249,6 +272,36 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
     </>
   );
   const statusBadge = <StatusBadge status={savedProduct?.status ?? product?.status ?? "draft"} />;
+  const oxContext = createOxRuntimeContext({
+    experience: "erp",
+    locationName: lookupOptionLabel(data.locations, product?.defaultLocationId),
+    roleKey: "warehouse-keeper",
+    tenantId: "current-tenant",
+    warehouseName: lookupOptionLabel(data.warehouses, product?.defaultWarehouseId),
+  });
+  const smartDefaults = resolveOxSmartDefaults(
+    [
+      {
+        confidence: "medium",
+        contextKey: "warehouseName",
+        fieldName: "defaultWarehouseId",
+        key: "product.default-warehouse",
+        label: "Default warehouse",
+        requiresConfirmation: true,
+        source: "context",
+      },
+      {
+        confidence: "medium",
+        contextKey: "locationName",
+        fieldName: "defaultLocationId",
+        key: "product.default-location",
+        label: "Default location",
+        requiresConfirmation: true,
+        source: "context",
+      },
+    ],
+    oxContext,
+  );
 
   return (
     <RecordFormDialog
@@ -265,34 +318,179 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
       trigger={trigger}
     >
       <div className="space-y-[var(--floating-panel-section-gap)]">
+        <OperatorContextBar context={oxContext} />
+        <SmartDefaultsSummary defaults={smartDefaults} />
         <RecordFormSection>
           <form className="space-y-4" onBlur={validation.validateOnBlur} onInput={(event) => { setSaveStatus("dirty"); setIsDirty(true); persistLocalDraft(); validation.validateOnInput(event); }} ref={formRef}>
+            <LegacyProductHiddenFields product={product} />
             <Tabs
               activeKey={activeTab}
               onValueChange={setActiveTab}
               tabs={[
                 {
-                  key: "general",
+                  key: "overview",
                   label: "General",
                   content: (
                     <div className="space-y-4">
                       <HelpBlock />
+                      <OperatorProgressiveSection category="essential" description="Scan a product barcode first when available, then confirm core product identity." title="Essential Product Setup">
+                        <ScannerInputFrame label="Product barcode" placeholder="Scan product barcode or type SKU" />
+                      </OperatorProgressiveSection>
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <ReadOnlyCodeField defaultValue={product?.productKey} label="Product Code" name="productKey" />
-                        <Field defaultValue={product?.name} error={validation.errors.name} isRequired label="Product Name" name="name" />
+                        <Field defaultValue={product?.name} error={validation.errors.name} isRequired label="Internal Name" name="name" />
+                        <Field defaultValue={product?.commercialName} error={validation.errors.commercialName} label="Commercial Name" name="commercialName" />
                         <Field defaultValue={product?.nameAr} error={validation.errors.nameAr} label="Arabic Name" name="nameAr" />
                         <Field defaultValue={product?.sku} error={validation.errors.sku} isRequired label="SKU" name="sku" />
-                        <Field defaultValue={product?.barcode} error={validation.errors.barcode} label="Barcode" name="barcode" />
-                        <SelectField defaultValue={product?.productKind ?? "stockable"} error={validation.errors.productKind} isRequired label="Product Type" name="productKind" options={kindOptions} />
-                        <SelectField defaultValue={product?.categoryId ?? product?.productCategoryId} error={validation.errors.categoryId} isRequired label="Category" name="categoryId" options={data.categories} />
-                        <SelectField defaultValue={product?.subcategoryId} error={validation.errors.subcategoryId} label="Subcategory" name="subcategoryId" options={data.subcategories} />
-                        <Field defaultValue={product?.brand} error={validation.errors.brand} label="Brand" name="brand" />
-                        <SelectField defaultValue={product?.supplierPartyId} error={validation.errors.supplierPartyId} label="Supplier" name="supplierPartyId" options={data.suppliers} />
-                        <SelectField defaultValue={product?.status ?? "active"} error={validation.errors.status} isRequired label="Status" name="status" options={statusOptions} />
+                        <Field defaultValue={product?.barcode} error={validation.errors.barcode} label="Default Barcode" name="barcode" />
+                        <Field defaultValue={product?.coverImageUrl} error={validation.errors.coverImageUrl} label="Default Image" name="coverImageUrl" />
+                        <SelectField defaultValue={product?.status ?? "active"} error={validation.errors.status} isRequired label="Active Status" name="status" options={statusOptions} />
                         <Field defaultValue={product?.shortName} error={validation.errors.shortName} label="Short Name" name="shortName" />
                       </div>
                       <TextareaField defaultValue={product?.description} error={validation.errors.description} label="Internal Description" name="description" />
                       <TextareaField defaultValue={product?.internalNotes} error={validation.errors.internalNotes} label="Internal Notes" name="internalNotes" />
+                    </div>
+                  ),
+                },
+                {
+                  key: "variants",
+                  label: "Classification",
+                  content: (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <SelectField defaultValue={product?.productKind ?? "stockable"} error={validation.errors.productKind} isRequired label="Product Type" name="productKind" options={kindOptions} />
+                        <SelectField defaultValue={product?.categoryId ?? product?.productCategoryId} error={validation.errors.categoryId} isRequired label="Category" name="categoryId" options={data.categories} />
+                        <SelectField defaultValue={product?.subcategoryId} error={validation.errors.subcategoryId} label="Subcategory" name="subcategoryId" options={data.subcategories} />
+                        <Field defaultValue={product?.brand} error={validation.errors.brand} label="Brand" name="brand" />
+                      <SelectField defaultValue={product?.baseUomId} error={validation.errors.baseUomId} isRequired label="UOM" name="baseUomId" options={data.uoms} />
+                      <CheckboxField defaultChecked={product?.hasVariants ?? false} label="Variant-ready" name="hasVariants" />
+                    </div>
+                  ),
+                },
+                {
+                  key: "inventory",
+                  label: "Tracking",
+                  content: (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <SelectField defaultValue={product?.trackingMode ?? "none"} error={validation.errors.trackingMode} isRequired label="Tracking Policy" name="trackingMode" options={trackingOptions} />
+                        <SelectField defaultValue={product?.serialSource} error={validation.errors.serialSource} label="Serial Source" name="serialSource" options={serialSourceOptions} />
+                        <SelectField defaultValue={product?.serialGenerationTiming} error={validation.errors.serialGenerationTiming} label="Serial Generation Timing" name="serialGenerationTiming" options={serialTimingOptions} />
+                        <CheckboxField defaultChecked={product?.serialDuplicateValidation ?? true} label="Duplicate Validation" name="serialDuplicateValidation" />
+                        <CheckboxField defaultChecked={product?.serialAllowManualOverride ?? false} label="Allow Manual Override" name="serialAllowManualOverride" />
+                        <CheckboxField defaultChecked={product?.lotSupplierSupported ?? false} label="Supplier Lot" name="lotSupplierSupported" />
+                        <CheckboxField defaultChecked={product?.lotInternalSupported ?? false} label="Internal Lot" name="lotInternalSupported" />
+                        <CheckboxField defaultChecked={product?.lotExpirySupported ?? false} label="Expiry Supported" name="lotExpirySupported" />
+                        <CheckboxField defaultChecked={product?.lotManufacturingDateSupported ?? false} label="Manufacturing Date Supported" name="lotManufacturingDateSupported" />
+                        <CheckboxField defaultChecked={product?.lotQcRequired ?? false} label="QC Required" name="lotQcRequired" />
+                        <CheckboxField defaultChecked={product?.lotShelfLifeSupported ?? false} label="Shelf Life Supported" name="lotShelfLifeSupported" />
+                      </div>
+                      <ReadOnlyWorkspacePanel description="Tracking policy is metadata only in this sprint. No serial generation, lot generation, ledger entry, stock movement, or warehouse operation runs from these fields." rows={[["Active policy", product?.trackingMode ?? "none"], ["Runtime behavior", "Prepared for future modules"], ["Single source", "Product Master"]]} />
+                    </div>
+                  ),
+                },
+                {
+                  key: "warehouses",
+                  label: "Packaging",
+                  content: (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <CheckboxField defaultChecked={product?.packagingLooseUnits ?? true} label="Loose Units" name="packagingLooseUnits" />
+                      <Field defaultValue={formatNumber(product?.packagingInnerBoxQty)} error={validation.errors.packagingInnerBoxQty} label="Inner Box Qty" name="packagingInnerBoxQty" type="number" />
+                      <Field defaultValue={formatNumber(product?.packagingCartonQty)} error={validation.errors.packagingCartonQty} label="Carton Qty" name="packagingCartonQty" type="number" />
+                      <Field defaultValue={formatNumber(product?.packagingPalletCartonQty)} error={validation.errors.packagingPalletCartonQty} label="Pallet Cartons" name="packagingPalletCartonQty" type="number" />
+                      <Field defaultValue={formatNumber(product?.weight)} error={validation.errors.weight} label="Weight" name="weight" type="number" />
+                      <Field defaultValue={formatNumber(product?.length)} error={validation.errors.length} label="Length" name="length" type="number" />
+                      <Field defaultValue={formatNumber(product?.width)} error={validation.errors.width} label="Width" name="width" type="number" />
+                      <Field defaultValue={formatNumber(product?.height)} error={validation.errors.height} label="Height" name="height" type="number" />
+                      <Field defaultValue={formatNumber(product?.volume)} error={validation.errors.volume} label="Volume" name="volume" type="number" />
+                      <Field defaultValue={product?.shippingClass} error={validation.errors.shippingClass} label="Shipping Class" name="shippingClass" />
+                    </div>
+                  ),
+                },
+                {
+                  key: "inventory-policy",
+                  label: "Inventory",
+                  content: (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <SelectField defaultValue={product?.defaultWarehouseId} error={validation.errors.defaultWarehouseId} label="Default Warehouse" name="defaultWarehouseId" options={data.warehouses} />
+                        <Field defaultValue={product?.defaultPutawayStrategy} error={validation.errors.defaultPutawayStrategy} label="Default Putaway Strategy" name="defaultPutawayStrategy" />
+                        <Field defaultValue={product?.defaultPickingStrategy} error={validation.errors.defaultPickingStrategy} label="Default Picking Strategy" name="defaultPickingStrategy" />
+                        <SelectField defaultValue={product?.cycleCountClass} error={validation.errors.cycleCountClass} label="Cycle Count Class" name="cycleCountClass" options={cycleCountClassOptions} />
+                        <SelectField defaultValue={product?.reservationPolicy ?? "soft"} error={validation.errors.reservationPolicy} isRequired label="Reservation Policy" name="reservationPolicy" options={reservationOptions} />
+                        <CheckboxField defaultChecked={product?.allowNegativeStock ?? false} label="Allow Negative Stock" name="allowNegativeStock" />
+                        <CheckboxField defaultChecked={product?.requiresReservation ?? false} label="Requires Reservation" name="requiresReservation" />
+                        <CheckboxField defaultChecked={product?.requiresQcBeforeRelease ?? false} label="Requires QC Before Release" name="requiresQcBeforeRelease" />
+                        <CheckboxField defaultChecked={product?.isStockable ?? true} label="Stockable" name="isStockable" />
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <ReadOnlyMetric label="Inventory Quantities" value="Not stored here" />
+                        <ReadOnlyMetric label="Ledger" value="Not implemented" />
+                        <ReadOnlyMetric label="Warehouse Execution" value="Contracts only" />
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: "locations",
+                  label: "Warranty",
+                  content: (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <CheckboxField defaultChecked={product?.warrantyEligible ?? false} label="Warranty Eligible" name="warrantyEligible" />
+                        <Field defaultValue={formatNumber(product?.warrantyDurationDays)} error={validation.errors.warrantyDurationDays} label="Warranty Duration Days" name="warrantyDurationDays" type="number" />
+                        <SelectField defaultValue={product?.warrantyStartsFrom} error={validation.errors.warrantyStartsFrom} label="Warranty Starts From" name="warrantyStartsFrom" options={warrantyStartsFromOptions} />
+                      </div>
+                      <ReadOnlyWorkspacePanel description="Warranty fields are readiness metadata only. No warranty claims, entitlement engine, service process, or activation runtime is implemented." rows={[["Engine", "Not implemented"], ["Activation", "Future-ready metadata"], ["Runtime behavior", "None in this sprint"]]} />
+                    </div>
+                  ),
+                },
+                {
+                  key: "lots",
+                  label: "Lots",
+                  content: (
+                    <ReadOnlyWorkspacePanel
+                      description="Lot records are shown only for lot-tracked products and stay read-only in product master."
+                      rows={[
+                        ["Lot tracking", product?.hasLotTracking || product?.trackingMode === "lot" ? "Enabled" : "Not enabled"],
+                        ["Tracked lots", "Ready for lot balance records"],
+                        ["Ownership", "Inventory tracking tables"],
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  key: "serials",
+                  label: "Serial Numbers",
+                  content: (
+                    <ReadOnlyWorkspacePanel
+                      description="Serial numbers are read-only operational records, not inline product fields."
+                      rows={[
+                        ["Serial tracking", product?.hasSerialTracking || product?.trackingMode === "serial" ? "Enabled" : "Not enabled"],
+                        ["Serial records", "Ready for serial tracking records"],
+                        ["Ownership", "Inventory tracking tables"],
+                      ]}
+                    />
+                  ),
+                },
+                {
+                  key: "reorder",
+                  label: "Reorder Rules",
+                  content: (
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <SelectField defaultValue={product?.defaultWarehouseId} error={validation.errors.defaultWarehouseId} label="Default Warehouse" name="defaultWarehouseId" options={data.warehouses} />
+                      <SelectField defaultValue={product?.defaultLocationId} error={validation.errors.defaultLocationId} label="Default Location" name="defaultLocationId" options={data.locations} />
+                      <Field defaultValue={formatNumber(product?.openingBalanceQty ?? 0)} error={validation.errors.openingBalanceQty} label="Opening Balance" name="openingBalanceQty" type="number" />
+                      <Field defaultValue={formatNumber(product?.minimumStockQty ?? 0)} error={validation.errors.minimumStockQty} label="Minimum Stock" name="minimumStockQty" type="number" />
+                      <Field defaultValue={formatNumber(product?.maximumStockQty)} error={validation.errors.maximumStockQty} label="Maximum Stock" name="maximumStockQty" type="number" />
+                      <Field defaultValue={formatNumber(product?.reorderPointQty)} error={validation.errors.reorderPointQty} label="Reorder Point" name="reorderPointQty" type="number" />
+                      <SelectField defaultValue={product?.trackingMode ?? "none"} error={validation.errors.trackingMode} isRequired label="Tracking Mode" name="trackingMode" options={trackingOptions} />
+                      <SelectField defaultValue={product?.reservationPolicy ?? "soft"} error={validation.errors.reservationPolicy} isRequired label="Reservation Policy" name="reservationPolicy" options={reservationOptions} />
+                      <CheckboxField defaultChecked={product?.isStockable ?? true} label="Stockable" name="isStockable" />
+                      <CheckboxField defaultChecked={product?.isSellable ?? true} label="Sellable" name="isSellable" />
+                      <CheckboxField defaultChecked={product?.isPurchasable ?? true} label="Purchasable" name="isPurchasable" />
+                      <CheckboxField defaultChecked={product?.hasVariants ?? false} label="Has variants" name="hasVariants" />
+                      <CheckboxField defaultChecked={product?.hasSerialTracking ?? false} label="Has serial tracking" name="hasSerialTracking" />
+                      <CheckboxField defaultChecked={product?.hasLotTracking ?? false} label="Has lot tracking" name="hasLotTracking" />
                     </div>
                   ),
                 },
@@ -312,32 +510,10 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
                           <tbody>
                             <tr className="border-t"><td className="p-3">Base UOM</td><td className="p-3">1.000000000</td><td className="p-3">{product?.barcode ?? "Uses product barcode"}</td><td className="p-3">Base / Online</td></tr>
                             <tr className="border-t"><td className="p-3">Purchase UOM</td><td className="p-3">1.000000000</td><td className="p-3">Optional child row</td><td className="p-3">Purchase</td></tr>
-                            <tr className="border-t"><td className="p-3">Sales UOM</td><td className="p-3">1.000000000</td><td className="p-3">Optional child row</td><td className="p-3">Sales</td></tr>
+                            <tr className="border-t"><td className="p-3">Sales UOM</td><td className="p-3">1.000000000</td><td className="p-3">Sales</td><td className="p-3">Sales</td></tr>
                           </tbody>
                         </table>
                       </div>
-                    </div>
-                  ),
-                },
-                {
-                  key: "inventory",
-                  label: "Inventory",
-                  content: (
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      <SelectField defaultValue={product?.defaultWarehouseId} error={validation.errors.defaultWarehouseId} label="Default Warehouse" name="defaultWarehouseId" options={data.warehouses} />
-                      <SelectField defaultValue={product?.defaultLocationId} error={validation.errors.defaultLocationId} label="Default Location" name="defaultLocationId" options={data.locations} />
-                      <Field defaultValue={formatNumber(product?.openingBalanceQty ?? 0)} error={validation.errors.openingBalanceQty} label="Opening Balance" name="openingBalanceQty" type="number" />
-                      <Field defaultValue={formatNumber(product?.minimumStockQty ?? 0)} error={validation.errors.minimumStockQty} label="Minimum Stock" name="minimumStockQty" type="number" />
-                      <Field defaultValue={formatNumber(product?.maximumStockQty)} error={validation.errors.maximumStockQty} label="Maximum Stock" name="maximumStockQty" type="number" />
-                      <Field defaultValue={formatNumber(product?.reorderPointQty)} error={validation.errors.reorderPointQty} label="Reorder Point" name="reorderPointQty" type="number" />
-                      <SelectField defaultValue={product?.trackingMode ?? "none"} error={validation.errors.trackingMode} isRequired label="Tracking Mode" name="trackingMode" options={trackingOptions} />
-                      <SelectField defaultValue={product?.reservationPolicy ?? "soft"} error={validation.errors.reservationPolicy} isRequired label="Reservation Policy" name="reservationPolicy" options={reservationOptions} />
-                      <CheckboxField defaultChecked={product?.isStockable ?? true} label="Stockable" name="isStockable" />
-                      <CheckboxField defaultChecked={product?.isSellable ?? true} label="Sellable" name="isSellable" />
-                      <CheckboxField defaultChecked={product?.isPurchasable ?? true} label="Purchasable" name="isPurchasable" />
-                      <CheckboxField defaultChecked={product?.hasVariants ?? false} label="Has variants" name="hasVariants" />
-                      <CheckboxField defaultChecked={product?.hasSerialTracking ?? false} label="Has serial tracking" name="hasSerialTracking" />
-                      <CheckboxField defaultChecked={product?.hasLotTracking ?? false} label="Has lot tracking" name="hasLotTracking" />
                     </div>
                   ),
                 },
@@ -376,7 +552,7 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
                 },
                 {
                   key: "online",
-                  label: "Online",
+                  label: "Channels",
                   content: (
                     <div className="space-y-4">
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -405,7 +581,7 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
                 },
                 {
                   key: "media",
-                  label: "Media",
+                  label: "Attachments",
                   content: (
                     <div className="space-y-4">
                       <Field defaultValue={product?.coverImageUrl} error={validation.errors.coverImageUrl} label="Cover Image" name="coverImageUrl" />
@@ -415,6 +591,11 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
                       <TextareaField defaultValue="" label="Attachments" name="attachmentUrls" />
                     </div>
                   ),
+                },
+                {
+                  key: "timeline",
+                  label: "Timeline",
+                  content: <AuditActivityTimeline events={activityEvents} />,
                 },
                 {
                   key: "audit",
@@ -430,11 +611,21 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
                     </div>
                   ),
                 },
-              ]}
+                {
+                  key: "comments",
+                  label: "Comments",
+                  content: <ReadOnlyWorkspacePanel description="Platform comments are reserved for product collaboration and will attach to product records without exposing internal IDs." rows={[["Component", "Platform comments"], ["Record", product?.name ?? "New product"], ["Status", "Ready for integration"]]} />,
+                },
+                {
+                  key: "relations",
+                  label: "Relations",
+                  content: <ReadOnlyWorkspacePanel description="Relations show safe business labels for linked category, supplier, finance dimension, cost object, and inventory setup." rows={[["Category", product?.categoryLabel ?? "Not selected"], ["Supplier", product?.supplierLabel ?? "Not selected"], ["Cost readiness", product?.costObjectKey ?? "Not assigned"], ["Finance readiness", product?.financeDimensionKey ?? "Not assigned"]]} />,
+                },
+              ].filter((tab) => ["overview", "variants", "inventory", "warehouses", "inventory-policy", "locations", "online", "media", "audit"].includes(tab.key))}
             />
           </form>
         </RecordFormSection>
-        {error ? <p className="rounded-md border border-[hsl(var(--danger))] p-3 text-sm text-[hsl(var(--danger))]" role="alert">{error}</p> : null}
+        {error ? <OperatorErrorMessage error={createOxOperatorError({ code: "PRODUCT_SAVE_FAILED", fieldLabel: "Product", problem: "Product could not be saved.", reason: error, fix: "Review the highlighted product fields, keep your entered data, and try saving again." })} /> : null}
       </div>
     </RecordFormDialog>
   );
@@ -456,12 +647,53 @@ function formatNumber(value?: number | null) {
   return value === null || typeof value === "undefined" ? "" : String(value);
 }
 
+function lookupOptionLabel(options: readonly { id: string; label: string }[], id?: string | null) {
+  if (!id) return null;
+  return options.find((option) => option.id === id)?.label ?? null;
+}
+
 function HelpBlock() {
   return (
     <div className="rounded-xl border bg-[hsl(var(--muted))] p-4 text-sm text-muted-foreground">
       <h3 className="font-medium text-foreground">How this works</h3>
       <p className="mt-1">Product master is the shared definition of an item or service before it is used in inventory transactions. Create categories and units first, then add descriptions, flags, pricing readiness, online content, and media here.</p>
       <p className="mt-2">Internal description and notes are for ERP users. Online descriptions, features, specifications, SEO, and visibility control what is ready for e-commerce presentation. Pricing fields prepare purchase, retail, wholesale, and online prices without costing or accounting calculations.</p>
+    </div>
+  );
+}
+
+function ReadOnlyMetric({ label, value }: Readonly<{ label: string; value: string }>) {
+  return (
+    <div className="rounded-md border bg-[hsl(var(--surface))] p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function ReadOnlyWorkspacePanel({
+  actionLabel,
+  description,
+  rows,
+}: Readonly<{
+  actionLabel?: string;
+  description: string;
+  rows: readonly (readonly [string, string])[];
+}>) {
+  return (
+    <div className="space-y-4 rounded-md border bg-[hsl(var(--surface))] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+        {actionLabel ? <button className="rounded-md border px-3 py-2 text-sm" disabled type="button">{actionLabel}</button> : null}
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {rows.map(([label, value]) => (
+          <div className="rounded-md border bg-background p-3" key={label}>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+            <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -475,11 +707,57 @@ function ReadOnlyAuditField({ label, value }: Readonly<{ label: string; value: s
   );
 }
 
+function LegacyProductHiddenFields({ product }: Readonly<{ product?: InventoryProductRecord }>) {
+  const hiddenFields = {
+    commissionRate: formatNumber(product?.commissionRate ?? 0),
+    costObjectKey: product?.costObjectKey ?? "",
+    countryOfOrigin: product?.countryOfOrigin ?? "",
+    currencyId: product?.currencyId ?? "",
+    defaultLocationId: product?.defaultLocationId ?? "",
+    discountAllowed: String(product?.discountAllowed ?? false),
+    financeDimensionKey: product?.financeDimensionKey ?? "",
+    hsCode: product?.hsCode ?? "",
+    isDiscountable: String(product?.isDiscountable ?? true),
+    isManufacturable: String(product?.isManufacturable ?? false),
+    isOnlineVisible: String(product?.isOnlineVisible ?? false),
+    isPurchasable: String(product?.isPurchasable ?? true),
+    isSellable: String(product?.isSellable ?? true),
+    isService: String(product?.isService ?? false),
+    maximumStockQty: formatNumber(product?.maximumStockQty),
+    minimumStockQty: formatNumber(product?.minimumStockQty ?? 0),
+    onlinePrice: formatNumber(product?.onlinePrice ?? 0),
+    openingBalanceQty: formatNumber(product?.openingBalanceQty ?? 0),
+    priceIncludesTax: String(product?.priceIncludesTax ?? false),
+    productTypeKey: product?.productTypeKey ?? "",
+    purchasePrice: formatNumber(product?.purchasePrice ?? 0),
+    purchaseUomId: product?.purchaseUomId ?? "",
+    reorderPointQty: formatNumber(product?.reorderPointQty),
+    retailPrice: formatNumber(product?.retailPrice ?? 0),
+    salesUomId: product?.salesUomId ?? "",
+    sectionKey: product?.sectionKey ?? "",
+    supplierPartyId: product?.supplierPartyId ?? "",
+    taxDefinitionId: product?.taxDefinitionId ?? "",
+    wholesalePrice: formatNumber(product?.wholesalePrice ?? 0),
+  };
+
+  return (
+    <>
+      {Object.entries(hiddenFields).map(([name, value]) => (
+        <input key={name} name={name} type="hidden" value={value} />
+      ))}
+    </>
+  );
+}
+
 function Field({ defaultValue, error, isRequired, label, name, type = "text" }: Readonly<{ defaultValue?: string | null; error?: string; isRequired?: boolean; label: string; name: string; type?: string }>) {
   return (
     <label className="space-y-1 text-sm">
       <span className="font-medium">{label}{isRequired ? <RequiredFieldMarker /> : null}</span>
-      <input className={cn("w-full rounded-md border bg-background px-3 py-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]", error && "border-[hsl(var(--danger))]")} defaultValue={defaultValue ?? ""} min={type === "number" ? "0" : undefined} name={name} required={isRequired} step={type === "number" ? "0.000001" : undefined} type={type} {...fieldA11yProps(name, error)} />
+      {type === "date" ? (
+        <DatePicker aria-describedby={fieldA11yProps(name, error)["aria-describedby"]} aria-invalid={fieldA11yProps(name, error)["aria-invalid"]} defaultValue={defaultValue ?? ""} name={name} required={isRequired} />
+      ) : (
+        <input className={cn("w-full rounded-md border bg-background px-3 py-2 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]", error && "border-[hsl(var(--danger))]")} defaultValue={defaultValue ?? ""} min={type === "number" ? "0" : undefined} name={name} required={isRequired} step={type === "number" ? "0.000001" : undefined} type={type} {...fieldA11yProps(name, error)} />
+      )}
       <FieldErrorText id={fieldErrorId(name)}>{error}</FieldErrorText>
     </label>
   );

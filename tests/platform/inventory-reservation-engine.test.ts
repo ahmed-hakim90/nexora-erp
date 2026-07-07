@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260627194000_inventory_reservation_engine_foundation.sql");
-const docPath = path.join(root, "docs/platform/11_INVENTORY_RESERVATION_ENGINE.md");
+const docPath = path.join(root, "docs/02-business-apps/INVENTORY_RESERVATION_ENGINE.md");
 
 test("inventory reservation engine migration creates foundation tables, derived availability, and quantity buckets", () => {
   const sql = fs.readFileSync(migrationPath, "utf8");

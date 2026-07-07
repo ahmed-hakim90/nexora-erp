@@ -1,0 +1,96 @@
+import { defineJob, defineJobQueue } from "@/platform/background-jobs/public-api";
+
+import { HR_WORKFORCE_ENTERPRISE_JOB_KEYS } from "../constants/hr-workforce-enterprise.constants";
+
+export const HR_WORKFORCE_ENTERPRISE_QUEUES = [
+  defineJobQueue({ concurrency: 5, key: "hr-attendance-device", priority: "high", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
+  defineJobQueue({ concurrency: 3, key: "hr-workforce-monitoring", priority: "normal", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
+  defineJobQueue({ concurrency: 2, key: "hr-workforce-replay", priority: "high", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
+  defineJobQueue({ concurrency: 2, key: "hr-workforce-recalculation", priority: "high", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
+  defineJobQueue({ concurrency: 2, key: "hr-workforce-recovery", priority: "critical", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
+  defineJobQueue({ concurrency: 4, key: "hr-workforce-alerts", priority: "normal", provider: "in-memory", supportsDeadLetter: false, supportsScheduling: true }),
+] as const;
+
+export const HR_WORKFORCE_ENTERPRISE_WORKERS = [
+  defineJob({
+    description: "Monitor device health and capacity",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.deviceMonitor,
+    maxRetries: 2,
+    priority: "normal",
+    queueKey: "hr-workforce-monitoring",
+    retryPolicy: { backoffMultiplier: 2, cancellable: true, delaySeconds: 30, maxAttempts: 3, strategy: "exponential", timeoutSeconds: 300 },
+    timeoutSeconds: 300,
+  }),
+  defineJob({
+    description: "Poll device heartbeat",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.deviceHeartbeat,
+    maxRetries: 2,
+    priority: "normal",
+    queueKey: "hr-workforce-monitoring",
+    retryPolicy: { cancellable: true, delaySeconds: 15, maxAttempts: 4, strategy: "fixed", timeoutSeconds: 120 },
+    timeoutSeconds: 120,
+  }),
+  defineJob({
+    description: "Auto sync devices on schedule",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.autoSync,
+    maxRetries: 1,
+    priority: "high",
+    queueKey: "hr-attendance-device",
+    retryPolicy: { cancellable: true, delaySeconds: 60, maxAttempts: 2, strategy: "fixed", timeoutSeconds: 900 },
+    timeoutSeconds: 900,
+  }),
+  defineJob({
+    description: "Process workforce queue jobs",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.queueProcessor,
+    maxRetries: 1,
+    priority: "normal",
+    queueKey: "hr-workforce-monitoring",
+    retryPolicy: { cancellable: true, delaySeconds: 10, maxAttempts: 2, strategy: "fixed", timeoutSeconds: 600 },
+    timeoutSeconds: 600,
+  }),
+  defineJob({
+    description: "Retry failed workforce operations",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.retry,
+    maxRetries: 0,
+    priority: "high",
+    queueKey: "hr-workforce-recovery",
+    retryPolicy: { cancellable: false, delaySeconds: 30, maxAttempts: 1, strategy: "fixed", timeoutSeconds: 300 },
+    timeoutSeconds: 300,
+  }),
+  defineJob({
+    description: "Dispatch workforce notifications",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.notificationDispatch,
+    maxRetries: 2,
+    priority: "normal",
+    queueKey: "hr-workforce-alerts",
+    retryPolicy: { cancellable: true, delaySeconds: 15, maxAttempts: 3, strategy: "fixed", timeoutSeconds: 120 },
+    timeoutSeconds: 120,
+  }),
+  defineJob({
+    description: "Monitor device storage capacity",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.capacityMonitor,
+    maxRetries: 1,
+    priority: "normal",
+    queueKey: "hr-workforce-monitoring",
+    retryPolicy: { cancellable: true, delaySeconds: 60, maxAttempts: 2, strategy: "fixed", timeoutSeconds: 300 },
+    timeoutSeconds: 300,
+  }),
+  defineJob({
+    description: "Auto recovery for failed device operations",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.autoRecovery,
+    maxRetries: 3,
+    priority: "critical",
+    queueKey: "hr-workforce-recovery",
+    retryPolicy: { backoffMultiplier: 2, cancellable: false, delaySeconds: 30, maxAttempts: 4, strategy: "exponential", timeoutSeconds: 600 },
+    timeoutSeconds: 600,
+  }),
+  defineJob({
+    description: "Cleanup old logs and metrics",
+    key: HR_WORKFORCE_ENTERPRISE_JOB_KEYS.cleanup,
+    maxRetries: 0,
+    priority: "low",
+    queueKey: "hr-workforce-monitoring",
+    retryPolicy: { cancellable: true, delaySeconds: 0, maxAttempts: 1, strategy: "none", timeoutSeconds: 1800 },
+    timeoutSeconds: 1800,
+  }),
+] as const;

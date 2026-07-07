@@ -37,17 +37,17 @@ export const EMPTY_WORKSPACE_PREFERENCES: WorkspacePreferences = {
   recentDocuments: [],
 };
 
-export function normalizeWorkspacePreferences(
-  preferences?: Partial<WorkspacePreferences> | null,
-): WorkspacePreferences {
+export function normalizeWorkspacePreferences(preferences?: unknown): WorkspacePreferences {
+  const input = isRecord(preferences) ? preferences : {};
+
   return {
-    appOrder: dedupeStrings(preferences?.appOrder ?? []),
-    favoriteAppKeys: dedupeStrings(preferences?.favoriteAppKeys ?? []),
-    hiddenAppKeys: dedupeStrings(preferences?.hiddenAppKeys ?? []),
-    openWorkspaceAppKeys: dedupeStrings(preferences?.openWorkspaceAppKeys ?? []),
-    pinnedAppKeys: dedupeStrings(preferences?.pinnedAppKeys ?? []),
-    recentApps: dedupeRecentApps(preferences?.recentApps ?? []),
-    recentDocuments: dedupeRecentDocuments(preferences?.recentDocuments ?? []),
+    appOrder: dedupeStrings(readStringArray(input.appOrder)),
+    favoriteAppKeys: dedupeStrings(readStringArray(input.favoriteAppKeys)),
+    hiddenAppKeys: dedupeStrings(readStringArray(input.hiddenAppKeys)),
+    openWorkspaceAppKeys: dedupeStrings(readStringArray(input.openWorkspaceAppKeys)),
+    pinnedAppKeys: dedupeStrings(readStringArray(input.pinnedAppKeys)),
+    recentApps: dedupeRecentApps(readRecentApps(input.recentApps)),
+    recentDocuments: dedupeRecentDocuments(readRecentDocuments(input.recentDocuments)),
   };
 }
 
@@ -180,6 +180,67 @@ function toggleString(values: readonly string[], value: string): readonly string
   }
 
   return values.includes(value) ? removeString(values, value) : [...values, value];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readStringArray(value: unknown): readonly string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((candidate): candidate is string => typeof candidate === "string");
+}
+
+function readRecentApps(value: unknown): readonly WorkspaceRecentApp[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((candidate) => {
+    if (!isRecord(candidate) || typeof candidate.appKey !== "string" || typeof candidate.label !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        appKey: candidate.appKey,
+        href: typeof candidate.href === "string" ? candidate.href : undefined,
+        label: candidate.label,
+        openedAt: typeof candidate.openedAt === "string" ? candidate.openedAt : new Date(0).toISOString(),
+      },
+    ];
+  });
+}
+
+function readRecentDocuments(value: unknown): readonly WorkspaceRecentDocument[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((candidate) => {
+    if (
+      !isRecord(candidate)
+      || typeof candidate.key !== "string"
+      || typeof candidate.title !== "string"
+      || typeof candidate.type !== "string"
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        href: typeof candidate.href === "string" ? candidate.href : undefined,
+        key: candidate.key,
+        openedAt: typeof candidate.openedAt === "string" ? candidate.openedAt : new Date(0).toISOString(),
+        sourceLabel: typeof candidate.sourceLabel === "string" ? candidate.sourceLabel : undefined,
+        title: candidate.title,
+        type: candidate.type,
+      },
+    ];
+  });
 }
 
 function dedupeStrings(values: readonly string[]): readonly string[] {

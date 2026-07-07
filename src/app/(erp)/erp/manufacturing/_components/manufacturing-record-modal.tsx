@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { ManufacturingResourceDefinition } from "@/features/manufacturing/public-api";
 import type { ManufacturingLookupOptions } from "@/features/manufacturing/routes/loaders/manufacturing-lookups.loader";
 import { displayBusinessCode } from "@/shared/business-codes";
-import { EntityLookup, FieldGroup, FormGrid, RecordFormDialog, RecordFormSection } from "@/shared/ui";
+import { DatePicker, EntityLookup, FieldGroup, FormGrid, OperatorProgressiveSection, RecordFormDialog, RecordFormSection, ScannerInputFrame } from "@/shared/ui";
 
 const manufacturingStatusOptions = ["draft", "active", "released", "completed", "cancelled", "inactive", "locked", "archived"] as const;
 const fieldControlClassName = "w-full rounded-md border border-border bg-background px-3 py-2 text-foreground shadow-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30";
@@ -60,66 +60,75 @@ export function ManufacturingRecordModalLauncher({
     >
       <RecordFormSection>
         <form action={action} className="space-y-4" id={formId} onInput={() => setIsDirty(true)}>
-          <FormGrid>
-            {definition.formFields.map((field) => (
-              <FieldGroup isRequired={field.isRequired} key={field.name} label={field.label}>
-                {field.autoCode ? (
-                  <>
-                    <input name={field.name} type="hidden" value={record?.[field.name] == null ? "" : String(record[field.name])} />
-                    <input
-                      className="w-full rounded-md border border-border bg-muted px-3 py-2 text-muted-foreground shadow-sm"
-                      readOnly
-                      type="text"
-                      value={record?.[field.name] == null ? "Auto-generated on save" : displayBusinessCode(record[field.name], field.autoCode)}
-                    />
-                  </>
-                ) : field.name === "status" ? (
-                  <select
-                    className={fieldControlClassName}
-                    defaultValue={record?.[field.name] == null ? "active" : String(record[field.name])}
-                    name={field.name}
-                    required={field.isRequired}
-                  >
-                    {manufacturingStatusOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                ) : lookupOptions[field.name] ? (
-                  <EntityLookup
-                    emptyMessage="No related records found."
-                    label={lookupOptions[field.name].length > 0 ? "Select related record" : "No records available"}
-                    name={field.name}
-                    options={lookupOptions[field.name].map((option) => ({ ...option, subtitle: option.meta }))}
-                    placeholder="Search by name or code..."
-                    required={field.isRequired}
-                    value={record?.[field.name] == null ? "" : String(record[field.name])}
-                  />
-                ) : field.type === "checkbox" ? (
-                  <div className="flex min-h-10 items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
-                    <input name={field.name} type="hidden" value="false" />
-                    <input
-                      className="size-4 rounded border border-border bg-background accent-primary"
-                      defaultChecked={record?.[field.name] === true}
+          <OperatorProgressiveSection category="essential" description="Use lookup selectors for related manufacturing records. Scanner contracts are prepared for work orders and production orders." title="Essential Manufacturing Details">
+            <ScannerInputFrame label="Work order or production order" placeholder="Scan work order, production order, or type code" />
+            <FormGrid>
+              {definition.formFields.map((field) => (
+                <FieldGroup isRequired={field.isRequired} key={field.name} label={field.label}>
+                  {field.autoCode ? (
+                    <>
+                      <input name={field.name} type="hidden" value={record?.[field.name] == null ? "" : String(record[field.name])} />
+                      <input
+                        className="w-full rounded-md border border-border bg-muted px-3 py-2 text-muted-foreground shadow-sm"
+                        readOnly
+                        type="text"
+                        value={record?.[field.name] == null ? "Auto-generated on save" : displayBusinessCode(record[field.name], field.autoCode)}
+                      />
+                    </>
+                  ) : field.name === "status" ? (
+                    <select
+                      className={fieldControlClassName}
+                      defaultValue={record?.[field.name] == null ? "active" : String(record[field.name])}
                       name={field.name}
-                      type="checkbox"
-                      value="true"
+                      required={field.isRequired}
+                    >
+                      {manufacturingStatusOptions.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  ) : lookupOptions[field.name] ? (
+                    <EntityLookup
+                      emptyMessage="No related records found."
+                      label={lookupOptions[field.name].length > 0 ? "Select related record" : "No records available"}
+                      name={field.name}
+                      options={lookupOptions[field.name].map((option) => ({ ...option, subtitle: option.meta }))}
+                      placeholder="Search by name or code..."
+                      required={field.isRequired}
+                      value={record?.[field.name] == null ? "" : String(record[field.name])}
                     />
-                    <span className="text-sm text-muted-foreground">Enabled</span>
-                  </div>
-                ) : (
-                  <input
-                    className={fieldControlClassName}
-                    defaultValue={record?.[field.name] == null ? "" : String(record[field.name])}
-                    name={field.name}
-                    required={field.isRequired}
-                    type={field.type}
-                  />
-                )}
-              </FieldGroup>
-            ))}
-          </FormGrid>
+                  ) : field.type === "checkbox" ? (
+                    <div className="flex min-h-10 items-center gap-2 rounded-md border border-border bg-background px-3 py-2">
+                      <input name={field.name} type="hidden" value="false" />
+                      <input
+                        className="size-4 rounded border border-border bg-background accent-primary"
+                        defaultChecked={record?.[field.name] === true}
+                        name={field.name}
+                        type="checkbox"
+                        value="true"
+                      />
+                      <span className="text-sm text-muted-foreground">Enabled</span>
+                    </div>
+                  ) : field.type === "date" ? (
+                    <DatePicker
+                      defaultValue={record?.[field.name] == null ? "" : String(record[field.name])}
+                      name={field.name}
+                      required={field.isRequired}
+                    />
+                  ) : (
+                    <input
+                      className={fieldControlClassName}
+                      defaultValue={record?.[field.name] == null ? "" : String(record[field.name])}
+                      name={field.name}
+                      required={field.isRequired}
+                      type={field.type}
+                    />
+                  )}
+                </FieldGroup>
+              ))}
+            </FormGrid>
+          </OperatorProgressiveSection>
         </form>
       </RecordFormSection>
     </RecordFormDialog>

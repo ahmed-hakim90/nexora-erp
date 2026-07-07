@@ -3,6 +3,7 @@ export type {
   DataTableAction,
   DataTableColumn,
   DataTableCursorPagination,
+  DataTableDensity,
   DataTableFilter,
   DataTablePagePagination,
   DataTablePagination,

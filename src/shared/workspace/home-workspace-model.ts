@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
+
 import type {
   AppManifest,
   AppRegistryContext,
   AppRegistrySnapshot,
 } from "@/platform/app-registry/public-api";
 import { hasRequiredFeatureFlags, hasRequiredPermissions } from "@/platform/app-registry/public-api";
+import type { PermissionKey } from "@/platform/permissions/public-api";
 
 import {
   PLATFORM_APPS,
@@ -52,7 +55,7 @@ export type WorkspaceAppModel = Readonly<{
 export type WorkspaceKpi = Readonly<{
   key: string;
   label: string;
-  value: string;
+  value: string | ReactNode;
   description: string;
   tone?: "neutral" | "success" | "warning" | "accent";
 }>;
@@ -216,11 +219,13 @@ export const WORKSPACE_QUICK_ACTIONS = [
 
 export function buildHomeWorkspace(input: BuildHomeWorkspaceInput): HomeWorkspaceModel {
   const preferences = normalizeWorkspacePreferences(input.preferences ?? EMPTY_WORKSPACE_PREFERENCES);
-  const catalog = input.catalog ?? [...PLANNED_BUSINESS_APPS, ...PLATFORM_APPS];
+  const catalog: readonly WorkspaceCatalogApp[] = input.catalog ?? [...PLANNED_BUSINESS_APPS, ...PLATFORM_APPS];
   const manifestApps = input.snapshot.manifests.map((manifest, index) =>
     createManifestAppModel(manifest, input.snapshot, input.context, preferences, index),
   );
-  const catalogApps = catalog.map((app) => createCatalogAppModel(app, preferences));
+  const catalogApps = catalog
+    .filter((app) => !app.requiredPermission || input.context.grantedPermissions?.has(app.requiredPermission as PermissionKey))
+    .map((app) => createCatalogAppModel(app, preferences));
   const sourceApps = [...manifestApps, ...catalogApps];
   const allApps = applyAppOrder(
     sourceApps.filter((app) => !app.isHidden),
@@ -309,7 +314,7 @@ function createManifestAppModel(
     isHidden: preferences.hiddenAppKeys.includes(manifest.key),
     isPinned: preferences.pinnedAppKeys.includes(manifest.key),
     key: manifest.key,
-    kind: "business",
+    kind: manifest.category === "platform" ? "platform" : "business",
     name: manifest.name,
     order: launcher?.order ?? index + 1,
     permissionLabel: isAllowed ? "Permission granted" : "Permission required",

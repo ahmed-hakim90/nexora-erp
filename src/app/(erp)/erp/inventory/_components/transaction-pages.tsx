@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { ApplicationError } from "@/core/errors";
 import {
   cancelInventoryTransactionAction,
   createInventoryTransactionAction,
@@ -14,11 +13,14 @@ import type {
   InventoryTransactionDetail,
   InventoryTransactionType,
 } from "@/features/inventory/public-api";
-import { INVENTORY_PERMISSIONS } from "@/features/inventory/public-api";
+import { createInventoryCatalogLookupService } from "@/features/inventory/routes/service-factory";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
-import { createRequestSupabaseClient } from "@/platform/database/server";
-import { requirePermission } from "@/platform/permissions/server";
-import { EntityLookup, EnterpriseDataTable, FieldGroup, FormGrid, FormSection, PageActions, PageContainer, PageContent, PageFooter, PageForm, PageHeader } from "@/shared/ui";
+import {
+  createOxRuntimeContext,
+  resolveOxSmartDefaults,
+  type OxWizardState,
+} from "@/platform/operator-experience/public-api";
+import { Button, DatePicker, EntityLookup, EnterpriseDataTable, FieldGroup, FormGrid, OperatorContextBar, OperatorProgressiveSection, OperatorWizardProgress, PageActions, PageContainer, PageContent, PageFooter, PageForm, PageHeader, ScannerInputFrame, SmartDefaultsSummary } from "@/shared/ui";
 
 export const TRANSACTION_TYPE_CONFIGS: Record<
   string,
@@ -63,54 +65,43 @@ function valueToText(value: unknown): ReactNode {
 }
 
 type LookupOption = Readonly<{ id: string; label: string }>;
-type TransactionLookups = Readonly<{
-  branches: readonly LookupOption[];
-  locations: readonly LookupOption[];
-  products: readonly LookupOption[];
-  units: readonly LookupOption[];
-  warehouses: readonly LookupOption[];
-}>;
 
-export async function loadTransactionLookups(): Promise<TransactionLookups> {
-  const context = await resolveBranchRequestContext("erp");
-  await Promise.all([
-    requirePermission({ context, permission: INVENTORY_PERMISSIONS.productsView }),
-    requirePermission({ context, permission: INVENTORY_PERMISSIONS.uomsView }),
-    requirePermission({ context, permission: INVENTORY_PERMISSIONS.warehousesView }),
-    requirePermission({ context, permission: INVENTORY_PERMISSIONS.locationsView }),
-  ]);
-  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
-  const [branchResult, productResult, unitResult, warehouseResult, locationResult] = await Promise.all([
-    supabase.from("branches").select("id, code, name").eq("tenant_id", context.tenantId).is("deleted_at", null).order("name", { ascending: true }),
-    supabase.from("inventory_products").select("id, sku, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name", { ascending: true }),
-    supabase.from("inventory_uoms").select("id, uom_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).is("deleted_at", null).order("name", { ascending: true }),
-    supabase.from("inventory_warehouses").select("id, warehouse_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).eq("branch_id", context.branchId).is("deleted_at", null).order("name", { ascending: true }),
-    supabase.from("inventory_locations").select("id, location_key, name").eq("tenant_id", context.tenantId).eq("company_id", context.companyId).eq("branch_id", context.branchId).is("deleted_at", null).order("name", { ascending: true }),
-  ]);
-
-  for (const [result, message] of [
-    [branchResult, "Could not load branch lookup."],
-    [productResult, "Could not load product lookup."],
-    [unitResult, "Could not load UOM lookup."],
-    [warehouseResult, "Could not load warehouse lookup."],
-    [locationResult, "Could not load location lookup."],
-  ] as const) {
-    if (result.error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message, cause: result.error });
-  }
-
-  return {
-    branches: (branchResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.code as string} — ${row.name as string}` })),
-    locations: (locationResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.location_key as string} — ${row.name as string}` })),
-    products: (productResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.sku as string} — ${row.name as string}` })),
-    units: (unitResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.uom_key as string} — ${row.name as string}` })),
-    warehouses: (warehouseResult.data ?? []).map((row) => ({ id: row.id as string, label: `${row.warehouse_key as string} — ${row.name as string}` })),
-  };
+export async function loadTransactionLookups() {
+  const service = await createInventoryCatalogLookupService();
+  return service.loadTransactionLookups();
 }
 
 function labelFor(options: readonly LookupOption[], value: unknown) {
   if (value === null || value === undefined || value === "") return "-";
   const text = String(value);
-  return options.find((option) => option.id === text)?.label ?? text;
+  return options.find((option) => option.id === text)?.label ?? "Selected record";
+}
+
+function hiddenIdempotencyKey(prefix: string, id: string) {
+  return `${prefix}:${id}:${Date.now()}`;
+}
+
+function transactionWizardState(type: InventoryTransactionType): OxWizardState {
+  const labels: Record<InventoryTransactionType, string> = {
+    cycle_count: "Count",
+    goods_issue: "Issue",
+    goods_receipt: "Receive",
+    stock_adjustment: "Adjust",
+    warehouse_transfer: "Transfer",
+  };
+
+  return {
+    activeStepKey: "line",
+    canSaveDraft: true,
+    canSubmit: false,
+    progressPercent: 33,
+    steps: [
+      { canSaveDraft: true, description: "Confirm branch, date, and purpose.", key: "document", label: "Document", requiredFieldNames: ["branchId", "title"], state: "complete", validationScope: "step" },
+      { canSaveDraft: true, description: "Scan or select product, location, and quantity.", key: "line", label: labels[type], requiredFieldNames: ["productId", "unitId"], state: "current", validationScope: "step" },
+      { canSaveDraft: false, description: "Review before posting.", key: "review", label: "Review", requiredFieldNames: [], state: "pending", validationScope: "task" },
+    ],
+    wizardKey: `inventory.${type}.operator-wizard`,
+  };
 }
 
 export function transactionSlugFor(type: InventoryTransactionType) {
@@ -136,7 +127,39 @@ export async function InventoryTransactionFormPage({
   const transaction = detail?.transaction;
   const line = detail?.lines[0];
   const cycleLine = detail?.cycleCountLines[0];
-  const lookups = await loadTransactionLookups();
+  const context = await resolveBranchRequestContext("erp");
+  const oxContext = createOxRuntimeContext({
+    branchId: context.branchId,
+    companyId: context.companyId,
+    experience: "erp",
+    roleKey: "warehouse-keeper",
+    tenantId: context.tenantId,
+    warehouseId: transaction?.destinationWarehouseId ?? transaction?.sourceWarehouseId ?? null,
+  });
+  const defaults = resolveOxSmartDefaults(
+    [
+      {
+        confidence: "high",
+        contextKey: "branchId",
+        fieldName: "branchId",
+        key: "inventory.default-branch",
+        label: "Branch",
+        requiresConfirmation: false,
+        source: "context",
+      },
+      {
+        confidence: "high",
+        contextKey: "transactionDate",
+        fieldName: "transactionDate",
+        key: "inventory.default-date",
+        label: "Transaction date",
+        requiresConfirmation: true,
+        source: "context",
+      },
+    ],
+    oxContext,
+    transaction ? { branchId: transaction.branchId, transactionDate: transaction.transactionDate } : {},
+  );
   const action =
     mode === "create"
       ? createInventoryTransactionAction.bind(null, config.type)
@@ -144,77 +167,86 @@ export async function InventoryTransactionFormPage({
 
   return (
     <PageContainer>
+      <OperatorContextBar context={oxContext} />
       <PageHeader description={config.description} title={`${mode === "create" ? "Create" : "Edit"} ${config.title}`} />
+      <OperatorWizardProgress state={transactionWizardState(config.type)} />
+      <SmartDefaultsSummary defaults={defaults} />
       <PageForm action={action} title={config.title}>
-        <FormSection description="Minimal Sprint 10 document shell and first line. Add more lines through the service layer as the workflow grows." title="Document">
+        <OperatorProgressiveSection category="essential" description="Confirm the document context. Branch and date are inherited from your current workspace." title="Essential Document Details">
           <FormGrid>
             <FieldGroup isRequired label="Branch">
-              <EntityLookup label="Select branch" name="branchId" options={lookups.branches} required value={transaction?.branchId ?? ""} />
+              <EntityLookup label="Select branch" name="branchId" providerKey="platform.branches.lookup" required value={transaction?.branchId ?? context.branchId} />
             </FieldGroup>
             <FieldGroup isRequired label="Title">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={transaction?.title ?? config.title} name="title" required type="text" />
+              <input className="min-h-12 w-full rounded-md border px-3 py-2 text-base" defaultValue={transaction?.title ?? config.title} name="title" required type="text" />
             </FieldGroup>
             <FieldGroup label="Date">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={transaction?.transactionDate ?? ""} name="transactionDate" type="date" />
+              <DatePicker defaultValue={transaction?.transactionDate ?? oxContext.transactionDate} name="transactionDate" />
             </FieldGroup>
             <FieldGroup isRequired={config.type === "stock_adjustment"} label="Reason">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={transaction?.reason ?? ""} name="reason" required={config.type === "stock_adjustment"} type="text" />
+              <input className="min-h-12 w-full rounded-md border px-3 py-2 text-base" defaultValue={transaction?.reason ?? ""} name="reason" required={config.type === "stock_adjustment"} type="text" />
             </FieldGroup>
           </FormGrid>
-        </FormSection>
-        <FormSection description="Warehouse/location IDs are validated server-side against tenant, branch, and product scope." title="Movement">
+        </OperatorProgressiveSection>
+        <OperatorProgressiveSection category="essential" description="Scan locations where possible, then confirm source and destination." title="Movement">
+          <ScannerInputFrame label="Location, transfer, or document scan" placeholder="Scan location, transfer document, or type code" />
           <FormGrid>
             <FieldGroup label="Source Warehouse">
-              <EntityLookup label="Select source warehouse" name="sourceWarehouseId" options={lookups.warehouses} value={line?.sourceWarehouseId ?? transaction?.sourceWarehouseId ?? ""} />
+              <EntityLookup label="Select source warehouse" name="sourceWarehouseId" providerKey="inventory.warehouses.lookup" value={line?.sourceWarehouseId ?? transaction?.sourceWarehouseId ?? ""} />
             </FieldGroup>
             <FieldGroup label="Source Location">
-              <EntityLookup label="Select source location" name="sourceLocationId" options={lookups.locations} value={line?.sourceLocationId ?? transaction?.sourceLocationId ?? ""} />
+              <EntityLookup label="Select source location" name="sourceLocationId" providerKey="inventory.locations.lookup" value={line?.sourceLocationId ?? transaction?.sourceLocationId ?? ""} />
             </FieldGroup>
             <FieldGroup label="Destination Warehouse">
-              <EntityLookup label="Select destination warehouse" name="destinationWarehouseId" options={lookups.warehouses} value={line?.destinationWarehouseId ?? transaction?.destinationWarehouseId ?? ""} />
+              <EntityLookup label="Select destination warehouse" name="destinationWarehouseId" providerKey="inventory.warehouses.lookup" value={line?.destinationWarehouseId ?? transaction?.destinationWarehouseId ?? ""} />
             </FieldGroup>
             <FieldGroup label="Destination Location">
-              <EntityLookup label="Select destination location" name="destinationLocationId" options={lookups.locations} value={line?.destinationLocationId ?? transaction?.destinationLocationId ?? ""} />
+              <EntityLookup label="Select destination location" name="destinationLocationId" providerKey="inventory.locations.lookup" value={line?.destinationLocationId ?? transaction?.destinationLocationId ?? ""} />
             </FieldGroup>
           </FormGrid>
-        </FormSection>
-        <FormSection description="Sprint 10 keeps the UI simple with one editable line; services and tables support durable workflow controls." title="Line">
+        </OperatorProgressiveSection>
+        <OperatorProgressiveSection category="essential" description="Scan the product first, then confirm the quantity." title="Line Entry">
+          <ScannerInputFrame label="Product, serial, or lot scan" placeholder="Scan barcode, lot, serial, or type SKU" />
           <FormGrid>
             <FieldGroup isRequired label="Product">
-              <EntityLookup label="Select product" name="productId" options={lookups.products} required value={line?.productId ?? cycleLine?.productId ?? ""} />
+              <EntityLookup label="Select product" name="productId" providerKey="inventory.products.lookup" required value={line?.productId ?? cycleLine?.productId ?? ""} />
             </FieldGroup>
             <FieldGroup isRequired label="Unit">
-              <EntityLookup label="Select unit" name="unitId" options={lookups.units} required value={line?.unitId ?? cycleLine?.unitId ?? ""} />
+              <EntityLookup label="Select unit" name="unitId" providerKey="inventory.uoms.lookup" required value={line?.unitId ?? cycleLine?.unitId ?? ""} />
             </FieldGroup>
             {config.type === "stock_adjustment" ? (
               <FieldGroup isRequired label="Quantity Delta">
-                <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.quantityDelta ?? ""} name="quantityDelta" required step="0.000001" type="number" />
+                <input className="min-h-12 w-full rounded-md border px-3 py-2 text-base" defaultValue={line?.quantityDelta ?? ""} name="quantityDelta" required step="0.000001" type="number" />
               </FieldGroup>
             ) : (
               <FieldGroup isRequired={config.type !== "cycle_count"} label="Quantity">
-                <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.quantity ?? ""} name="quantity" required={config.type !== "cycle_count"} step="0.000001" type="number" />
+                <input className="min-h-12 w-full rounded-md border px-3 py-2 text-base" defaultValue={line?.quantity ?? ""} name="quantity" required={config.type !== "cycle_count"} step="0.000001" type="number" />
               </FieldGroup>
             )}
             {config.type === "cycle_count" ? (
               <>
                 <FieldGroup isRequired label="Expected Quantity">
-                  <input className="w-full rounded-md border px-3 py-2" defaultValue={cycleLine?.expectedQuantity ?? ""} name="expectedQuantity" required step="0.000001" type="number" />
+                  <input className="min-h-12 w-full rounded-md border px-3 py-2 text-base" defaultValue={cycleLine?.expectedQuantity ?? ""} name="expectedQuantity" required step="0.000001" type="number" />
                 </FieldGroup>
                 <FieldGroup isRequired label="Counted Quantity">
-                  <input className="w-full rounded-md border px-3 py-2" defaultValue={cycleLine?.countedQuantity ?? ""} name="countedQuantity" required step="0.000001" type="number" />
+                  <input className="min-h-12 w-full rounded-md border px-3 py-2 text-base" defaultValue={cycleLine?.countedQuantity ?? ""} name="countedQuantity" required step="0.000001" type="number" />
                 </FieldGroup>
               </>
             ) : null}
+          </FormGrid>
+        </OperatorProgressiveSection>
+        <OperatorProgressiveSection category="advanced" title="Advanced Costing Details">
+          <FormGrid>
             <FieldGroup label="Unit Cost">
-              <input className="w-full rounded-md border px-3 py-2" defaultValue={line?.unitCost ?? 0} name="unitCost" min="0" step="0.000001" type="number" />
+              <input className="min-h-12 w-full rounded-md border px-3 py-2 text-base" defaultValue={line?.unitCost ?? 0} name="unitCost" min="0" step="0.000001" type="number" />
             </FieldGroup>
           </FormGrid>
-        </FormSection>
+        </OperatorProgressiveSection>
         <PageActions>
-          <button className="rounded-md border px-3 py-2 text-sm" type="submit">
+          <Button className="min-h-12" type="submit" variant="primary">
             Save Draft
-          </button>
-          <Link className="rounded-md border px-3 py-2 text-sm" href="/erp/inventory/transactions">
+          </Button>
+          <Link className="min-h-12 rounded-md border px-4 py-3 text-sm" href="/erp/inventory/transactions">
             Cancel
           </Link>
         </PageActions>
@@ -226,7 +258,15 @@ export async function InventoryTransactionFormPage({
 export async function InventoryTransactionDetailPage({ detail }: Readonly<{ detail: InventoryTransactionDetail }>) {
   const transaction = detail.transaction;
   const config = getTransactionTypeConfig(transactionSlugFor(transaction.transactionType));
-  const lookups = await loadTransactionLookups();
+  const [lookups, context] = await Promise.all([loadTransactionLookups(), resolveBranchRequestContext("erp")]);
+  const oxContext = createOxRuntimeContext({
+    branchId: context.branchId,
+    companyId: context.companyId,
+    experience: "erp",
+    roleKey: "warehouse-keeper",
+    tenantId: context.tenantId,
+    warehouseId: transaction.destinationWarehouseId ?? transaction.sourceWarehouseId ?? null,
+  });
   const relationLabels: Record<string, readonly LookupOption[]> = {
     branchId: lookups.branches,
     destinationLocationId: lookups.locations,
@@ -239,6 +279,7 @@ export async function InventoryTransactionDetailPage({ detail }: Readonly<{ deta
 
   return (
     <PageContainer>
+      <OperatorContextBar context={oxContext} />
       <PageHeader description={config.description} title={`${config.title} Detail`}>
         <PageActions>
           {transaction.status === "draft" ? (
@@ -299,17 +340,17 @@ function LifecycleActions({ detail }: Readonly<{ detail: InventoryTransactionDet
           </form>
         ) : null}
         {detail.transaction.status === "submitted" ? (
-          <form action={postInventoryTransactionAction.bind(null, id)} className="flex gap-2">
-            <input className="rounded-md border px-3 py-2 text-sm" name="idempotencyKey" placeholder="Posting idempotency key" required type="text" />
-            <button className="rounded-md border px-3 py-2 text-sm" type="submit">
+          <form action={postInventoryTransactionAction.bind(null, id)}>
+            <input name="idempotencyKey" type="hidden" value={hiddenIdempotencyKey("inventory-post", id)} />
+            <Button className="min-h-12" type="submit" variant="primary">
               Post
-            </button>
+            </Button>
           </form>
         ) : null}
         {detail.transaction.status === "posted" ? (
-          <form action={reverseInventoryTransactionAction.bind(null, id)} className="flex gap-2">
-            <input className="rounded-md border px-3 py-2 text-sm" name="idempotencyKey" placeholder="Reversal idempotency key" required type="text" />
-            <button className="rounded-md border px-3 py-2 text-sm" type="submit">
+          <form action={reverseInventoryTransactionAction.bind(null, id)}>
+            <input name="idempotencyKey" type="hidden" value={hiddenIdempotencyKey("inventory-reverse", id)} />
+            <button className="min-h-12 rounded-md border px-4 py-2 text-sm" type="submit">
               Reverse
             </button>
           </form>

@@ -81,8 +81,8 @@ export function ApplicationLauncher({
 
   const favoriteApps = workspace.favoriteApps.filter(matches);
   const recentApps = workspace.recentApps.filter(matches);
-  const businessApps = workspace.readyBusinessApps.filter(matches);
-  const platformApps = workspace.platformApps.filter(matches);
+  const businessApps = workspace.readyBusinessApps.filter((app) => app.permissionState === "allowed").filter(matches);
+  const platformApps = workspace.platformApps.filter((app) => app.permissionState === "allowed").filter(matches);
   const plannedApps = workspace.plannedBusinessApps.filter(matches);
   const hasResults =
     favoriteApps.length > 0

@@ -21,6 +21,34 @@ function numberInput(value: unknown) {
   return Number(value ?? 0);
 }
 
+const structureStatuses = {
+  machines: new Set(["available", "running", "idle", "maintenance", "breakdown", "unavailable", "archived"]),
+  "production-lines": new Set(["active", "inactive", "maintenance", "suspended", "archived"]),
+  "work-centers": new Set(["active", "inactive", "suspended", "archived"]),
+  workstations: new Set(["active", "inactive", "unavailable", "archived"]),
+} as const;
+
+const planningStatuses = {
+  "manufacturing-orders": new Set(["draft", "released", "in_progress", "completed", "closed", "cancelled"]),
+  "production-plans": new Set(["draft", "approved", "released", "closed", "cancelled"]),
+} as const;
+
+function assertManufacturingStructureInput(resourceKey: string, input: Record<string, unknown>) {
+  const allowedStatuses = structureStatuses[resourceKey as keyof typeof structureStatuses];
+  if (!allowedStatuses) return;
+
+  const status = String(input.status ?? "");
+  if (!allowedStatuses.has(status)) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: `${resourceKey} status is outside the Manufacturing Sprint 2 foundation lifecycle.` });
+  }
+
+  for (const forbidden of ["warehouseId", "warehouseKey", "locationId", "locationKey", "inventoryLocationId", "inventoryPosting", "costAmount", "qualityDecision", "payrollCode"]) {
+    if (input[forbidden] !== undefined && String(input[forbidden] ?? "").trim().length > 0) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Manufacturing factory structure cannot own warehouse, location, inventory, cost, quality, or payroll fields." });
+    }
+  }
+}
+
 async function countActiveLines(table: "manufacturing_bom_lines" | "manufacturing_routing_steps", parentColumn: "bom_id" | "routing_id", id: string) {
   const context = await resolveBranchRequestContext("erp");
   const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
@@ -80,6 +108,19 @@ async function preserveGeneratedCodes(definition: ManufacturingResourceDefinitio
 
 async function validateManufacturingResourceInput(resourceKey: string, input: Record<string, unknown>, id?: string) {
   const status = String(input.status ?? "");
+
+  assertManufacturingStructureInput(resourceKey, input);
+
+  const allowedPlanningStatuses = planningStatuses[resourceKey as keyof typeof planningStatuses];
+  if (allowedPlanningStatuses && !allowedPlanningStatuses.has(status)) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: `${resourceKey} status is outside the Manufacturing Sprint 3 foundation lifecycle.` });
+  }
+
+  for (const forbidden of ["materialReservationId", "materialIssueId", "inventoryPostingId", "costCalculationId", "qualityInspectionResultId", "payrollRunId"]) {
+    if (input[forbidden] !== undefined && String(input[forbidden] ?? "").trim().length > 0) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Manufacturing planning cannot create material reservation, material issue, inventory posting, cost, quality, or payroll runtime links." });
+    }
+  }
 
   if (resourceKey === "boms") {
     if (!input.manufacturingProductId) throw new ApplicationError({ code: "VALIDATION_ERROR", message: "BOM product is required." });

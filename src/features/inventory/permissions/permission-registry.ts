@@ -54,6 +54,8 @@ export const INVENTORY_PERMISSIONS = {
   cycleCountView: definePermissionKey("inventory.cycle-count.view"),
   cycleCountManage: definePermissionKey("inventory.cycle-count.manage"),
   cycleCountPost: definePermissionKey("inventory.cycle-count.post"),
+  handlingUnitsView: definePermissionKey("inventory.handling-units.view"),
+  handlingUnitsManage: definePermissionKey("inventory.handling-units.manage"),
 } as const;
 
 export const INVENTORY_PERMISSION_LIST = Object.values(INVENTORY_PERMISSIONS);

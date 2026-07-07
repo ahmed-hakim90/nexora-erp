@@ -5,6 +5,8 @@ alwaysApply: true
 
 # ERP Page Modal Pattern
 
+Canonical reference: `docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md` (sections 6, 9, 10).
+
 When building or changing ERP workspace pages, keep list pages as the primary workspace surface.
 
 - Prefer list-first pages: create and edit should open as a modal overlay above the list, not as a full-page form.

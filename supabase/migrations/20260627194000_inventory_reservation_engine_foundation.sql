@@ -269,11 +269,14 @@ create table public.inventory_quantity_events (
   check (deleted_at is null)
 );
 
+alter table public.branches
+  add column if not exists company_id uuid references public.companies(id) on delete restrict;
+
 create or replace view public.inventory_availability_views as
 select
   sb.id as stock_balance_id,
   sb.tenant_id,
-  w.company_id,
+  b.company_id,
   w.branch_id,
   sb.product_id,
   null::uuid as product_variant_id,
@@ -302,6 +305,7 @@ select
   sb.updated_at
 from public.stock_balances sb
 join public.warehouses w on w.id = sb.warehouse_id
+join public.branches b on b.id = w.branch_id
 where sb.is_active = true
   and sb.deleted_at is null
   and w.is_active = true
@@ -393,9 +397,10 @@ begin
       raise exception 'inventory reservation product must be active, stockable, and tenant scoped';
     end if;
 
-    select tenant_id, company_id, branch_id into referenced_tenant_id, referenced_company_id, referenced_branch_id
-    from public.warehouses
-    where id = new.warehouse_id and is_active = true and deleted_at is null;
+    select w.tenant_id, b.company_id, w.branch_id into referenced_tenant_id, referenced_company_id, referenced_branch_id
+    from public.warehouses w
+    join public.branches b on b.id = w.branch_id
+    where w.id = new.warehouse_id and w.is_active = true and w.deleted_at is null;
     if referenced_tenant_id is distinct from new.tenant_id or referenced_company_id is distinct from new.company_id then
       raise exception 'inventory reservation warehouse scope must match tenant and company';
     end if;

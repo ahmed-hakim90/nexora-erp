@@ -10,6 +10,7 @@ export const financeAppManifest = defineAppManifest({
     { key: "finance.prints", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "print" },
     { key: "finance.dashboards", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "dashboard" },
     { key: "finance.document-hooks", requiredPermission: FINANCE_PERMISSIONS.hooksManage, type: "workflow" },
+    { key: "finance.notifications", requiredPermission: FINANCE_PERMISSIONS.accountsView, type: "notification" },
   ],
   category: "finance",
   commands: [
@@ -39,7 +40,7 @@ export const financeAppManifest = defineAppManifest({
     },
   ],
   dashboards: [
-    { key: "finance.foundation.dashboard-readiness", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "dashboard" },
+    { key: "finance.foundation.dashboard-template", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "dashboard" },
   ],
   dependencies: [
     { appKey: "platform", reason: "Relies on Platform v1.0 app registry, security, data/RLS, document, event, reporting, printing, dashboard, audit, job, and cost contracts." },
@@ -78,11 +79,14 @@ export const financeAppManifest = defineAppManifest({
     FINANCE_PERMISSIONS.accountsView,
   ],
   prints: [
-    { key: "finance.foundation.print-readiness", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "print" },
+    { key: "finance.foundation.readiness-print", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "print" },
   ],
   quickActions: [],
   reports: [
-    { key: "finance.foundation.report-readiness", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "report" },
+    { key: "finance.foundation.readiness", requiredPermission: FINANCE_PERMISSIONS.reportsView, type: "report" },
+  ],
+  notifications: [
+    { key: "finance.foundation.notification-readiness", requiredPermission: FINANCE_PERMISSIONS.accountsView, type: "notification" },
   ],
   routes: [
     {

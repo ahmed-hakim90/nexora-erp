@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import { PlatformFeedbackProvider } from "@/platform/feedback/public-api";
-import { EnterpriseUiProvider } from "@/shared/ui";
 
 import "./globals.css";
 
@@ -26,7 +25,7 @@ export default function RootLayout({
   return (
     <html className={inter.variable} lang="en" dir="ltr" suppressHydrationWarning>
       <body>
-        <EnterpriseUiProvider>{children}</EnterpriseUiProvider>
+        {children}
         <PlatformFeedbackProvider />
       </body>
     </html>

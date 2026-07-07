@@ -11,6 +11,12 @@ const basePath = "/erp/inventory/transactions";
 
 function formDataToObject(formData: FormData) {
   const raw = Object.fromEntries(formData.entries());
+  if (typeof raw.linesJson === "string" && raw.linesJson.trim()) {
+    return {
+      ...raw,
+      lines: JSON.parse(raw.linesJson),
+    };
+  }
   return {
     ...raw,
     lines: [

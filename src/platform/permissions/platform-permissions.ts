@@ -20,6 +20,19 @@ export const PLATFORM_PERMISSIONS = {
   readAuditLog: definePermissionKey("platform.audit.read"),
   manageFeatureFlags: definePermissionKey("platform.feature-flag.manage"),
   manageSettings: definePermissionKey("platform.settings.manage"),
+  viewWorkflow: definePermissionKey("platform.workflow.view"),
+  manageWorkflow: definePermissionKey("platform.workflow.manage"),
+  viewApproval: definePermissionKey("platform.approval.view"),
+  manageApproval: definePermissionKey("platform.approval.manage"),
+  viewDocuments: definePermissionKey("platform.document.view"),
+  manageDocuments: definePermissionKey("platform.document.manage"),
+  viewNotifications: definePermissionKey("platform.notification.view"),
+  manageNotifications: definePermissionKey("platform.notification.manage"),
+  dispatchNotifications: definePermissionKey("platform.notification.dispatch"),
+  viewSearch: definePermissionKey("platform.search.view"),
+  manageSearch: definePermissionKey("platform.search.manage"),
+  viewExport: definePermissionKey("platform.export.view"),
+  manageExport: definePermissionKey("platform.export.manage"),
 } as const;
 
 export type PlatformPermission =

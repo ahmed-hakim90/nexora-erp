@@ -8,12 +8,16 @@ import {
   ManufacturingBomService,
   ManufacturingFoundationService,
   ManufacturingLineAssignmentService,
+  ManufacturingOrderService,
   ManufacturingProfileService,
+  MachineService,
   ManufacturingRoutingService,
   ProductionStandardService,
+  ProductionPlanService,
   ProductionLineService,
   SupervisorAssignmentService,
   WorkCenterService,
+  WorkstationService,
 } from "../application/services/manufacturing-foundation.service";
 import type { ManufacturingResourceKey } from "../application/types";
 import { MANUFACTURING_PERMISSIONS } from "../permissions/permission-registry";
@@ -42,6 +46,16 @@ export async function createProductionLineService() {
 export async function createWorkCenterService() {
   const { context, repository, outbox } = await createManufacturingParts();
   return new WorkCenterService(context, repository, outbox, getManufacturingResourceDefinition("work-centers"));
+}
+
+export async function createWorkstationService() {
+  const { context, repository, outbox } = await createManufacturingParts();
+  return new WorkstationService(context, repository, outbox, getManufacturingResourceDefinition("workstations"));
+}
+
+export async function createMachineService() {
+  const { context, repository, outbox } = await createManufacturingParts();
+  return new MachineService(context, repository, outbox, getManufacturingResourceDefinition("machines"));
 }
 
 export async function createManufacturingProfileService() {
@@ -86,4 +100,14 @@ export async function createManufacturingBomService() {
 export async function createManufacturingRoutingService() {
   const { context, repository, outbox } = await createManufacturingParts();
   return new ManufacturingRoutingService(context, repository, outbox, getManufacturingResourceDefinition("routing-plans"));
+}
+
+export async function createProductionPlanService() {
+  const { context, repository, outbox } = await createManufacturingParts();
+  return new ProductionPlanService(context, repository, outbox, getManufacturingResourceDefinition("production-plans"));
+}
+
+export async function createManufacturingOrderService() {
+  const { context, repository, outbox } = await createManufacturingParts();
+  return new ManufacturingOrderService(context, repository, outbox, getManufacturingResourceDefinition("manufacturing-orders"));
 }

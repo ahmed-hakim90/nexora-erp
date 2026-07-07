@@ -13,8 +13,13 @@ import {
   MANUFACTURING_PERMISSION_LIST,
   manufacturingAppManifest,
 } from "@/features/manufacturing/public-api";
+import {
+  HR_PERMISSION_LIST,
+  hrAppManifest,
+} from "@/features/hr/public-api";
 import type { AppRegistrySnapshot } from "@/platform/app-registry/public-api";
 import type { PermissionKey } from "@/platform/permissions/public-api";
+import { buildAppCapabilityPlatformModel } from "@/shared/workspace/app-capability-platform";
 import { WORKSPACE_APP_CATALOG } from "@/shared/workspace/app-catalog";
 import { buildHomeWorkspace } from "@/shared/workspace/home-workspace-model";
 
@@ -25,6 +30,7 @@ const manifests = [
   financeAppManifest,
   inventoryAppManifest,
   manufacturingAppManifest,
+  hrAppManifest,
 ] as const;
 
 const snapshot: AppRegistrySnapshot = {
@@ -46,6 +52,7 @@ const grantedPermissions = new Set<PermissionKey>([
   ...FINANCE_PERMISSION_LIST,
   ...INVENTORY_PERMISSION_LIST,
   ...MANUFACTURING_PERMISSION_LIST,
+  ...HR_PERMISSION_LIST,
 ]);
 
 test("home workspace model derives ready apps from accepted manifests", () => {
@@ -73,10 +80,10 @@ test("home workspace model derives ready apps from accepted manifests", () => {
     snapshot,
   });
 
-  assert.equal(model.readyBusinessApps.length, 3);
+  assert.equal(model.readyBusinessApps.length, 4);
   assert.deepEqual(
     model.readyBusinessApps.map((app) => app.key),
-    ["manufacturing", "finance", "inventory"],
+    ["manufacturing", "finance", "inventory", "hr"],
   );
   assert.equal(model.readyBusinessApps[0]?.source, "manifest");
   assert.equal(
@@ -129,9 +136,42 @@ test("workspace model calculates KPI counts and filters hidden apps", () => {
 
   assert.equal(model.allApps.some((app) => app.key === "crm"), false);
   assert.equal(model.hiddenApps.some((app) => app.key === "crm"), true);
-  assert.equal(model.progressKpis.find((kpi) => kpi.key === "apps-ready")?.value, "3");
-  assert.equal(model.progressKpis.find((kpi) => kpi.key === "apps-planned")?.value, "19");
+  assert.equal(model.progressKpis.find((kpi) => kpi.key === "apps-ready")?.value, "4");
+  assert.equal(model.progressKpis.find((kpi) => kpi.key === "apps-planned")?.value, "18");
   assert.ok(model.platformApps.some((app) => app.key === "platform-search"));
+});
+
+test("platform app cards expose runtime routes for shared capability surfaces", () => {
+  const model = buildHomeWorkspace({
+    catalog: WORKSPACE_APP_CATALOG,
+    context: {
+      branchId,
+      companyId,
+      experience: "erp",
+      grantedPermissions,
+      tenantId,
+    },
+    snapshot,
+  });
+
+  assert.equal(model.platformApps.find((app) => app.key === "platform-feature-flags")?.href, "/erp/feature-flags");
+  assert.equal(model.platformApps.find((app) => app.key === "platform-settings")?.href, "/erp/settings");
+  assert.equal(model.platformApps.find((app) => app.key === "platform-notifications")?.href, "/erp/notifications");
+  assert.equal(model.platformApps.find((app) => app.key === "platform-dashboard")?.href, "/erp/dashboard");
+});
+
+test("app capability platform model derives shared surfaces from manifests", () => {
+  const model = buildAppCapabilityPlatformModel(manifests);
+
+  assert.equal(model.summary.apps, 4);
+  assert.equal(model.summary.reports, 4);
+  assert.equal(model.summary.dashboards, 4);
+  assert.equal(model.summary.settings, 4);
+  assert.equal(model.summary.notifications, 4);
+  assert.equal(model.reports.some((capability) => capability.appKey === "finance"), true);
+  assert.equal(model.notifications.some((capability) => capability.appKey === "manufacturing"), true);
+  assert.equal(model.readiness.every((app) => app.hasRuntimeRoute), true);
+  assert.equal(model.readiness.every((app) => app.hasSettings), true);
 });
 
 test("accepted manifest apps remain visible with a restricted permission indicator", () => {

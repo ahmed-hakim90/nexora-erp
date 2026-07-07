@@ -17,10 +17,12 @@ import {
   type SearchResult,
 } from "@/platform/search/public-api";
 
+import type { PlatformCapabilityContribution } from "./app-capability-platform";
 import type { WorkspaceAppModel } from "./home-workspace-model";
 
 export type WorkspaceSearchRegistryInput = Readonly<{
   apps: readonly WorkspaceAppModel[];
+  capabilities?: readonly PlatformCapabilityContribution[];
   commands?: readonly CommandDefinition[];
   navigation?: readonly NavigationContribution[];
 }>;
@@ -30,6 +32,7 @@ export function createWorkspaceSearchRegistry(
 ): SearchProviderRegistry {
   return createSearchProviderRegistry([
     createWorkspaceAppSearchProvider(input.apps),
+    createWorkspaceCapabilitySearchProvider(input.capabilities ?? []),
     createCommandSearchProvider(input.commands ?? []),
     createNavigationSearchProvider(input.navigation ?? []),
   ]);
@@ -85,6 +88,49 @@ export function createWorkspaceAppSearchProvider(apps: readonly WorkspaceAppMode
   });
 }
 
+export function createWorkspaceCapabilitySearchProvider(
+  capabilities: readonly PlatformCapabilityContribution[],
+) {
+  return defineSearchProvider({
+    entityTypes: ["workspace-capability"],
+    key: "workspace.capabilities",
+    moduleKey: "workspace",
+    searchableEntities: [{
+      displayName: "Workspace Capabilities",
+      entityType: "workspace-capability",
+      moduleKey: "workspace",
+      quickSearchFields: ["label", "key", "kind", "appName"],
+      rankingStrategy: "exact-first",
+      resultType: "record",
+    }],
+    source: "app",
+    supportedExperiences: ["erp"],
+    search: (query, context) =>
+      capabilities
+        .filter((capability) => !capability.requiredPermission || hasGrantedPermission(context, capability.requiredPermission))
+        .filter((capability) => matchesCapabilitySearch(query.normalizedTerm, capability))
+        .map((capability) => ({
+          appKey: capability.appKey,
+          entityId: capability.key,
+          entityType: "workspace-capability",
+          href: capability.routeHref ?? platformCapabilityHref(capability.kind),
+          metadata: {
+            appName: capability.appName,
+            kind: capability.kind,
+            requiredFeatureFlag: capability.requiredFeatureFlag,
+            requiredPermission: capability.requiredPermission,
+            status: capability.status,
+          },
+          moduleKey: "workspace",
+          rank: capability.status === "route-backed" ? 12 : capability.status === "gated" ? 8 : 4,
+          sensitivity: "internal",
+          subtitle: `${capability.appName} - ${capability.kind}`,
+          title: capability.label,
+          type: "record",
+        })),
+  });
+}
+
 function matchesWorkspaceSearch(term: string, app: WorkspaceAppModel): boolean {
   if (term.length < 2) {
     return false;
@@ -104,6 +150,43 @@ function matchesWorkspaceSearch(term: string, app: WorkspaceAppModel): boolean {
     .toLowerCase();
 
   return term.split(/\s+/u).every((token) => haystack.includes(token));
+}
+
+function matchesCapabilitySearch(term: string, capability: PlatformCapabilityContribution): boolean {
+  if (term.length < 2) {
+    return false;
+  }
+
+  const haystack = [
+    capability.key,
+    capability.label,
+    capability.kind,
+    capability.appKey,
+    capability.appName,
+    capability.requiredPermission,
+    capability.requiredFeatureFlag,
+    capability.status,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return term.split(/\s+/u).every((token) => haystack.includes(token));
+}
+
+function hasGrantedPermission(context: SearchContext, permission: string): boolean {
+  return [...(context.grantedPermissions ?? [])].some((grantedPermission) => grantedPermission === permission);
+}
+
+function platformCapabilityHref(kind: PlatformCapabilityContribution["kind"]): string {
+  return {
+    dashboard: "/erp/dashboard",
+    "feature-flag": "/erp/feature-flags",
+    notification: "/erp/notifications",
+    print: "/erp/reports#print",
+    report: "/erp/reports",
+    setting: "/erp/settings",
+  }[kind];
 }
 
 function statusToLabel(status: WorkspaceAppModel["status"]): string {

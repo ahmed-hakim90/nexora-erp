@@ -1,0 +1,105 @@
+---
+description: Nexora Platform UX Constitution — mandatory standards for every Business App and future module
+alwaysApply: true
+---
+
+# Nexora Platform UX Constitution
+
+Canonical reference: `docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md`.
+
+This rule applies to **every** Business App: HR, Payroll, Finance, Inventory, Sales, CRM, Purchasing, Manufacturing, Maintenance, Fleet, Projects, Help Desk, POS, Commerce, Quality, Documents, Assets, Analytics, and all future modules.
+
+**Do not redesign a single page to satisfy this rule.** Define and reuse platform UX architecture.
+
+## Constitutional Principles
+
+- Apps consume the official UX foundation — no competing shells, tables, forms, feedback, or edit modes.
+- Lookup-first: `EntityLookup` for all relations; never raw UUID fields.
+- List-first workspaces: create/edit as modals (`RecordFormDialog` + `?create=` / `?edit=`).
+- Profile/detail: Edit Mode v2 (`EditablePage`, `EditableProfileWorkspace`) — saving never navigates away.
+- Cross-engine fields: in-page workflow dialog — never direct DB updates or `router.push`.
+- Feedback: `platform.feedback` only — never Sonner directly.
+- Dates: `DatePicker` / `DatePickerField` — never `<input type="date">`.
+- Permissions: visible read-only with lock icon when denied; enforce server-side + RLS.
+
+## Required Platform Components
+
+From `@/shared/ui`:
+
+| Concern | Components |
+| --- | --- |
+| Page layout | `PageContainer`, `PageHeader`, `PageContent`, `PageFilters`, `PageActions` |
+| Lists | `ListPageTemplate`, `EnterpriseDataTable`, `FacetedFilterBar`, `ImportExportActions` |
+| Modals | `RecordFormDialog`, `RecordFormSection`, modal query helpers |
+| Profiles | `EditableProfileWorkspace`, `EditablePage`, `EditableSectionCard`, `EditableFieldGrid`, `EditableField` |
+| Cross-engine | `CrossEngineLookupWorkflow`, `renderWorkflow` on `EditablePage` |
+| Documents | `DocumentLayout`, `DocumentLifecycleBar` |
+| Dashboards | `DashboardTemplate`, KPI widgets |
+| Lookup / dates | `EntityLookup`, `DatePicker`, `DatePickerField` |
+| States | Skeleton loaders, empty states, error surfaces via shared patterns |
+| Tokens | `src/shared/ui/tokens/` + `globals.css` — no hardcoded colors/spacing |
+
+## Universal Profile Architecture
+
+Every entity profile (Employee, Customer, Supplier, Item, Warehouse, Asset, Machine, Vehicle, Project, Company, Branch, Contract, Document) uses:
+
+```text
+Header → Edit Mode bar → NavTabBar → EditableSectionCard sections → optional FloatingRecordPanel
+```
+
+Standard tabs: Overview, Details, Relations, Timeline, Documents, Comments, Audit.
+
+## Universal List Architecture
+
+Every list shares: search, saved views, filters, grouping, columns, density, selection, pagination, row/bulk/inline actions, export/import, empty/loading/error states, modal create/edit.
+
+## Interaction Rules
+
+| Input | Behavior |
+| --- | --- |
+| Single click | Select / activate |
+| Double click | Open detail or profile |
+| Right click | Context menu (safe actions) |
+| `Ctrl/Cmd + K` | Command palette |
+| `Ctrl/Cmd + S` | Save Changes (Edit Mode) |
+| `Esc` | Close overlay / cancel edit |
+
+**Autosave:** notes, descriptions, comments only.  
+**Never autosave:** financial, assignment, contract, payroll, inventory values.
+
+## Autosave / Save / Audit
+
+- Manual batch save in Edit Mode v2.
+- Undo/redo applies to draft only.
+- Business-critical saves record audit: who, when, old value, new value, reason.
+- Section-level refresh only — never full page reload.
+
+## Surface Selection
+
+| Use | Surface |
+| --- | --- |
+| Create/edit master record | `RecordFormDialog` modal over list |
+| Confirmations / warnings | `Dialog` |
+| Side detail / quick review | Drawer / `FloatingRecordPanel` |
+| Mobile nav / filters | `Sheet` |
+| Long operational process | `OxWizardDefinition` wizard |
+| Transaction document | Document Workspace + lifecycle bar |
+
+## Design Tokens
+
+Use `globals.css` and `src/shared/ui/tokens/`. 8px spacing, subtle shadows, Lucide icons, module accent as decoration only (90% neutral UI). Verify dark mode and RTL.
+
+## Quality Gate
+
+Before merge, every screen must have: shared components, list/profile/document pattern, loading/empty/error states, dark mode, RTL, keyboard access, no raw IDs, server permissions, platform feedback.
+
+## Child Standards
+
+- Inline editing: `docs/06-guidelines/INLINE_EDITING_STANDARD.md`
+- Edit Mode v2: `docs/06-guidelines/EDIT_MODE_V2_STANDARD.md`
+- Forms: `docs/06-guidelines/FORM_GUIDELINES.md`
+- Visual tokens: `docs/06-guidelines/UI_GUIDELINES.md`
+- Lookups: `docs/06-guidelines/LOOKUP_GUIDELINES.md`
+- ERP modals: `.cursor/rules/erp-page-modal-patterns.mdc`
+
+When child docs conflict with the constitution, the constitution wins unless an ADR says otherwise.

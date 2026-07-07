@@ -13,5 +13,22 @@ export type {
   ApplicationLauncherContext,
   ApplicationLauncherProps,
 } from "./application-launcher";
+export { EnterpriseWorkspaceNavigation } from "./enterprise-workspace-navigation";
 export { WorkspaceNav } from "./workspace-nav";
-export type { WorkspaceIdentity, WorkspaceNavItem } from "./workspace-nav";
+export type {
+  EnterpriseWorkspaceNavigationProps,
+  WorkspaceIdentity,
+  WorkspaceNavItem,
+  WorkspaceNavigationBadge,
+  WorkspaceNavigationBadgeVariant,
+  WorkspaceNavigationGroupKey,
+  WorkspaceNavigationItem,
+  WorkspaceNavigationSection,
+} from "./workspace-navigation.types";
+export {
+  buildNavigationSections,
+  workspaceNavItemToNavigationItem,
+  workspaceNavItemsToNavigationItems,
+  WORKSPACE_NAV_GROUP_ICONS,
+  WORKSPACE_NAV_GROUP_LABELS,
+} from "./workspace-navigation.utils";

@@ -7,6 +7,7 @@ import { FilePlus2, MoreHorizontal } from "lucide-react";
 import {
   AuditActivityTimeline,
   Button,
+  DatePicker,
   DropdownMenu,
   FieldErrorText,
   PanelIconButton,
@@ -57,7 +58,8 @@ function FieldControl({ error, field, inputId, record, relationOptions }: Readon
     return <select {...fieldA11yProps(field.name, error)} className={inputClassName} defaultValue={defaultValue} disabled={field.required && selectOptions.length === 0} id={inputId} name={field.name} required={field.required}><option value="">{selectOptions.length === 0 ? "Create related records first" : field.required ? "Select..." : "-"}</option>{selectOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
   }
   if (field.type === "number") return <input {...fieldA11yProps(field.name, error)} className={inputClassName} defaultValue={defaultValue} id={inputId} max={field.max} min={field.min} name={field.name} required={field.required} step={field.step ?? "1"} type="number" />;
-  return <input {...fieldA11yProps(field.name, error)} className={inputClassName} defaultValue={defaultValue} id={inputId} name={field.name} required={field.required} type={field.type === "date" ? "date" : "text"} />;
+  if (field.type === "date") return <DatePicker aria-describedby={fieldA11yProps(field.name, error)["aria-describedby"]} aria-invalid={fieldA11yProps(field.name, error)["aria-invalid"]} defaultValue={defaultValue} id={inputId} name={field.name} required={field.required} />;
+  return <input {...fieldA11yProps(field.name, error)} className={inputClassName} defaultValue={defaultValue} id={inputId} name={field.name} required={field.required} type="text" />;
 }
 
 export function FinanceEntityDrawer(props: FinanceEntityDrawerProps) {
