@@ -10,6 +10,7 @@ import {
   AppCard,
   AppShell,
   ActivityTimeline,
+  KpiCard,
   PageContainer,
   PlannedAppCard,
   PlatformAppCard,
@@ -21,7 +22,6 @@ import {
   WorkspaceHero,
   WorkspaceSection,
   WorkspaceTabBar,
-  useEnterpriseUi,
   type CommandPaletteItem,
 } from "@/shared/ui";
 import {
@@ -36,12 +36,21 @@ import {
 
 import { GlobalSearchPanel } from "./global-search-panel";
 
+export type HrOpsHomeSummary = Readonly<{
+  openAttendanceExceptionsToday: number;
+  pendingLateEarlyViolations: number;
+  pendingLeaveApprovals: number;
+  pendingOvertimeCandidates: number;
+  payrollReadinessIssues: number;
+}>;
+
 export function EnterpriseHomeWorkspace({
   snapshot,
   commands,
   navigation,
   shell,
   context,
+  hrOpsSummary,
   initialPreferences,
 }: Readonly<{
   snapshot: AppRegistrySnapshot;
@@ -62,12 +71,12 @@ export function EnterpriseHomeWorkspace({
     userName: string;
     permissions: readonly string[];
   };
+  hrOpsSummary?: HrOpsHomeSummary;
   initialPreferences?: Readonly<{
     persisted: boolean;
     preferences: WorkspacePreferences;
   }>;
 }>) {
-  const enterpriseUi = useEnterpriseUi();
   const [preferences, preferenceActions] = useWorkspacePreferences({
     databasePersisted: initialPreferences?.persisted,
     initialPreferences: initialPreferences?.preferences,
@@ -116,10 +125,9 @@ export function EnterpriseHomeWorkspace({
       activeBranchKey={context.branchId}
       activeCompanyKey={context.companyId}
       branchOptions={[{ key: context.branchId, label: context.branchName }]}
-      breadcrumbs={[{ label: "Apps" }]}
+      breadcrumbs={[{ label: "Apps", messageKey: "shell.apps.label" }]}
       commandItems={commandItems}
       companyOptions={[{ key: context.companyId, label: context.companyName }]}
-      direction={enterpriseUi.direction}
       launcher={{
         context: {
           branchId: context.branchId,
@@ -132,6 +140,7 @@ export function EnterpriseHomeWorkspace({
       globalSearchSlot={
         <GlobalSearchPanel
           apps={workspace.allApps}
+          autoFocus
           capabilities={[
             ...capabilityPlatform.reports,
             ...capabilityPlatform.prints,
@@ -145,10 +154,6 @@ export function EnterpriseHomeWorkspace({
           navigation={navigation}
         />
       }
-      languageOptions={[
-        { label: "English", value: "en", isActive: enterpriseUi.locale === "en" },
-        { label: "Arabic", value: "ar", isActive: enterpriseUi.locale === "ar" },
-      ]}
       notificationsSlot={
         <WorkspaceEmptyState
           description="The Notification Engine contracts are present. The in-app inbox runtime is not connected yet, so no production notifications are shown."
@@ -157,11 +162,6 @@ export function EnterpriseHomeWorkspace({
         />
       }
       quickActions={shell.quickActions}
-      themeOptions={[
-        { label: "System", value: "system", isActive: true },
-        { label: "Light", value: "light" },
-        { label: "Dark", value: "dark" },
-      ]}
       user={{ name: context.userName }}
     >
       <PageContainer>
@@ -174,6 +174,51 @@ export function EnterpriseHomeWorkspace({
           />
 
           <ProgressKpiCards kpis={workspace.progressKpis} />
+
+          {hrOpsSummary ? (
+            <WorkspaceSection
+              description="Live operational counters from the HR dashboard loader."
+              title="HR Operations"
+            >
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <KpiCard
+                  compact
+                  helperText="Awaiting approval"
+                  href="/erp/hr/leave"
+                  label="Pending Leave"
+                  value={hrOpsSummary.pendingLeaveApprovals}
+                />
+                <KpiCard
+                  compact
+                  helperText="Open today"
+                  href="/erp/hr/attendance-live"
+                  label="Attendance Exceptions"
+                  value={hrOpsSummary.openAttendanceExceptionsToday}
+                />
+                <KpiCard
+                  compact
+                  helperText="Candidates pending"
+                  href="/erp/hr/overtime?tab=candidates"
+                  label="OT Candidates"
+                  value={hrOpsSummary.pendingOvertimeCandidates}
+                />
+                <KpiCard
+                  compact
+                  helperText="Submitted violations"
+                  href="/erp/hr/late-early"
+                  label="Late / Early"
+                  value={hrOpsSummary.pendingLateEarlyViolations}
+                />
+                <KpiCard
+                  compact
+                  helperText="Blocking payroll publish"
+                  href="/erp/hr/payroll-readiness"
+                  label="Payroll Issues"
+                  value={hrOpsSummary.payrollReadinessIssues}
+                />
+              </div>
+            </WorkspaceSection>
+          ) : null}
 
           <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(24rem,0.7fr)]">
             <div className="space-y-5">

@@ -7,9 +7,10 @@ import type { BranchRequestContext } from "@/platform/auth/server";
 
 import type { HrAttendanceMissingPunchInput, HrAttendanceReviewActionInput } from "../schemas/hr-attendance-processing.schema";
 import { LOCKED_ATTENDANCE_DAY_STATUSES } from "../constants/hr-attendance-payroll.constants";
-import { STANDARD_WORK_MINUTES } from "../constants/hr-overtime-runtime.constants";
 import { HrLateEarlyRuntimeService } from "./hr-late-early-runtime.service";
 import { HrOvertimeRuntimeService } from "./hr-overtime-runtime.service";
+import { HrPayrollPeriodLifecycleService } from "./hr-payroll-period-lifecycle.service";
+import { HrShiftResolutionService } from "./hr-shift-resolution.service";
 
 const ATTENDANCE_PROCESSING_PATH = "/erp/hr/attendance-processing";
 
@@ -66,12 +67,15 @@ export class HrAttendanceService {
   private async assertDayMutable(attendanceDayId: string): Promise<void> {
     const { data: day, error } = await this.supabase
       .from("hr_attendance_days")
-      .select("id, status")
+      .select("id, status, work_date")
       .eq("tenant_id", this.context.tenantId)
       .eq("id", attendanceDayId)
       .is("deleted_at", null)
       .maybeSingle();
     if (error || !day) throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Attendance day not found." });
+
+    const periodLifecycle = new HrPayrollPeriodLifecycleService(this.supabase, this.context);
+    await periodLifecycle.assertWorkDateAllowsAttendanceMutation(String(day.work_date));
 
     if (LOCKED_ATTENDANCE_DAY_STATUSES.includes(String(day.status) as (typeof LOCKED_ATTENDANCE_DAY_STATUSES)[number])) {
       throw new ApplicationError({
@@ -259,6 +263,10 @@ export class HrAttendanceService {
   }): Promise<{ id: string }> {
     const employmentProfileId = await this.getEmploymentProfileId(input.employeeId);
     const punchTime = input.punchTime ?? new Date().toISOString();
+    const workDate = punchTime.slice(0, 10);
+
+    const periodLifecycle = new HrPayrollPeriodLifecycleService(this.supabase, this.context);
+    await periodLifecycle.assertWorkDateAllowsAttendanceMutation(workDate);
 
     const { data, error } = await this.supabase
       .from("hr_attendance_punch_logs")
@@ -300,7 +308,11 @@ export class HrAttendanceService {
     const missingOut = Boolean(inPunch && !outPunch);
     const workedMinutes =
       inPunch?.punch_time && outPunch?.punch_time ? minutesBetween(String(inPunch.punch_time), String(outPunch.punch_time)) : 0;
-    const overtimeMinutes = HrOvertimeRuntimeService.calculateOvertimeMinutes(workedMinutes, STANDARD_WORK_MINUTES);
+
+    const shiftResolver = new HrShiftResolutionService(this.supabase, this.context);
+    const shiftWindow = await shiftResolver.resolveEmployeeShiftWindow({ employeeId, workDate });
+    const standardMinutes = shiftWindow.isRestDay ? 0 : shiftWindow.shiftDurationMinutes;
+    const overtimeMinutes = HrOvertimeRuntimeService.calculateOvertimeMinutes(workedMinutes, standardMinutes);
 
     let status = "pending";
     if (inPunch && outPunch) status = "observed";
@@ -326,8 +338,12 @@ export class HrAttendanceService {
         missing_out: missingOut,
         overtime_minutes: overtimeMinutes,
         runtime_calculation_implemented: true,
+        shift_code: shiftWindow.shiftCode,
+        shift_duration_minutes: shiftWindow.shiftDurationMinutes,
+        shift_source: shiftWindow.source,
         worked_minutes: workedMinutes,
       },
+      shift_version_id: shiftWindow.shiftVersionId,
       metadata: { aggregated_runtime: true },
       status,
       tenant_id: this.context.tenantId,

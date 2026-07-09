@@ -38,25 +38,27 @@ export function ProfileHeader({
   return (
     <section
       className={cn(
-        "rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-3 shadow-sm",
+        "rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-4 shadow-sm sm:p-5",
         sticky && "sticky top-[calc(var(--shell-topbar-height,64px)+0.75rem)] z-[var(--z-sticky,20)]",
         className,
       )}
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 flex-1 items-start gap-4">
           {avatar}
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
+              <h1 className="truncate text-xl font-semibold tracking-tight">{title}</h1>
               {badges}
             </div>
-            {subtitle ? <p className="text-xs text-muted-foreground">{subtitle}</p> : null}
-            {description ? <p className="max-w-3xl text-xs leading-5 text-muted-foreground">{description}</p> : null}
+            {subtitle ? <p className="text-sm font-medium text-muted-foreground">{subtitle}</p> : null}
+            {description ? (
+              <p className="line-clamp-2 max-w-3xl text-sm leading-5 text-muted-foreground">{description}</p>
+            ) : null}
             {metrics}
           </div>
         </div>
-        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2 lg:pt-1">{actions}</div> : null}
       </div>
     </section>
   );

@@ -1,37 +1,75 @@
+"use client";
+
 import type { ReactNode } from "react";
 
-import type { BilingualHelp } from "@/shared/ui";
-import { PageContainer, PageHeader } from "@/shared/ui";
+import type { BilingualHelp } from "@/shared/ui/help/help-types";
+import { PageContainer } from "@/shared/ui";
+
+import {
+  HrWorkforceWorkspaceShell,
+  type HrWorkforceNavItem,
+  type HrWorkforceSummaryMetric,
+} from "./hr-workforce-workspace-shell";
+
+export function buildHrSectionHref(
+  basePath: string,
+  params: Record<string, string | undefined>,
+) {
+  const next = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value) next.set(key, value);
+  }
+  const query = next.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
+export function resolveHrSectionTab(
+  tab: string | undefined,
+  allowed: readonly string[],
+  fallback: string,
+) {
+  if (tab && allowed.includes(tab)) return tab;
+  return fallback;
+}
 
 export function HrSectionWorkspace({
+  activeTab,
   children,
   description,
+  filters,
+  headerActions,
   help,
-  sections,
+  navItems,
+  summaryMetrics,
   title,
+  workspaceKey,
 }: Readonly<{
-  children?: ReactNode;
-  description: string;
+  activeTab: string;
+  children: ReactNode;
+  description?: string;
+  filters?: ReactNode;
+  headerActions?: ReactNode;
   help?: BilingualHelp;
-  sections?: readonly { description: string; href?: string; label: string }[];
+  navItems: readonly HrWorkforceNavItem[];
+  summaryMetrics?: readonly HrWorkforceSummaryMetric[];
   title: string;
+  workspaceKey: string;
 }>) {
   return (
     <PageContainer className="max-w-[96rem]">
-      <PageHeader description={description} help={help} title={title} />
-      <div className="space-y-6">
-        {sections && sections.length > 0 ? (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {sections.map((section) => (
-              <article className="rounded-lg border bg-[hsl(var(--surface))] p-5" key={section.label}>
-                <h2 className="font-medium">{section.label}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{section.description}</p>
-              </article>
-            ))}
-          </section>
-        ) : null}
+      <HrWorkforceWorkspaceShell
+        activeTab={activeTab}
+        description={description}
+        filters={filters}
+        headerActions={headerActions}
+        help={help}
+        navItems={navItems}
+        summaryMetrics={summaryMetrics}
+        title={title}
+        workspaceKey={workspaceKey}
+      >
         {children}
-      </div>
+      </HrWorkforceWorkspaceShell>
     </PageContainer>
   );
 }

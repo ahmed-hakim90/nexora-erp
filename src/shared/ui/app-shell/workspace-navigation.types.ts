@@ -79,6 +79,8 @@ export type WorkspaceNavigationRecentEntry = Readonly<{
 export type WorkspaceNavItem = Readonly<{
   key: string;
   label: string;
+  /** Optional Arabic label resolved by WorkspaceNav when locale is `ar`. */
+  labelAr?: string;
   fullLabel?: string;
   href: string;
   isActive?: boolean;

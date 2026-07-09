@@ -6,6 +6,7 @@ import { AppShell } from "@/shared/ui";
 
 import { resolveErpShellRuntime } from "../../../erp-security.server";
 import { createErpShellChrome } from "../../../erp-shell-model";
+import { ErpGlobalSearchSlot } from "../../_components/erp-global-search-slot";
 
 const manufacturingItems = [
   { key: "overview", label: "Overview", href: "/erp/manufacturing", group: "overview" as const },
@@ -40,7 +41,11 @@ export async function ManufacturingShell({
   return (
     <AppShell
       {...createErpShellChrome("manufacturing", runtime)}
-      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "Manufacturing", href: "/erp/manufacturing" }]}
+      breadcrumbs={[
+        { label: "Apps", href: "/erp", messageKey: "shell.apps.label" },
+        { label: "Manufacturing", href: "/erp/manufacturing", messageKey: "apps.manufacturing" },
+      ]}
+      globalSearchSlot={<ErpGlobalSearchSlot activePath="/erp/manufacturing" runtime={runtime} />}
       workspace={{ key: "manufacturing", name: "Manufacturing", icon: <Factory className="size-4" /> }}
       workspaceNav={manufacturingItems.map((item) => ({ ...item, isActive: item.key === activeKey }))}
     >

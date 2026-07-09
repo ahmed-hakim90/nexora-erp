@@ -2,6 +2,7 @@
 
 import type { HrAttendanceDeviceFleetAnalytics } from "@/features/hr/public-api";
 import { formatHrDurationSeconds } from "@/features/hr/public-api";
+import { useTranslations } from "@/shared/ui";
 
 function MiniBars({
   items,
@@ -36,20 +37,25 @@ function MiniBars({
 export function HrAttendanceDeviceAnalyticsPanel({
   analytics,
 }: Readonly<{ analytics: HrAttendanceDeviceFleetAnalytics }>) {
+  const t = useTranslations();
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Analytics</h2>
+        <h2 className="text-lg font-semibold">{t("hr.attendance.devices.sync.analytics.title")}</h2>
         <p className="text-sm text-muted-foreground">
-          Availability {analytics.availabilityPct}% · Offline {analytics.offlinePct}%
+          {t("hr.attendance.devices.sync.analytics.summary", {
+            availability: analytics.availabilityPct,
+            offline: analytics.offlinePct,
+          })}
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AnalyticsCard label="Punches today" value={String(analytics.punchesToday)} />
-        <AnalyticsCard label="Availability" value={`${analytics.availabilityPct}%`} />
-        <AnalyticsCard label="Offline" value={`${analytics.offlinePct}%`} />
+        <AnalyticsCard label={t("hr.attendance.devices.sync.analytics.punchesToday")} value={String(analytics.punchesToday)} />
+        <AnalyticsCard label={t("hr.common.availability")} value={`${analytics.availabilityPct}%`} />
+        <AnalyticsCard label={t("hr.common.offline")} value={`${analytics.offlinePct}%`} />
         <AnalyticsCard
-          label="Avg sync duration"
+          label={t("hr.attendance.devices.sync.analytics.avgSyncDuration")}
           value={
             analytics.syncDurationTrend.length > 0
               ? formatHrDurationSeconds(analytics.syncDurationTrend[analytics.syncDurationTrend.length - 1]?.durationSeconds ?? 0)
@@ -59,15 +65,15 @@ export function HrAttendanceDeviceAnalyticsPanel({
       </div>
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="rounded-2xl border bg-[hsl(var(--surface))] p-4">
-          <h3 className="mb-3 text-sm font-medium">Punches this week</h3>
+          <h3 className="mb-3 text-sm font-medium">{t("hr.attendance.devices.sync.analytics.punchesThisWeek")}</h3>
           <MiniBars items={analytics.punchesThisWeek.map((row) => ({ date: row.date.slice(5), count: row.count }))} labelKey="date" valueKey="count" />
         </div>
         <div className="rounded-2xl border bg-[hsl(var(--surface))] p-4">
-          <h3 className="mb-3 text-sm font-medium">Import trend</h3>
+          <h3 className="mb-3 text-sm font-medium">{t("hr.attendance.devices.sync.analytics.importTrend")}</h3>
           <MiniBars items={analytics.importTrend.map((row) => ({ date: row.date.slice(5), imported: row.imported }))} labelKey="date" valueKey="imported" />
         </div>
         <div className="rounded-2xl border bg-[hsl(var(--surface))] p-4">
-          <h3 className="mb-3 text-sm font-medium">Top device usage</h3>
+          <h3 className="mb-3 text-sm font-medium">{t("hr.attendance.devices.sync.analytics.topDeviceUsage")}</h3>
           <MiniBars
             items={analytics.deviceUsage.map((row) => ({ device: row.deviceCode, punches: row.punches }))}
             labelKey="device"
@@ -77,7 +83,7 @@ export function HrAttendanceDeviceAnalyticsPanel({
       </div>
       {analytics.topErrors.length > 0 ? (
         <div className="rounded-2xl border bg-[hsl(var(--surface))] p-4">
-          <h3 className="mb-3 text-sm font-medium">Top errors</h3>
+          <h3 className="mb-3 text-sm font-medium">{t("hr.attendance.devices.sync.analytics.topErrors")}</h3>
           <ul className="space-y-2 text-sm">
             {analytics.topErrors.map((error) => (
               <li className="flex items-start justify-between gap-3 rounded-md border px-3 py-2" key={error.message}>

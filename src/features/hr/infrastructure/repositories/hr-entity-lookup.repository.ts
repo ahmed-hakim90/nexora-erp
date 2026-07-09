@@ -355,4 +355,259 @@ export class SupabaseHrEntityLookupRepository {
   async hydrateCompetencies(ids: readonly string[]) {
     return this.hydrateKeyNameTable("hr_competencies", "competency_code", "name", "competency", ids);
   }
+
+  async searchContractTypes(input: Readonly<{ term: string | null; pageSize: number; cursor: OxLookupCursor | null }>) {
+    const offset = readOffset(input.cursor);
+    let query = this.supabase
+      .from("hr_contract_type_versions")
+      .select("id, version_no, hr_contract_types!inner(id, code, name, name_ar, requires_end_date, default_probation_days)")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .order("version_no", { ascending: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + input.pageSize);
+
+    if (input.term) {
+      const term = escapeIlike(input.term.trim());
+      query = query.or(`hr_contract_types.code.ilike.%${term}%,hr_contract_types.name.ilike.%${term}%`);
+    }
+
+    const result = await query;
+    assertNoError(result, "Could not search contract types.");
+    return toOffsetPage(
+      (result.data ?? []).map((row) => {
+        const type = row.hr_contract_types as unknown as {
+          code: string;
+          default_probation_days: number | null;
+          id: string;
+          name: string;
+          name_ar: string | null;
+          requires_end_date: boolean;
+        };
+        return {
+          businessCode: type.code,
+          businessName: type.name,
+          entityType: "contract-type-version",
+          id: row.id as string,
+          metadata: {
+            contractTypeId: type.id,
+            defaultProbationDays: type.default_probation_days,
+            requiresEndDate: type.requires_end_date,
+            versionNo: row.version_no,
+          },
+          subtitle: `v${String(row.version_no)}${type.name_ar ? ` · ${type.name_ar}` : ""}`,
+        };
+      }),
+      input.pageSize,
+      offset,
+    );
+  }
+
+  async hydrateContractTypes(ids: readonly string[]) {
+    if (ids.length === 0) return [] as readonly OxLookupOption[];
+    const result = await this.supabase
+      .from("hr_contract_type_versions")
+      .select("id, version_no, hr_contract_types!inner(code, name, name_ar, requires_end_date, default_probation_days)")
+      .eq("tenant_id", this.context.tenantId)
+      .in("id", [...ids]);
+    assertNoError(result, "Could not hydrate contract types.");
+    return (result.data ?? [])
+      .map((row) => {
+        const type = row.hr_contract_types as unknown as {
+          code: string;
+          default_probation_days: number | null;
+          name: string;
+          name_ar: string | null;
+          requires_end_date: boolean;
+        };
+        return normalizeOxLookupOption({
+          businessCode: type.code,
+          businessName: type.name,
+          entityType: "contract-type-version",
+          id: row.id as string,
+          metadata: {
+            defaultProbationDays: type.default_probation_days,
+            requiresEndDate: type.requires_end_date,
+            versionNo: row.version_no,
+          },
+          subtitle: `v${String(row.version_no)}`,
+        });
+      })
+      .filter((option): option is OxLookupOption => option !== null);
+  }
+
+  async searchRequiredDocumentSets(input: Readonly<{ term: string | null; pageSize: number; cursor: OxLookupCursor | null }>) {
+    const offset = readOffset(input.cursor);
+    let query = this.supabase
+      .from("hr_required_document_sets")
+      .select("id, code, name, status")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .is("deleted_at", null)
+      .neq("status", "archived")
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + input.pageSize);
+
+    if (input.term) {
+      const term = escapeIlike(input.term.trim());
+      query = query.or(`code.ilike.%${term}%,name.ilike.%${term}%`);
+    }
+
+    const result = await query;
+    assertNoError(result, "Could not search required document sets.");
+    return toOffsetPage(
+      (result.data ?? []).map((row) => ({
+        businessCode: row.code as string,
+        businessName: row.name as string,
+        entityType: "required-document-set",
+        id: row.id as string,
+        subtitle: String(row.status),
+      })),
+      input.pageSize,
+      offset,
+    );
+  }
+
+  async hydrateRequiredDocumentSets(ids: readonly string[]) {
+    if (ids.length === 0) return [] as readonly OxLookupOption[];
+    const result = await this.supabase
+      .from("hr_required_document_sets")
+      .select("id, code, name, status")
+      .eq("tenant_id", this.context.tenantId)
+      .in("id", [...ids]);
+    assertNoError(result, "Could not hydrate required document sets.");
+    return (result.data ?? []).map((row) =>
+      normalizeOxLookupOption({
+        businessCode: row.code as string,
+        businessName: row.name as string,
+        entityType: "required-document-set",
+        id: row.id as string,
+        subtitle: String(row.status),
+      }),
+    ).filter((option): option is OxLookupOption => option !== null);
+  }
+
+  async searchSalaryPackageVersions(input: Readonly<{ term: string | null; pageSize: number; cursor: OxLookupCursor | null }>) {
+    const offset = readOffset(input.cursor);
+    let query = this.supabase
+      .from("hr_salary_package_versions")
+      .select("id, version_no, status, hr_salary_packages!inner(id, code, name, status)")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .eq("status", "active")
+      .eq("hr_salary_packages.status", "active")
+      .is("deleted_at", null)
+      .order("version_no", { ascending: false })
+      .range(offset, offset + input.pageSize);
+
+    if (input.term) {
+      const term = escapeIlike(input.term.trim());
+      query = query.or(`hr_salary_packages.code.ilike.%${term}%,hr_salary_packages.name.ilike.%${term}%`);
+    }
+
+    const result = await query;
+    assertNoError(result, "Could not search salary package versions.");
+    return toOffsetPage(
+      (result.data ?? []).map((row) => {
+        const pkg = row.hr_salary_packages as unknown as { code: string; id: string; name: string };
+        return {
+          businessCode: pkg.code,
+          businessName: pkg.name,
+          entityType: "salary-package-version",
+          id: row.id as string,
+          metadata: { packageId: pkg.id, versionNo: row.version_no },
+          subtitle: `v${String(row.version_no)}`,
+        };
+      }),
+      input.pageSize,
+      offset,
+    );
+  }
+
+  async hydrateSalaryPackageVersions(ids: readonly string[]) {
+    if (ids.length === 0) return [] as readonly OxLookupOption[];
+    const result = await this.supabase
+      .from("hr_salary_package_versions")
+      .select("id, version_no, hr_salary_packages!inner(code, name)")
+      .eq("tenant_id", this.context.tenantId)
+      .in("id", [...ids]);
+    assertNoError(result, "Could not hydrate salary package versions.");
+    return (result.data ?? [])
+      .map((row) => {
+        const pkg = row.hr_salary_packages as unknown as { code: string; name: string };
+        return normalizeOxLookupOption({
+          businessCode: pkg.code,
+          businessName: pkg.name,
+          entityType: "salary-package-version",
+          id: row.id as string,
+          metadata: { versionNo: row.version_no },
+          subtitle: `v${String(row.version_no)}`,
+        });
+      })
+      .filter((option): option is OxLookupOption => option !== null);
+  }
+
+  async searchPayrollGroups(input: Readonly<{ term: string | null; pageSize: number; cursor: OxLookupCursor | null }>) {
+    return this.searchKeyNameTable("hr_payroll_groups", "code", "name", "payroll-group", input);
+  }
+
+  async hydratePayrollGroups(ids: readonly string[]) {
+    return this.hydrateKeyNameTable("hr_payroll_groups", "code", "name", "payroll-group", ids);
+  }
+
+  async searchShifts(input: Readonly<{ term: string | null; pageSize: number; cursor: OxLookupCursor | null }>) {
+    const offset = readOffset(input.cursor);
+    let query = this.supabase
+      .from("hr_shift_definitions")
+      .select("id, code, name, shift_kind, status")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .order("name", { ascending: true })
+      .range(offset, offset + input.pageSize);
+
+    if (input.term) {
+      const term = escapeIlike(input.term.trim());
+      query = query.or(`code.ilike.%${term}%,name.ilike.%${term}%`);
+    }
+
+    const result = await query;
+    assertNoError(result, "Could not search shifts.");
+    return toOffsetPage(
+      (result.data ?? []).map((row) => ({
+        businessCode: row.code as string,
+        businessName: row.name as string,
+        entityType: "shift",
+        id: row.id as string,
+        subtitle: String(row.shift_kind ?? ""),
+      })),
+      input.pageSize,
+      offset,
+    );
+  }
+
+  async hydrateShifts(ids: readonly string[]) {
+    if (ids.length === 0) return [] as readonly OxLookupOption[];
+    const result = await this.supabase
+      .from("hr_shift_definitions")
+      .select("id, code, name, shift_kind")
+      .eq("tenant_id", this.context.tenantId)
+      .in("id", [...ids]);
+    assertNoError(result, "Could not hydrate shifts.");
+    return (result.data ?? [])
+      .map((row) =>
+        normalizeOxLookupOption({
+          businessCode: row.code as string,
+          businessName: row.name as string,
+          entityType: "shift",
+          id: row.id as string,
+          subtitle: row.shift_kind ? String(row.shift_kind) : undefined,
+        }),
+      )
+      .filter((option): option is OxLookupOption => option !== null);
+  }
 }

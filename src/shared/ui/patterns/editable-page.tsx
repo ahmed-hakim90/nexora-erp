@@ -6,8 +6,11 @@ import { Button } from "../primitives";
 import { Dialog } from "../layout";
 import { cn } from "../utils";
 import { EditablePageProvider } from "./editable-page-context";
+import { EditablePageToolbar } from "./editable-page-toolbar";
 import { EditableUnsavedChangesGuard } from "./editable-unsaved-changes-guard";
 import { resolveWorkflowField, useEditablePage, type UseEditablePageOptions } from "./use-editable-page";
+
+export type EditablePageToolbarPlacement = "standalone" | "embedded";
 
 export type EditablePageProps = UseEditablePageOptions &
   Readonly<{
@@ -17,6 +20,7 @@ export type EditablePageProps = UseEditablePageOptions &
     description?: string;
     renderWorkflow?: (fieldName: string) => ReactNode;
     title?: string;
+    toolbarPlacement?: EditablePageToolbarPlacement;
   }>;
 
 export function EditablePage({
@@ -38,6 +42,7 @@ export function EditablePage({
   sourceScreen,
   successMessage,
   title,
+  toolbarPlacement = "standalone",
 }: EditablePageProps) {
   const page = useEditablePage({
     canEdit,
@@ -59,48 +64,15 @@ export function EditablePage({
   return (
     <EditablePageProvider value={page}>
       <section className={cn("space-y-4", className)} data-editable-page-mode={page.pageMode}>
-        <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-[hsl(var(--surface))] px-4 py-3">
-          <div className="min-w-0 space-y-1">
-            {title ? <h2 className="text-base font-medium">{title}</h2> : null}
-            {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-            {page.pageMode === "edit" && page.isDirty ? (
-              <p className="inline-flex items-center gap-1.5 text-xs font-medium text-[hsl(var(--warning))]">
-                <span aria-hidden className="size-2 rounded-full bg-[hsl(var(--warning))]" />
-                Unsaved changes
-              </p>
-            ) : null}
-            {page.errors._form ? (
-              <p className="text-xs text-[hsl(var(--danger))]" role="alert">
-                {page.errors._form}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {actions}
-            {page.pageMode === "view" ? (
-              canEdit ? (
-                <Button onClick={page.startEdit} type="button" variant="primary">
-                  Edit
-                </Button>
-              ) : null
-            ) : (
-              <>
-                <Button disabled={page.saveStatus === "saving"} onClick={page.cancelEdit} type="button" variant="secondary">
-                  Cancel
-                </Button>
-                <Button
-                  disabled={page.saveStatus === "saving"}
-                  onClick={() => void page.saveAll()}
-                  type="button"
-                  variant="primary"
-                >
-                  {page.saveStatus === "saving" ? "Saving…" : "Save Changes"}
-                </Button>
-              </>
-            )}
-          </div>
-        </header>
+        {toolbarPlacement === "standalone" ? (
+          <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-[hsl(var(--surface))] px-4 py-3">
+            <div className="min-w-0 space-y-1">
+              {title ? <h2 className="text-base font-medium">{title}</h2> : null}
+              {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+            </div>
+            <EditablePageToolbar actions={actions} />
+          </header>
+        ) : null}
 
         {children}
 

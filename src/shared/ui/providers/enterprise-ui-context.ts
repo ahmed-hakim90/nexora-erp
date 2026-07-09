@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 
 import type { PermissionKey } from "@/platform/permissions/public-api";
+import type { TranslateFn } from "@/platform/localization/public-api";
 
 import type { CompanyDateFormat } from "../dates/date-utils";
 import type { Direction } from "../utils";
@@ -19,6 +20,8 @@ export type EnterpriseUiContextValue = Readonly<{
   hasPermission: (permission: PermissionKey) => boolean;
   resolvedTheme: ResolvedTheme;
   setTheme: (theme: ThemePreference) => void;
+  setLocale: (locale: Locale) => void;
+  t: TranslateFn;
   theme: ThemePreference;
 }>;
 
@@ -41,4 +44,8 @@ export function useEnterpriseTheme() {
 
 export function usePermission(permission: PermissionKey): boolean {
   return useEnterpriseUi().hasPermission(permission);
+}
+
+export function useTranslations(): TranslateFn {
+  return useEnterpriseUi().t;
 }

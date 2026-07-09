@@ -21,6 +21,7 @@ import {
   secondaryButtonLinkClassName,
   nativeSelectClassName,
   type PlatformTimelineEvent,
+  useTranslations,
 } from "@/shared/ui";
 
 import { HrWorkforceEnterpriseTable } from "./hr-workforce-enterprise-table";
@@ -49,6 +50,7 @@ export function HrOvertimeWorkspace({
   data: HrOvertimeRuntimeWorkspaceData;
   query?: Record<string, string | undefined>;
 }>) {
+  const t = useTranslations();
   const { approvalEvents, candidates, dashboard, policies, requests, teamView } = data;
   const activeTab = query.tab ?? "overview";
   const searchTerm = (query.search ?? "").trim().toLowerCase();
@@ -70,85 +72,105 @@ export function HrOvertimeWorkspace({
   }));
 
   const navItems = [
-    { href: buildHref({ tab: "overview" }), key: "overview", label: "Overview" },
-    { href: buildHref({ tab: "candidates" }), key: "candidates", label: "Candidates" },
-    { href: buildHref({ tab: "requests" }), key: "requests", label: "Requests" },
-    { href: buildHref({ tab: "policies" }), key: "policies", label: "Policies" },
-    { href: buildHref({ tab: "team" }), key: "team", label: "Team View" },
-    { href: buildHref({ tab: "timeline" }), key: "timeline", label: "Timeline" },
+    { href: buildHref({ tab: "overview" }), key: "overview", label: t("hr.overtime.tab.overview") },
+    { href: buildHref({ tab: "candidates" }), key: "candidates", label: t("hr.overtime.tab.candidates") },
+    { href: buildHref({ tab: "requests" }), key: "requests", label: t("hr.overtime.tab.requests") },
+    { href: buildHref({ tab: "policies" }), key: "policies", label: t("hr.overtime.tab.policies") },
+    { href: buildHref({ tab: "team" }), key: "team", label: t("hr.overtime.tab.team") },
+    { href: buildHref({ tab: "timeline" }), key: "timeline", label: t("hr.overtime.tab.timeline") },
   ] as const;
 
   return (
     <PageContainer className="max-w-[96rem]">
       <HrWorkforceWorkspaceShell
         activeTab={activeTab}
-        description="Overtime policy engine, attendance candidates, approval workflow, and payroll input runtime."
+        description={t("hr.overtime.description")}
         navItems={navItems}
         summaryMetrics={[
-          { helper: "Awaiting manager/HR action", href: buildHref({ tab: "requests", status: "submitted" }), label: "Pending Approvals", value: dashboard.pendingApprovals },
-          { helper: "From attendance aggregation", href: buildHref({ tab: "candidates" }), label: "Candidates", value: dashboard.pendingCandidates },
-          { helper: "Approved for today", href: buildHref({ tab: "requests", status: "approved" }), label: "Approved Today", value: dashboard.approvedToday },
-          { helper: "Active overtime policies", href: buildHref({ tab: "policies" }), label: "Active Policies", value: dashboard.activePolicies },
+          {
+            helper: t("hr.overtime.kpi.pendingApprovals.helper"),
+            href: buildHref({ tab: "requests", status: "submitted" }),
+            label: t("hr.overtime.kpi.pendingApprovals"),
+            value: dashboard.pendingApprovals,
+          },
+          {
+            helper: t("hr.overtime.kpi.candidates.helper"),
+            href: buildHref({ tab: "candidates" }),
+            label: t("hr.overtime.kpi.candidates"),
+            value: dashboard.pendingCandidates,
+          },
+          {
+            helper: t("hr.overtime.kpi.approvedToday.helper"),
+            href: buildHref({ tab: "requests", status: "approved" }),
+            label: t("hr.overtime.kpi.approvedToday"),
+            value: dashboard.approvedToday,
+          },
+          {
+            helper: t("hr.overtime.kpi.activePolicies.helper"),
+            href: buildHref({ tab: "policies" }),
+            label: t("hr.overtime.kpi.activePolicies"),
+            value: dashboard.activePolicies,
+          },
         ]}
-        title="Overtime"
+        title={t("hr.overtime.title")}
         workspaceKey="overtime"
         filters={
           <HrWorkforceFilterBar basePath="/erp/hr/overtime" query={query} resetHref={buildHref({ tab: activeTab })}>
-            <HrWorkforceSearchFilter defaultValue={query.search} placeholder="Search employee" />
+            <HrWorkforceSearchFilter defaultValue={query.search} placeholder={t("hr.common.searchEmployee")} />
             <HrWorkforceEmployeeFilter defaultValue={query.employeeId} />
             <HrWorkforceStatusFilter
               defaultValue={query.status}
               options={[
-                { label: "Submitted", value: "submitted" },
-                { label: "Under review", value: "under" },
-                { label: "Approved", value: "approved" },
-                { label: "Rejected", value: "rejected" },
+                { label: t("hr.overtime.status.submitted"), value: "submitted" },
+                { label: t("hr.overtime.status.underReview"), value: "under" },
+                { label: t("hr.overtime.status.approved"), value: "approved" },
+                { label: t("hr.overtime.status.rejected"), value: "rejected" },
               ]}
             />
             <HrWorkforceDateRangeFilters endValue={query.periodEnd} startValue={query.periodStart} />
           </HrWorkforceFilterBar>
         }
         sidebar={
-          <EditableSectionCard title="Reports">
+          <EditableSectionCard title={t("hr.common.reports")}>
             <Link className={secondaryButtonLinkClassName} href="/erp/hr/overtime/reports">
-              Open overtime reports
+              {t("hr.overtime.reportsLink")}
             </Link>
           </EditableSectionCard>
         }
       >
         {activeTab === "overview" ? (
-          <EditableSectionCard title="Submit Overtime Request">
+          <EditableSectionCard title={t("hr.overtime.submitSection")}>
             <form action={createOvertimeRequestAction} className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <EntityLookup label="Employee" name="employeeId" providerKey="hr.employees.lookup" required value={query.employeeId} />
-              <DatePicker name="workDate" placeholder="Work date" required />
-              <Input min={0.5} name="hours" placeholder="Hours" required step="0.5" type="number" />
+              <EntityLookup label={t("hr.common.employee")} name="employeeId" providerKey="hr.employees.lookup" required value={query.employeeId} />
+              <DatePicker name="workDate" placeholder={t("hr.common.workDate")} required />
+              <Input min={0.5} name="hours" placeholder={t("hr.common.hours")} required step="0.5" type="number" />
               <select className={nativeSelectClassName} defaultValue="normal" name="overtimeType">
-                <option value="normal">Normal</option>
-                <option value="weekend">Weekend</option>
-                <option value="holiday">Holiday</option>
-                <option value="night">Night</option>
-                <option value="emergency">Emergency</option>
+                <option value="normal">{t("hr.overtime.type.normal")}</option>
+                <option value="weekend">{t("hr.overtime.type.weekend")}</option>
+                <option value="holiday">{t("hr.overtime.type.holiday")}</option>
+                <option value="night">{t("hr.overtime.type.night")}</option>
+                <option value="emergency">{t("hr.overtime.type.emergency")}</option>
               </select>
               <Input defaultValue="1.5" min={1} name="rateMultiplier" step="0.1" type="number" />
-              <Input className="md:col-span-2" name="reason" placeholder="Reason" />
+              <Input className="md:col-span-2" name="reason" placeholder={t("hr.common.reason")} />
               <Button type="submit" variant="primary">
-                Submit overtime
+                {t("hr.overtime.submit")}
               </Button>
             </form>
           </EditableSectionCard>
         ) : null}
 
         {activeTab === "candidates" ? (
-          <EditableSectionCard description="Attendance-derived overtime candidates with quick approve, convert, or ignore actions." title="Attendance Candidates">
+          <EditableSectionCard description={t("hr.overtime.candidatesDescription")} title={t("hr.overtime.candidatesTitle")}>
             <HrWorkforceEnterpriseTable
               columns={[
-                { header: "Employee", key: "employee", render: (r) => r.employeeLabel },
-                { header: "Date", key: "date", render: (r) => r.workDate },
-                { header: "Minutes", key: "minutes", render: (r) => r.candidateMinutes },
-                { header: "Type", key: "type", render: (r) => r.overtimeType },
-                { header: "Status", key: "status", render: (r) => r.status },
+                { header: t("hr.common.employee"), key: "employee", render: (r) => r.employeeLabel },
+                { header: t("hr.common.date"), key: "date", render: (r) => r.workDate },
+                { header: t("hr.common.minutes"), key: "minutes", render: (r) => r.candidateMinutes },
+                { header: t("hr.common.type"), key: "type", render: (r) => r.overtimeType },
+                { header: t("hr.common.status"), key: "status", render: (r) => r.status },
                 {
-                  header: "Actions",
+                  header: t("hr.common.actions"),
                   key: "actions",
                   render: (r) =>
                     r.status.toLowerCase().includes("pending") ? (
@@ -156,17 +178,23 @@ export function HrOvertimeWorkspace({
                         <form action={resolveOvertimeCandidateAction}>
                           <input name="candidateId" type="hidden" value={r.id} />
                           <input name="action" type="hidden" value="approve" />
-                          <Button size="sm" type="submit" variant="primary">Approve</Button>
+                          <Button size="sm" type="submit" variant="primary">
+                            {t("hr.common.approve")}
+                          </Button>
                         </form>
                         <form action={resolveOvertimeCandidateAction}>
                           <input name="candidateId" type="hidden" value={r.id} />
                           <input name="action" type="hidden" value="convert" />
-                          <Button size="sm" type="submit" variant="secondary">Convert</Button>
+                          <Button size="sm" type="submit" variant="secondary">
+                            {t("hr.common.convert")}
+                          </Button>
                         </form>
                         <form action={resolveOvertimeCandidateAction}>
                           <input name="candidateId" type="hidden" value={r.id} />
                           <input name="action" type="hidden" value="ignore" />
-                          <Button size="sm" type="submit" variant="secondary">Ignore</Button>
+                          <Button size="sm" type="submit" variant="secondary">
+                            {t("hr.common.ignore")}
+                          </Button>
                         </form>
                       </div>
                     ) : (
@@ -174,7 +202,7 @@ export function HrOvertimeWorkspace({
                     ),
                 },
               ]}
-              emptyMessage="No overtime candidates from attendance."
+              emptyMessage={t("hr.overtime.emptyCandidates")}
               getRowId={(r) => r.id}
               pagination={{ mode: "page", page: 1, pageSize: filteredCandidates.length || 1, totalRows: filteredCandidates.length }}
               records={filteredCandidates}
@@ -183,30 +211,38 @@ export function HrOvertimeWorkspace({
         ) : null}
 
         {activeTab === "requests" ? (
-          <EditableSectionCard title="Overtime Requests">
+          <EditableSectionCard title={t("hr.overtime.requestsTitle")}>
             <HrWorkforceEnterpriseTable
               columns={[
-                { header: "Employee", key: "employee", render: (r) => r.employeeLabel },
-                { header: "Date", key: "date", render: (r) => r.workDate },
-                { header: "Hours", key: "hours", render: (r) => (r.durationMinutes / 60).toFixed(2) },
-                { header: "Type", key: "type", render: (r) => r.overtimeType },
-                { header: "Rate", key: "rate", render: (r) => `${r.rateMultiplier}x` },
-                { header: "Payroll", key: "payroll", render: (r) => (r.payrollEligible ? "Eligible" : "Excluded") },
-                { header: "Status", key: "status", render: (r) => r.status },
+                { header: t("hr.common.employee"), key: "employee", render: (r) => r.employeeLabel },
+                { header: t("hr.common.date"), key: "date", render: (r) => r.workDate },
+                { header: t("hr.common.hours"), key: "hours", render: (r) => (r.durationMinutes / 60).toFixed(2) },
+                { header: t("hr.common.type"), key: "type", render: (r) => r.overtimeType },
+                { header: t("hr.common.rate"), key: "rate", render: (r) => `${r.rateMultiplier}x` },
                 {
-                  header: "Approve",
+                  header: t("hr.common.payroll"),
+                  key: "payroll",
+                  render: (r) => (r.payrollEligible ? t("hr.common.eligible") : t("hr.common.excluded")),
+                },
+                { header: t("hr.common.status"), key: "status", render: (r) => r.status },
+                {
+                  header: t("hr.common.approve"),
                   key: "approve",
                   render: (r) =>
                     r.status.toLowerCase().includes("submitted") || r.status.toLowerCase().includes("under review") ? (
                       <div className="flex gap-2">
                         <form action={approveOvertimeRequestAction}>
                           <input name="overtimeRequestId" type="hidden" value={r.id} />
-                          <Button size="sm" type="submit" variant="primary">Approve</Button>
+                          <Button size="sm" type="submit" variant="primary">
+                            {t("hr.common.approve")}
+                          </Button>
                         </form>
                         <form action={rejectOvertimeRequestAction}>
                           <input name="overtimeRequestId" type="hidden" value={r.id} />
                           <input name="reason" type="hidden" value="Rejected from workspace" />
-                          <Button size="sm" type="submit" variant="secondary">Reject</Button>
+                          <Button size="sm" type="submit" variant="secondary">
+                            {t("hr.common.reject")}
+                          </Button>
                         </form>
                       </div>
                     ) : (
@@ -214,7 +250,7 @@ export function HrOvertimeWorkspace({
                     ),
                 },
               ]}
-              emptyMessage="No overtime requests."
+              emptyMessage={t("hr.overtime.emptyRequests")}
               getRowId={(r) => r.id}
               pagination={{ mode: "page", page: 1, pageSize: filteredRequests.length || 1, totalRows: filteredRequests.length }}
               records={filteredRequests}
@@ -223,29 +259,31 @@ export function HrOvertimeWorkspace({
         ) : null}
 
         {activeTab === "policies" ? (
-          <EditableSectionCard title="Overtime Policies">
+          <EditableSectionCard title={t("hr.overtime.policiesTitle")}>
             <form action={createOvertimePolicyAction} className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              <Input name="code" placeholder="Policy code" required />
-              <Input name="name" placeholder="Policy name" required />
-              <DatePicker name="effectiveFrom" placeholder="Effective from" required />
+              <Input name="code" placeholder={t("hr.overtime.policyCode")} required />
+              <Input name="name" placeholder={t("hr.overtime.policyName")} required />
+              <DatePicker name="effectiveFrom" placeholder={t("hr.common.effectiveFrom")} required />
               <Input defaultValue="1.5" min={1} name="rateMultiplier" step="0.1" type="number" />
               <select className={nativeSelectClassName} defaultValue="normal" name="overtimeType">
-                <option value="normal">Normal</option>
-                <option value="weekend">Weekend</option>
-                <option value="holiday">Holiday</option>
+                <option value="normal">{t("hr.overtime.type.normal")}</option>
+                <option value="weekend">{t("hr.overtime.type.weekend")}</option>
+                <option value="holiday">{t("hr.overtime.type.holiday")}</option>
               </select>
-              <Button type="submit" variant="secondary">Create policy</Button>
+              <Button type="submit" variant="secondary">
+                {t("hr.overtime.createPolicy")}
+              </Button>
             </form>
             <HrWorkforceEnterpriseTable
               columns={[
-                { header: "Code", key: "code", render: (r) => r.code },
-                { header: "Name", key: "name", render: (r) => r.name },
-                { header: "Type", key: "type", render: (r) => r.overtimeType },
-                { header: "Rate", key: "rate", render: (r) => `${r.rateMultiplier}x` },
-                { header: "Effective", key: "effective", render: (r) => r.effectiveFrom },
-                { header: "Status", key: "status", render: (r) => r.status },
+                { header: t("hr.common.code"), key: "code", render: (r) => r.code },
+                { header: t("hr.common.name"), key: "name", render: (r) => r.name },
+                { header: t("hr.common.type"), key: "type", render: (r) => r.overtimeType },
+                { header: t("hr.common.rate"), key: "rate", render: (r) => `${r.rateMultiplier}x` },
+                { header: t("hr.common.effective"), key: "effective", render: (r) => r.effectiveFrom },
+                { header: t("hr.common.status"), key: "status", render: (r) => r.status },
               ]}
-              emptyMessage="No overtime policies configured."
+              emptyMessage={t("hr.overtime.emptyPolicies")}
               getRowId={(r) => r.id}
               pagination={{ mode: "page", page: 1, pageSize: policies.length || 1, totalRows: policies.length }}
               records={policies}
@@ -254,16 +292,16 @@ export function HrOvertimeWorkspace({
         ) : null}
 
         {activeTab === "team" ? (
-          <EditableSectionCard title="Team View">
+          <EditableSectionCard title={t("hr.overtime.teamTitle")}>
             <HrWorkforceEnterpriseTable
               columns={[
-                { header: "Employee", key: "employee", render: (r) => r.employee },
-                { header: "Date", key: "date", render: (r) => r.workDate },
-                { header: "Minutes", key: "minutes", render: (r) => r.durationMinutes },
-                { header: "Type", key: "type", render: (r) => r.overtimeType },
-                { header: "Status", key: "status", render: (r) => r.status },
+                { header: t("hr.common.employee"), key: "employee", render: (r) => r.employee },
+                { header: t("hr.common.date"), key: "date", render: (r) => r.workDate },
+                { header: t("hr.common.minutes"), key: "minutes", render: (r) => r.durationMinutes },
+                { header: t("hr.common.type"), key: "type", render: (r) => r.overtimeType },
+                { header: t("hr.common.status"), key: "status", render: (r) => r.status },
               ]}
-              emptyMessage="No team overtime scheduled."
+              emptyMessage={t("hr.overtime.emptyTeam")}
               getRowId={(r) => r.id}
               pagination={{ mode: "page", page: 1, pageSize: teamView.length || 1, totalRows: teamView.length }}
               records={teamView}
@@ -271,7 +309,7 @@ export function HrOvertimeWorkspace({
           </EditableSectionCard>
         ) : null}
 
-        {activeTab === "timeline" ? <PlatformTimeline events={timelineEvents} title="Overtime approval timeline" /> : null}
+        {activeTab === "timeline" ? <PlatformTimeline events={timelineEvents} title={t("hr.overtime.timelineTitle")} /> : null}
       </HrWorkforceWorkspaceShell>
     </PageContainer>
   );

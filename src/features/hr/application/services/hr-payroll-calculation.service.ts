@@ -6,7 +6,13 @@ import { ApplicationError } from "@/core/errors";
 import type { BranchRequestContext } from "@/platform/auth/server";
 
 import type { HrCompensationCategoryKey } from "../../compensation-foundation";
+import {
+  isPayrollLiveFallbackAllowed,
+  PAYROLL_SNAPSHOT_REQUIRED_MESSAGE,
+} from "../constants/hr-payroll-runtime.constants";
 import { calculateEgyptPayrollBreakdown, HR_EGYPT_PAYROLL_RATES } from "./hr-payroll-egypt.service";
+import { HrEmployeeCompensationService } from "./hr-employee-compensation.service";
+import { HR_BASIC_SALARY_CONFLICT_MESSAGE, HR_MISSING_COMPENSATION_MESSAGE } from "./hr-employee-compensation-resolve";
 import { HrLateEarlyPayrollInputService } from "./hr-late-early-runtime.service";
 import { HrLeavePayrollInputService } from "./hr-leave-runtime.service";
 import { HrOvertimePayrollInputService } from "./hr-overtime-runtime.service";
@@ -71,6 +77,7 @@ type SalaryPackageLine = Readonly<{
   includedInGrossSalary: boolean;
   insurable: boolean;
   name: string;
+  source: "package" | "profile";
   taxable: boolean;
 }>;
 
@@ -148,6 +155,7 @@ export class HrPayrollCalculationService {
         includedInGrossSalary: Boolean(version.included_in_gross_salary),
         insurable: Boolean(version.insurable),
         name: String(component.name),
+        source: "package",
         taxable: Boolean(version.taxable),
       };
     });
@@ -186,6 +194,23 @@ export class HrPayrollCalculationService {
       workedDays: Number(data.worked_days ?? 0),
       workedHours: Number(data.worked_hours ?? 0),
     };
+  }
+
+  private async resolveAttendanceInputsForPayroll(
+    employeeId: string,
+    period: PayrollPeriodContext,
+  ): Promise<Record<string, unknown>> {
+    const snapshot = await this.loadAttendanceSnapshot(employeeId, period);
+    if (snapshot) return snapshot;
+
+    if (isPayrollLiveFallbackAllowed()) {
+      return this.loadLiveAttendanceInputs(employeeId, period);
+    }
+
+    throw new ApplicationError({
+      code: "VALIDATION_ERROR",
+      message: PAYROLL_SNAPSHOT_REQUIRED_MESSAGE,
+    });
   }
 
   private async loadLiveAttendanceInputs(employeeId: string, period: PayrollPeriodContext) {
@@ -322,9 +347,41 @@ export class HrPayrollCalculationService {
     salaryPackageRef: string | null;
   }): Promise<PayrollEmployeeCalculation> {
     const period = await this.loadPeriodContext(input.payrollPeriodId);
-    const packageLines = await this.loadSalaryPackageLines(input.salaryPackageRef);
-    const snapshot = (await this.loadAttendanceSnapshot(input.employeeId, period))
-      ?? (await this.loadLiveAttendanceInputs(input.employeeId, period));
+    const compensationService = new HrEmployeeCompensationService(this.supabase, this.context);
+    const compensation = await compensationService.resolveEmployeeCompensation({
+      asOfDate: period.endDate,
+      employeeId: input.employeeId,
+      employmentProfileId: input.employmentProfileId,
+      salaryPackageRef: input.salaryPackageRef,
+    });
+
+    if (compensation.conflict) {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: compensation.conflictMessage ?? HR_BASIC_SALARY_CONFLICT_MESSAGE,
+      });
+    }
+    if (compensation.missingCompensation) {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: HR_MISSING_COMPENSATION_MESSAGE,
+      });
+    }
+
+    const packageLines: SalaryPackageLine[] = compensation.lines.map((line) => ({
+      amount: line.amount,
+      categoryKey: line.categoryKey,
+      code: line.code,
+      componentVersionId: line.componentVersionId,
+      earningOrDeduction: line.earningOrDeduction,
+      includedInGrossSalary: line.includedInGrossSalary,
+      insurable: line.insurable,
+      name: line.name,
+      source: line.source,
+      taxable: line.taxable,
+    }));
+
+    const snapshot = await this.resolveAttendanceInputsForPayroll(input.employeeId, period);
     const payrollInputs = await this.loadPayrollInputAmounts(input.employeeId, input.payrollPeriodId);
     const financial = await this.loadFinancialItems(input.employeeId, period);
 
@@ -344,7 +401,7 @@ export class HrPayrollCalculationService {
         componentType,
         compensationComponentVersionId: line.componentVersionId,
         displayOrder,
-        source: "contract",
+        source: line.source === "profile" ? "assignment" : "contract",
       });
       displayOrder += 10;
       if (line.categoryKey === "basic_salary" && line.earningOrDeduction === "earning") {

@@ -5,7 +5,18 @@ import { useState } from "react";
 
 import { resolveHrFieldHelp } from "@/features/hr/public-api";
 import { updateEmployeePhotoAction, updateEmployeeQuickEditAction } from "@/features/hr/routes/actions/hr-operational.actions";
-import { Button, DatePicker, FieldGroup, FormGrid, Input, nativeSelectClassName, RecordFormDialog, RecordFormSection } from "@/shared/ui";
+import {
+  Button,
+  DatePicker,
+  FieldGroup,
+  FormGrid,
+  Input,
+  RecordFormDialog,
+  RecordFormSection,
+  fileInputClassName,
+  nativeSelectClassName,
+  useTranslations,
+} from "@/shared/ui";
 
 export function HrEmployeeEditModal({
   closeHref,
@@ -32,6 +43,7 @@ export function HrEmployeeEditModal({
     phone: string;
   };
 }>) {
+  const t = useTranslations();
   const router = useRouter();
   const [open, setOpen] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
@@ -40,7 +52,7 @@ export function HrEmployeeEditModal({
     <RecordFormDialog
       actions={
         <Button form="hr-employee-edit-form" type="submit" variant="primary">
-          Save changes
+          {t("hr.employees.edit.saveChanges")}
         </Button>
       }
       isDirty={isDirty}
@@ -54,97 +66,85 @@ export function HrEmployeeEditModal({
       }}
       open={open}
       size="wide"
-      subtitle={`Quick edit for ${employee.employeeNumber}. Organization fields must be changed through Assignments.`}
-      title={`Edit ${employee.fullName}`}
+      subtitle={t("hr.employees.edit.subtitle", { code: employee.employeeNumber })}
+      title={t("hr.employees.edit.title", { name: employee.fullName })}
     >
       <RecordFormSection>
         <form action={updateEmployeeQuickEditAction} className="space-y-4" id="hr-employee-edit-form" onInput={() => setIsDirty(true)}>
           <input name="employeeId" type="hidden" value={employee.id} />
           <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
-            To change department, position, manager, shift, or payroll group, create an Assignment Change.
+            {t("hr.employees.edit.assignmentBanner")}
           </div>
           <form action={updateEmployeePhotoAction.bind(null, employee.id)} className="max-w-md space-y-2 rounded-md border p-3" encType="multipart/form-data">
-            <FieldGroup label="Employee photo">
-              <input
-                accept="image/*"
-                className="block w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-sm text-[hsl(var(--foreground))] file:me-3 file:rounded-md file:border file:border-[hsl(var(--border))] file:bg-[hsl(var(--muted))] file:px-3 file:py-1.5 file:text-sm"
-                name="file"
-                type="file"
-              />
+            <FieldGroup label={t("hr.employees.edit.photo")}>
+              <input accept="image/*" className={fileInputClassName} name="file" type="file" />
             </FieldGroup>
             <Button size="sm" type="submit" variant="secondary">
-              Upload photo
+              {t("hr.employees.edit.uploadPhoto")}
             </Button>
           </form>
           <FormGrid>
-            <FieldGroup help={resolveHrFieldHelp("fullName")} isRequired label="Full name">
+            <FieldGroup help={resolveHrFieldHelp("fullName")} isRequired label={t("hr.common.fullName")}>
               <Input defaultValue={employee.fullName} name="fullName" required />
             </FieldGroup>
             <FieldGroup
-              description="Internal employee code used across HR, payroll, and lookups."
+              description={t("hr.employees.wizard.employeeCodeDescription")}
               help={resolveHrFieldHelp("employeeNumber")}
               isRequired
-              label="Employee number / رقم الموظف"
+              label={t("hr.employees.wizard.employeeCode")}
             >
-              <Input defaultValue={employee.employeeNumber} name="employeeNumber" required />
+              <Input defaultValue={employee.employeeNumber} maxLength={50} name="employeeNumber" required />
             </FieldGroup>
-            <FieldGroup help={resolveHrFieldHelp("nationalId")} label="National ID">
+            <FieldGroup help={resolveHrFieldHelp("nationalId")} label={t("hr.common.nationalId")}>
               <Input defaultValue={employee.nationalId} name="nationalId" />
             </FieldGroup>
-            <FieldGroup help={resolveHrFieldHelp("passportNumber")} label="Passport">
+            <FieldGroup help={resolveHrFieldHelp("passportNumber")} label={t("hr.common.passport")}>
               <Input defaultValue={employee.passportNumber} name="passportNumber" />
             </FieldGroup>
-            <FieldGroup help={resolveHrFieldHelp("birthDate")} label="Birth date">
+            <FieldGroup help={resolveHrFieldHelp("birthDate")} label={t("hr.common.birthDate")}>
               <DatePicker defaultValue={employee.birthDate} name="birthDate" />
             </FieldGroup>
-            <FieldGroup label="Gender">
+            <FieldGroup label={t("hr.common.gender")}>
               <select className={nativeSelectClassName} defaultValue={employee.gender} name="gender">
                 <option value="">-</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="other">Other</option>
-                <option value="undisclosed">Undisclosed</option>
+                <option value="female">{t("hr.common.gender.female")}</option>
+                <option value="male">{t("hr.common.gender.male")}</option>
+                <option value="other">{t("hr.common.gender.other")}</option>
+                <option value="undisclosed">{t("hr.common.gender.undisclosed")}</option>
               </select>
             </FieldGroup>
-            <FieldGroup label="Nationality">
+            <FieldGroup label={t("hr.common.nationality")}>
               <Input defaultValue={employee.nationality} name="nationality" />
             </FieldGroup>
-            <FieldGroup label="Marital status">
+            <FieldGroup label={t("hr.common.maritalStatus")}>
               <select className={nativeSelectClassName} defaultValue={employee.maritalStatus} name="maritalStatus">
                 <option value="">-</option>
-                <option value="single">Single</option>
-                <option value="married">Married</option>
-                <option value="divorced">Divorced</option>
-                <option value="widowed">Widowed</option>
-                <option value="undisclosed">Undisclosed</option>
+                <option value="single">{t("hr.common.maritalStatus.single")}</option>
+                <option value="married">{t("hr.common.maritalStatus.married")}</option>
+                <option value="divorced">{t("hr.common.maritalStatus.divorced")}</option>
+                <option value="widowed">{t("hr.common.maritalStatus.widowed")}</option>
+                <option value="undisclosed">{t("hr.common.maritalStatus.undisclosed")}</option>
               </select>
             </FieldGroup>
-            <FieldGroup
-              description="Device code already registered on the attendance (fingerprint/face) device. Separate from employee number. / رمز جهاز الحضور (بصمة/وجه) — مختلف عن رقم الموظف."
-              help={resolveHrFieldHelp("attendanceCode")}
-              label="Attendance Code / رمز الحضور"
-            >
-              <Input defaultValue={employee.attendanceCode} maxLength={50} name="attendanceCode" placeholder="Attendance device code" />
-            </FieldGroup>
-            <FieldGroup help={resolveHrFieldHelp("phone")} label="Phone">
+            <FieldGroup help={resolveHrFieldHelp("phone")} label={t("hr.common.phone")}>
               <Input defaultValue={employee.phone} name="phone" />
             </FieldGroup>
-            <FieldGroup help={resolveHrFieldHelp("email")} label="Email">
+            <FieldGroup help={resolveHrFieldHelp("email")} label={t("hr.common.email")}>
               <Input defaultValue={employee.email} name="email" type="email" />
             </FieldGroup>
-            <FieldGroup help={resolveHrFieldHelp("emergencyContactName")} label="Emergency contact name">
+            <FieldGroup help={resolveHrFieldHelp("emergencyContactName")} label={t("hr.common.emergencyContactName")}>
               <Input defaultValue={employee.emergencyContactName} name="emergencyContactName" />
             </FieldGroup>
-            <FieldGroup help={resolveHrFieldHelp("emergencyContactPhone")} label="Emergency contact phone">
+            <FieldGroup help={resolveHrFieldHelp("emergencyContactPhone")} label={t("hr.common.emergencyContactPhone")}>
               <Input defaultValue={employee.emergencyContactPhone} name="emergencyContactPhone" />
             </FieldGroup>
-            <FieldGroup label="Address line 1">
+            <FieldGroup label={t("hr.common.addressLine1")}>
               <Input defaultValue={employee.addressLine1} name="addressLine1" />
             </FieldGroup>
-            <FieldGroup label="Address line 2">
+            <FieldGroup label={t("hr.common.addressLine2")}>
               <Input defaultValue={employee.addressLine2} name="addressLine2" />
             </FieldGroup>
-            <FieldGroup label="City">
+            <FieldGroup label={t("hr.common.city")}>
               <Input defaultValue={employee.city} name="city" />
             </FieldGroup>
           </FormGrid>

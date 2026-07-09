@@ -221,42 +221,112 @@ export const HR_BULK_OPERATION_DEFINITIONS = {
     { label: "Bulk approve selected requests", permission: "hr.actions.approve", value: "bulk_approve" },
     { label: "Bulk reject selected requests", permission: "hr.actions.approve", value: "bulk_reject" },
   ],
+  financial: [
+    { label: "Bulk issue bonuses", permission: "hr.compensation.manage", value: "bulk_issue_bonus" },
+    { label: "Bulk issue incentives", permission: "hr.compensation.manage", value: "bulk_issue_incentive" },
+    { label: "Bulk issue penalties", permission: "hr.compensation.manage", value: "bulk_issue_penalty" },
+    { label: "Export compensation batch", permission: "hr.import-export.manage", value: "export_batch" },
+  ],
 } as const;
 
 // ─── Export Column Definitions ────────────────────────────────────────────────
 
 export const HR_EMPLOYEE_EXPORT_COLUMNS = [
-  { field: "employeeNumber", label: "Employee Number", order: 1 },
-  { field: "attendanceCode", label: "Attendance Code", order: 2 },
-  { field: "fullName", label: "Full Name", order: 3, pii: true },
-  { field: "nationalId", label: "National ID", order: 4, pii: true },
-  { field: "employmentStatus", label: "Status", order: 5 },
-  { field: "department", label: "Department", order: 6 },
-  { field: "position", label: "Position", order: 7 },
-  { field: "manager", label: "Manager", order: 8 },
-  { field: "contractStatus", label: "Contract Status", order: 9 },
-  { field: "email", label: "Email", order: 10, pii: true },
-  { field: "phone", label: "Phone", order: 11, pii: true },
-  { field: "branchLabel", label: "Branch", order: 12 },
+  { field: "employeeNumber", label: "Employee Code", order: 1 },
+  { field: "fullName", label: "Full Name", order: 2, pii: true },
+  { field: "nationalId", label: "National ID", order: 3, pii: true },
+  { field: "employmentStatus", label: "Status", order: 4 },
+  { field: "department", label: "Department", order: 5 },
+  { field: "position", label: "Position", order: 6 },
+  { field: "manager", label: "Manager", order: 7 },
+  { field: "contractStatus", label: "Contract Status", order: 8 },
+  { field: "email", label: "Email", order: 9, pii: true },
+  { field: "phone", label: "Phone", order: 10, pii: true },
+  { field: "branchLabel", label: "Branch", order: 11 },
 ] as const;
 
 export const HR_EMPLOYEE_IMPORT_COLUMNS = [
-  { field: "fullName", label: "Full Name", required: true },
-  { field: "employeeNumber", label: "Employee Number", required: false },
-  { field: "attendanceCode", label: "Attendance Code", required: false },
-  { field: "nationalId", label: "National ID", required: false },
-  { field: "gender", label: "Gender", required: false },
-  { field: "birthDate", label: "Birth Date (YYYY-MM-DD)", required: false },
-  { field: "phone", label: "Phone", required: false },
-  { field: "email", label: "Email", required: false },
+  {
+    aliases: ["الاسم بالكامل", "الاسم الكامل", "الاسم", "full name", "name"],
+    field: "fullName",
+    label: "Full Name",
+    labelAr: "الاسم بالكامل",
+    required: true,
+  },
+  {
+    // One operator-facing code: job code = attendance/device code. Legacy sheet headers still parse.
+    aliases: [
+      "الرقم الوظيفي",
+      "رقم الموظف",
+      "كود الموظف",
+      "كود الحضور",
+      "كود البصمة",
+      "رقم البصمة",
+      "employee number",
+      "employee code",
+      "emp number",
+      "employee no",
+      "attendance code",
+      "fingerprint code",
+      "badge code",
+    ],
+    field: "employeeNumber",
+    label: "Employee Code",
+    labelAr: "كود الموظف",
+    required: false,
+  },
+  {
+    aliases: ["الرقم القومي", "رقم الهوية", "رقم البطاقة", "national id", "nationality id", "nid"],
+    field: "nationalId",
+    label: "National ID",
+    labelAr: "الرقم القومي",
+    required: false,
+  },
+  {
+    aliases: ["النوع", "الجنس", "gender", "sex"],
+    field: "gender",
+    label: "Gender",
+    labelAr: "النوع",
+    required: false,
+  },
+  {
+    aliases: ["تاريخ الميلاد", "تاريخ الميلاد (يوم/شهر/سنة)", "birth date", "birth date (yyyy-mm-dd)", "date of birth", "dob"],
+    field: "birthDate",
+    label: "Birth Date (YYYY-MM-DD)",
+    labelAr: "تاريخ الميلاد",
+    required: false,
+  },
+  {
+    aliases: ["الهاتف", "الموبايل", "الجوال", "رقم التليفون", "رقم الهاتف", "phone", "mobile", "tel"],
+    field: "phone",
+    label: "Phone",
+    labelAr: "الهاتف",
+    required: false,
+  },
+  {
+    aliases: ["البريد الإلكتروني", "البريد الالكتروني", "الإيميل", "الايميل", "email", "e-mail"],
+    field: "email",
+    label: "Email",
+    labelAr: "البريد الإلكتروني",
+    required: false,
+  },
 ] as const;
+
+/** Accepted sheet values for gender → stored enum (English). */
+export const HR_EMPLOYEE_IMPORT_GENDER_ALIASES = {
+  female: ["female", "f", "أنثى", "انثى", "انثي", "نثى", "ست"],
+  male: ["male", "m", "ذكر", "رجل"],
+  other: ["other", "أخرى", "اخرى", "أخرى / غير ذلك"],
+  undisclosed: ["undisclosed", "غير محدد", "غير مفصح", "غير معروف"],
+} as const;
 
 export const HR_EMPLOYEE_IMPORT_VALIDATION_RULES = [
   "Full name is required.",
   "National ID must be unique per company.",
-  "Attendance code must be unique per company (case-insensitive).",
+  "Employee code (also used as attendance code) must be unique per company (case-insensitive).",
   "Birth date must be in YYYY-MM-DD format.",
   "Email must be a valid email address if provided.",
+  "Gender accepts Arabic or English: ذكر/أنثى or male/female.",
 ] as const;
 
 // ─── Search Provider Definitions ──────────────────────────────────────────────
@@ -310,6 +380,30 @@ export const HR_SEARCH_ENTITY_PROVIDERS = [
     label: "HR Requests",
     permission: "hr.actions.view",
   },
+  {
+    description: "Search leave requests by employee name, status, or leave dates.",
+    entityType: "hr_leave_request" as const,
+    fields: ["employeeName", "status", "startsOn", "endsOn"] as const,
+    key: "hr.leave.search",
+    label: "Leave Requests",
+    permission: "hr.leave.view",
+  },
+  {
+    description: "Search overtime candidates by employee name, work date, or status.",
+    entityType: "hr_overtime_candidate" as const,
+    fields: ["employeeName", "workDate", "status"] as const,
+    key: "hr.overtime.search",
+    label: "Overtime Candidates",
+    permission: "hr.overtime.view",
+  },
+  {
+    description: "Search late/early violations by employee name, violation kind, or status.",
+    entityType: "hr_late_early_violation" as const,
+    fields: ["employeeName", "violationKind", "status"] as const,
+    key: "hr.late-early.search",
+    label: "Late / Early Violations",
+    permission: "hr.late.view",
+  },
 ] as const;
 
 // ─── Validation Rule Definitions ──────────────────────────────────────────────
@@ -339,7 +433,8 @@ export const HR_PRODUCTION_VALIDATION_RULES = {
   ],
   payrollReadiness: [
     { code: "missing_bank_details", message: "Bank account details are required for payroll processing.", severity: "error" as const },
-    { code: "missing_compensation", message: "No active compensation package found.", severity: "error" as const },
+    { code: "missing_compensation", message: "Assign a salary package or set basic salary on the employee profile.", severity: "error" as const },
+    { code: "basic_salary_source_conflict", message: "Basic salary is defined in both the employee profile and the salary package.", severity: "error" as const },
     { code: "missing_payroll_group", message: "Employee is not assigned to a payroll group.", severity: "error" as const },
     { code: "missing_contract", message: "No active contract found for this employee.", severity: "error" as const },
     { code: "expired_document", message: "One or more required documents have expired.", severity: "warning" as const },

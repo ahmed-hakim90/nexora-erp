@@ -230,12 +230,16 @@ export function Popover({
   align = "start",
   children,
   contentClassName,
+  onOpenChange,
+  open,
   sideOffset = 8,
   trigger,
 }: Readonly<{
   align?: ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>["align"];
   children: ReactNode;
   contentClassName?: string;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
   sideOffset?: ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>["sideOffset"];
   trigger?: ReactNode;
 }>) {
@@ -244,7 +248,7 @@ export function Popover({
   }
 
   return (
-    <PopoverPrimitive.Root>
+    <PopoverPrimitive.Root onOpenChange={onOpenChange} open={open}>
       <PopoverPrimitive.Trigger asChild>{trigger}</PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
@@ -253,6 +257,7 @@ export function Popover({
             "z-[var(--z-dropdown)] w-max min-w-[min(16rem,calc(100vw-1rem))] max-w-[min(34rem,calc(100vw-1rem),var(--radix-popover-content-available-width))] max-h-[min(32rem,var(--radix-popover-content-available-height))] overflow-auto rounded-md border bg-[hsl(var(--surface))] p-3 shadow-md",
             contentClassName,
           )}
+          onCloseAutoFocus={(event) => event.preventDefault()}
           sideOffset={sideOffset}
         >
           {children}

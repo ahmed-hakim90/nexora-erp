@@ -21,7 +21,10 @@ export default async function NotificationsPage() {
   return (
     <AppShell
       {...createErpShellChrome(undefined, runtime)}
-      breadcrumbs={[{ href: "/erp", label: "Apps" }, { label: "Notifications" }]}
+      breadcrumbs={[
+        { href: "/erp", label: "Apps", messageKey: "shell.apps.label" },
+        { label: "Notifications", messageKey: "shell.notifications.title" },
+      ]}
       workspace={{ key: "notifications", name: "Notifications", icon: <Bell className="size-4" /> }}
       workspaceNav={[
         { key: "notifications", label: "Notifications", href: "/erp/notifications", isActive: true },

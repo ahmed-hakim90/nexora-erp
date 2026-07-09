@@ -34,15 +34,20 @@ test("hr enterprise: leave attendance payroll services are exported", async () =
   assert.equal(typeof fileAttachment.HrFileAttachmentService, "function");
 });
 
-test("hr enterprise: seed and engine actions exist", async () => {
+test("hr enterprise: leave and payroll setup actions exist", async () => {
   const leaveActions = await import("@/features/hr/routes/actions/hr-leave.actions");
   const payrollActions = await import("@/features/hr/routes/actions/hr-payroll.actions");
   const attendanceActions = await import("@/features/hr/routes/actions/hr-attendance.actions");
   const compensationActions = await import("@/features/hr/routes/actions/hr-compensation.actions");
-  assert.equal(typeof leaveActions.ensureDefaultLeaveTypesAction, "function");
+  assert.equal(typeof leaveActions.createLeaveTypeAction, "function");
+  assert.equal(typeof leaveActions.updateLeaveTypeAction, "function");
+  assert.equal(typeof leaveActions.archiveLeaveTypeAction, "function");
   assert.equal(typeof leaveActions.createLeavePolicyAction, "function");
+  assert.equal(typeof leaveActions.updateLeavePolicyAction, "function");
   assert.equal(typeof leaveActions.activateLeavePolicyAction, "function");
-  assert.equal(typeof payrollActions.ensureDefaultPayrollSetupAction, "function");
+  assert.equal(typeof payrollActions.createPayrollCalendarAction, "function");
+  assert.equal(typeof payrollActions.createPayrollGroupAction, "function");
+  assert.equal(typeof payrollActions.createPayrollPeriodAction, "function");
   assert.equal(typeof attendanceActions.recordAttendancePunchAction, "function");
   assert.equal(typeof compensationActions.createCompensationComponentAction, "function");
 });
@@ -61,11 +66,20 @@ test("hr enterprise: financial export routes exist", () => {
   assert.ok(fs.existsSync(loans));
 });
 
-test("hr enterprise: settings page wires seed actions", () => {
-  const source = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/hr/settings/page.tsx"), "utf8");
-  assert.match(source, /ensureDefaultLeaveTypesAction/);
-  assert.match(source, /createLeavePolicyAction/);
-  assert.match(source, /ensureDefaultPayrollSetupAction/);
+test("hr enterprise: settings page wires leave and payroll CRUD without seeds", () => {
+  const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/hr/settings/page.tsx"), "utf8");
+  const workspaceSource = fs.readFileSync(
+    path.join(process.cwd(), "src/app/(erp)/erp/hr/_components/hr-settings-workspace.tsx"),
+    "utf8",
+  );
+  assert.match(pageSource, /HrSettingsWorkspace/);
+  assert.match(workspaceSource, /createLeaveTypeAction/);
+  assert.match(workspaceSource, /createLeavePolicyAction/);
+  assert.match(workspaceSource, /updateLeavePolicyAction/);
+  assert.match(workspaceSource, /createPayrollCalendarAction/);
+  assert.match(workspaceSource, /createPayrollGroupAction/);
+  assert.match(workspaceSource, /createPayrollPeriodAction/);
+  assert.doesNotMatch(workspaceSource, /ensureDefaultLeaveTypesAction|ensureDefaultPayrollSetupAction|Seed Default/);
 });
 
 test("hr enterprise: attendance leave workspace exposes leave calendar tab", () => {

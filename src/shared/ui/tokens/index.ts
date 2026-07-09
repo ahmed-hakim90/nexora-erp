@@ -1,4 +1,5 @@
 export {
+  fileInputClassName,
   primaryButtonLinkClassName,
   secondaryButtonLinkClassName,
   secondaryButtonLinkSmClassName,

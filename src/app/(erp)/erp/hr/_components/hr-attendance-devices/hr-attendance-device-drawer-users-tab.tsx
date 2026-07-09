@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { HrAttendanceDeviceUserRecord } from "@/features/hr/public-api";
 import { platformFeedback } from "@/platform/feedback/public-api";
-import { Button, EnterpriseDataTable } from "@/shared/ui";
+import { Button, EnterpriseDataTable, useTranslations } from "@/shared/ui";
 
 import { TabLoadingState, useDeviceTabData } from "./hr-attendance-device-drawer-shared";
 
@@ -19,6 +19,7 @@ export function HrAttendanceDeviceDrawerUsersTab({
   deviceId,
   enabled,
 }: Readonly<{ deviceId: string; enabled: boolean }>) {
+  const t = useTranslations();
   const { data, error, loading } = useDeviceTabData<{ records: readonly HrAttendanceDeviceUserRecord[]; totalRows: number }>(
     deviceId,
     "users",
@@ -33,7 +34,7 @@ export function HrAttendanceDeviceDrawerUsersTab({
     setDownloading(true);
     try {
       const response = await fetch(`/api/hr/attendance-devices/${deviceId}/users`);
-      if (!response.ok) throw new Error("Could not download users.");
+      if (!response.ok) throw new Error(t("hr.attendance.devices.feedback.couldNotDownloadUsers"));
       const payload = (await response.json()) as { records?: readonly HrAttendanceDeviceUserRecord[] };
       const rows = payload.records ?? records;
       const csv = [
@@ -58,9 +59,9 @@ export function HrAttendanceDeviceDrawerUsersTab({
       anchor.download = `device-users-${deviceId}.csv`;
       anchor.click();
       URL.revokeObjectURL(url);
-      platformFeedback.success("Users exported.");
+      platformFeedback.success(t("hr.attendance.devices.feedback.usersExported"));
     } catch (cause) {
-      platformFeedback.error(cause instanceof Error ? cause.message : "Could not download users.");
+      platformFeedback.error(cause instanceof Error ? cause.message : t("hr.attendance.devices.feedback.couldNotDownloadUsers"));
     } finally {
       setDownloading(false);
     }
@@ -70,22 +71,22 @@ export function HrAttendanceDeviceDrawerUsersTab({
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         <Button disabled={downloading} onClick={() => void handleDownload()} size="sm" type="button" variant="secondary">
-          {downloading ? "Downloading…" : "Download users"}
+          {downloading ? t("hr.common.downloading") : t("hr.attendance.devices.drawer.downloadUsers")}
         </Button>
         <span className="inline-flex h-9 items-center rounded-md border px-3 text-sm text-muted-foreground">
-          {records.filter((row) => row.isUnmapped).length} unmapped
+          {t("hr.attendance.devices.drawer.unmappedCount", { count: records.filter((row) => row.isUnmapped).length })}
         </span>
         <span className="inline-flex h-9 items-center rounded-md border px-3 text-sm text-muted-foreground">
-          {records.filter((row) => row.isDuplicate).length} duplicates
+          {t("hr.attendance.devices.drawer.duplicatesCount", { count: records.filter((row) => row.isDuplicate).length })}
         </span>
       </div>
       <EnterpriseDataTable
         columns={[
-          { header: "Device code", key: "code", render: (row) => row.deviceCode },
-          { header: "Employee", key: "employee", render: (row) => row.employeeLabel },
-          { header: "Status", key: "status", render: (row) => row.employeeStatus ?? "—" },
+          { header: t("hr.attendance.devices.form.deviceCode"), key: "code", render: (row) => row.deviceCode },
+          { header: t("hr.common.employee"), key: "employee", render: (row) => row.employeeLabel },
+          { header: t("hr.common.status"), key: "status", render: (row) => row.employeeStatus ?? "—" },
           {
-            header: "Flags",
+            header: t("hr.common.flags"),
             key: "flags",
             render: (row) => (
               <span className="text-xs text-muted-foreground">
@@ -94,7 +95,7 @@ export function HrAttendanceDeviceDrawerUsersTab({
             ),
           },
         ]}
-        emptyMessage="No mapped users for this device."
+        emptyMessage={t("hr.attendance.devices.drawer.emptyUsers")}
         getRowId={(row) => row.id}
         pagination={{ mode: "page", page: 1, pageSize: records.length || 1, totalRows: data?.totalRows ?? records.length }}
         records={records}

@@ -31,7 +31,10 @@ export async function AdminShell({
   return (
     <AppShell
       {...createErpShellChrome("administration", runtime)}
-      breadcrumbs={[{ href: "/erp", label: "Apps" }, { label: "Administration" }]}
+      breadcrumbs={[
+        { href: "/erp", label: "Apps", messageKey: "shell.apps.label" },
+        { label: "Administration", messageKey: "apps.administration" },
+      ]}
       workspace={{ icon: <ShieldCheck className="size-4" />, key: "administration", name: "Administration" }}
       workspaceNav={adminNavItems.map((item) => ({
         href: item.href,

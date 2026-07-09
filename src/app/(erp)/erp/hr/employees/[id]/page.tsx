@@ -29,7 +29,7 @@ export default async function HrEmployeeProfilePage({
           {errorMessage || !data ? (
             <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">{errorMessage ?? "Employee not found."}</p>
           ) : (
-            <HrEmployeeProfileWorkspace data={data} tab={query.tab} />
+            <HrEmployeeProfileWorkspace data={data} tab={query.tab} uploadKind={query.uploadKind} />
           )}
         </div>
       </PageContainer>

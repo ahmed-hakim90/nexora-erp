@@ -38,8 +38,14 @@ export class FileImportAttendanceDeviceDriver extends BaseAttendanceDeviceDriver
 
   async downloadPunches(): Promise<readonly HrDevicePunchRecord[]> {
     this.ensureConnected();
-    const filePath = this.config?.metadata?.importFilePath;
-    if (!filePath || typeof filePath !== "string") return [];
+    const importPunches = this.config?.metadata?.importPunches;
+    if (Array.isArray(importPunches)) {
+      return importPunches as HrDevicePunchRecord[];
+    }
+    const downloadedPunches = this.config?.metadata?.downloadedPunches;
+    if (Array.isArray(downloadedPunches)) {
+      return downloadedPunches as HrDevicePunchRecord[];
+    }
     return [];
   }
 

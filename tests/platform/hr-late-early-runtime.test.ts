@@ -148,7 +148,10 @@ test("hr late early runtime: migration defines production tables", () => {
 test("hr late early runtime: UI pages exist", () => {
   assert.ok(fs.existsSync(path.join(process.cwd(), "src/app/(erp)/erp/hr/late-early/page.tsx")));
   assert.ok(fs.existsSync(path.join(process.cwd(), "src/app/(erp)/erp/hr/late-early/reports/page.tsx")));
-  assert.equal(fs.existsSync(path.join(process.cwd(), "src/app/(erp)/erp/hr/_components/hr-late-early-workspace.tsx")), false);
+  assert.ok(fs.existsSync(path.join(process.cwd(), "src/app/(erp)/erp/hr/_components/hr-late-early-workspace.tsx")));
+  const pageSource = fs.readFileSync(path.join(process.cwd(), "src/app/(erp)/erp/hr/late-early/page.tsx"), "utf8");
+  assert.match(pageSource, /HrLateEarlyWorkspace/);
+  assert.match(pageSource, /loadHrLateEarlyRuntimeWorkspace/);
 });
 
 test("hr late early runtime: payroll export uses payroll input service and export lifecycle", () => {

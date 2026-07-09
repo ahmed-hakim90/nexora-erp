@@ -56,6 +56,46 @@ export type HrDashboardMetrics = Readonly<{
   pendingApprovals: number;
   openVacancies: number;
   payrollReadinessIssues: number;
+  pendingLeaveApprovals: number;
+  employeesOnLeaveToday: number;
+  employeesWithMissingDocuments: number;
+  openAttendanceExceptionsToday: number;
+  pendingOvertimeCandidates: number;
+  pendingLateEarlyViolations: number;
+  openPayrollPeriods: number;
+  temporaryAssignmentsActive: number;
+  workAnniversariesThisMonth: number;
+  upcomingBirthdays: number;
+}>;
+
+export type HrDashboardActionQueueItem = Readonly<{
+  href: string;
+  id: string;
+  kind: "leave" | "hr_request" | "overtime" | "late_early";
+  labelKey: string;
+  labelParams: Readonly<Record<string, string | number>>;
+  status: string;
+}>;
+
+export type HrDashboardAlert = Readonly<{
+  href: string;
+  id: string;
+  labelKey: string;
+  labelParams: Readonly<Record<string, string | number>>;
+  severity: "info" | "warning" | "error";
+}>;
+
+export type HrDashboardAnniversary = Readonly<{
+  hireDate: string;
+  id: string;
+  label: string;
+}>;
+
+export type HrDashboardBirthday = Readonly<{
+  birthDate: string;
+  daysUntil: number;
+  id: string;
+  label: string;
 }>;
 
 export type HrTimelineEntry = Readonly<{

@@ -7,6 +7,7 @@ import { AppShell } from "@/shared/ui";
 
 import { resolveErpShellRuntime } from "../../../erp-security.server";
 import { createErpShellChrome } from "../../../erp-shell-model";
+import { ErpGlobalSearchSlot } from "../../_components/erp-global-search-slot";
 
 export async function HrShell({
   activeKey,
@@ -27,12 +28,23 @@ export async function HrShell({
   return (
     <AppShell
       {...createErpShellChrome("hr", runtime)}
-      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "HR", href: "/erp/hr" }]}
+      breadcrumbs={[
+        { label: "Apps", href: "/erp", messageKey: "shell.apps.label" },
+        { label: "HR", href: "/erp/hr", messageKey: "apps.hr" },
+      ]}
+      globalSearchSlot={<ErpGlobalSearchSlot activePath={pathname} runtime={runtime} />}
       homeHref="/erp"
       workspace={{ key: "hr", name: "HR", icon: <IdCard className="size-4" /> }}
       workspaceNav={HR_NAV_ITEMS.map((item) => ({
-        ...item,
+        fullLabel: item.fullLabel,
+        group: item.group,
+        href: item.href,
         isActive: item.key === resolvedActiveKey,
+        key: item.key,
+        label: item.label,
+        labelAr: item.labelAr,
+        mobileLabel: item.mobileLabel,
+        priority: item.priority,
       }))}
     >
       {children}

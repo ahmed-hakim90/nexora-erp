@@ -21,7 +21,10 @@ export default async function DashboardPage() {
   return (
     <AppShell
       {...createErpShellChrome(undefined, runtime)}
-      breadcrumbs={[{ href: "/erp", label: "Apps" }, { label: "Dashboard" }]}
+      breadcrumbs={[
+        { href: "/erp", label: "Apps", messageKey: "shell.apps.label" },
+        { label: "Dashboard" },
+      ]}
       workspace={{ key: "dashboard", name: "Dashboard", icon: <LayoutDashboard className="size-4" /> }}
       workspaceNav={[
         { key: "dashboard", label: "Dashboard", href: "/erp/dashboard", isActive: true },

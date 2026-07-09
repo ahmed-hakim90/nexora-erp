@@ -16,7 +16,7 @@ create index if not exists hr_attendance_device_sync_sessions_strategy_idx
 insert into public.permissions (permission_key, label, description, risk_level)
 values
   ('hr.attendance.sync', 'Attendance Sync', 'Start enterprise attendance device synchronization.', 'high'),
-  ('hr.attendance.preview', 'Attendance Sync Preview', 'View and save attendance sync preview drafts.', 'normal'),
+  ('hr.attendance.preview', 'Attendance Sync Preview', 'View and save attendance sync preview drafts.', 'standard'),
   ('hr.attendance.force-sync', 'Attendance Force Re-sync', 'Force re-download punches even if already imported.', 'critical')
 on conflict do nothing;
 

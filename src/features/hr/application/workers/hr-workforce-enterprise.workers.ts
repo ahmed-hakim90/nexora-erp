@@ -4,6 +4,7 @@ import { HR_WORKFORCE_ENTERPRISE_JOB_KEYS } from "../constants/hr-workforce-ente
 
 export const HR_WORKFORCE_ENTERPRISE_QUEUES = [
   defineJobQueue({ concurrency: 5, key: "hr-attendance-device", priority: "high", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
+  defineJobQueue({ concurrency: 2, key: "hr-compensation-issuance", priority: "high", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
   defineJobQueue({ concurrency: 3, key: "hr-workforce-monitoring", priority: "normal", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
   defineJobQueue({ concurrency: 2, key: "hr-workforce-replay", priority: "high", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),
   defineJobQueue({ concurrency: 2, key: "hr-workforce-recalculation", priority: "high", provider: "in-memory", supportsDeadLetter: true, supportsScheduling: true }),

@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { formatHrStatusLabel, type HrAttendanceLiveEmployeeDrawer } from "@/features/hr/public-api";
+import { translateHrLiveStatus, translateHrPunchType, type HrAttendanceLiveEmployeeDrawer } from "@/features/hr/public-api";
 import { HrRelativeTime } from "../hr-relative-time";
-import { Button, RecordFormDialog } from "@/shared/ui";
-
 import { executeHrAttendanceLiveSupervisorActionAction } from "@/features/hr/routes/actions/hr-attendance-live.actions";
+import { Button, RecordFormDialog, useTranslations } from "@/shared/ui";
 
 const ROW_HEIGHT = 52;
 
@@ -20,6 +19,7 @@ export function HrAttendanceLiveDrawer({
   employeeId: string | null;
   onClose: () => void;
 }>) {
+  const t = useTranslations();
   const open = Boolean(employeeId);
 
   return (
@@ -28,29 +28,29 @@ export function HrAttendanceLiveDrawer({
         if (!nextOpen) onClose();
       }}
       open={open}
-      subtitle="Live attendance overview, timeline, shift, and payroll impact."
-      title={drawer?.employeeLabel ?? "Employee attendance"}
+      subtitle={t("hr.attendance.live.drawer.subtitle")}
+      title={drawer?.employeeLabel ?? t("hr.attendance.live.drawer.defaultTitle")}
     >
       {drawer ? (
         <div className="space-y-4 text-sm">
           <div className="grid gap-3 md:grid-cols-2">
-            <InfoBlock label="Employee code" value={drawer.employeeCode} />
-            <InfoBlock label="Manager" value={drawer.managerLabel ?? "—"} />
-            <InfoBlock label="Shift" value={drawer.shiftSummary ?? "—"} />
-            <InfoBlock label="Leave status" value={drawer.leaveStatus ?? "—"} />
-            <InfoBlock label="Assignment" value={drawer.assignmentSummary ?? "—"} />
-            <InfoBlock label="Payroll impact" value={drawer.payrollImpactSummary ?? "—"} />
+            <InfoBlock label={t("hr.attendance.live.drawer.employeeCode")} value={drawer.employeeCode} />
+            <InfoBlock label={t("hr.common.manager")} value={drawer.managerLabel ?? "—"} />
+            <InfoBlock label={t("hr.common.shift")} value={drawer.shiftSummary ?? "—"} />
+            <InfoBlock label={t("hr.attendance.live.drawer.leaveStatus")} value={drawer.leaveStatus ? translateHrLiveStatus(t, drawer.leaveStatus) : "—"} />
+            <InfoBlock label={t("hr.common.assignment")} value={drawer.assignmentSummary ?? "—"} />
+            <InfoBlock label={t("hr.attendance.live.drawer.payrollImpact")} value={drawer.payrollImpactSummary ?? "—"} />
           </div>
 
           <section>
-            <h4 className="mb-2 font-medium">Today timeline</h4>
+            <h4 className="mb-2 font-medium">{t("hr.attendance.live.drawer.todayTimeline")}</h4>
             {drawer.timelineToday.length === 0 ? (
-              <p className="text-muted-foreground">No punches recorded today.</p>
+              <p className="text-muted-foreground">{t("hr.attendance.live.drawer.noPunchesToday")}</p>
             ) : (
               <ul className="space-y-1">
                 {drawer.timelineToday.map((entry) => (
                   <li className="rounded border px-2 py-1" key={`${entry.punchTime}-${entry.punchType}`}>
-                    {formatHrStatusLabel(entry.punchType)} · {entry.label} · {new Date(entry.punchTime).toLocaleString()}
+                    {translateHrPunchType(t, entry.punchType)} · {entry.label} · {new Date(entry.punchTime).toLocaleString()}
                   </li>
                 ))}
               </ul>
@@ -58,14 +58,14 @@ export function HrAttendanceLiveDrawer({
           </section>
 
           <section>
-            <h4 className="mb-2 font-medium">Previous week</h4>
+            <h4 className="mb-2 font-medium">{t("hr.attendance.live.drawer.previousWeek")}</h4>
             {drawer.previousWeekPunches.length === 0 ? (
-              <p className="text-muted-foreground">No recent punches.</p>
+              <p className="text-muted-foreground">{t("hr.attendance.live.drawer.noRecentPunches")}</p>
             ) : (
               <ul className="max-h-40 space-y-1 overflow-auto">
                 {drawer.previousWeekPunches.map((entry) => (
                   <li className="rounded border px-2 py-1" key={`${entry.punchTime}-${entry.punchType}`}>
-                    {formatHrStatusLabel(entry.punchType)} · {entry.label} · {new Date(entry.punchTime).toLocaleString()}
+                    {translateHrPunchType(t, entry.punchType)} · {entry.label} · {new Date(entry.punchTime).toLocaleString()}
                   </li>
                 ))}
               </ul>
@@ -74,14 +74,14 @@ export function HrAttendanceLiveDrawer({
 
           {drawer.warningsCount > 0 ? (
             <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2">
-              {drawer.warningsCount} open warning(s). Review exceptions before payroll.
+              {t("hr.attendance.live.drawer.warnings", { count: drawer.warningsCount })}
             </p>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
             <Link className="inline-flex" href={`/erp/hr/employees?edit=${drawer.employeeId}`}>
               <Button size="sm" type="button" variant="secondary">
-                Open employee
+                {t("hr.attendance.live.drawer.openEmployee")}
               </Button>
             </Link>
             <form action={executeHrAttendanceLiveSupervisorActionAction}>
@@ -89,13 +89,13 @@ export function HrAttendanceLiveDrawer({
               <input name="employeeId" type="hidden" value={drawer.employeeId} />
               <input name="reason" type="hidden" value="Supervisor notification from live monitor" />
               <Button size="sm" type="submit" variant="secondary">
-                Send notification
+                {t("hr.attendance.live.drawer.sendNotification")}
               </Button>
             </form>
           </div>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Loading employee attendance details…</p>
+        <p className="text-sm text-muted-foreground">{t("hr.attendance.live.drawer.loading")}</p>
       )}
     </RecordFormDialog>
   );
@@ -117,6 +117,7 @@ export function HrAttendanceLiveVirtualGrid({
   onOpenEmployee: (employeeId: string) => void;
   records: readonly import("@/features/hr/application/types/hr-attendance-live.types").HrAttendanceLiveGridRow[];
 }>) {
+  const t = useTranslations();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(520);
@@ -140,21 +141,21 @@ export function HrAttendanceLiveVirtualGrid({
   return (
     <div className="overflow-hidden rounded-lg border">
       <div className="grid grid-cols-[56px_minmax(120px,1fr)_minmax(160px,1.4fr)_minmax(120px,1fr)_minmax(120px,1fr)_120px_100px_100px_90px_90px_90px_90px_minmax(140px,1fr)_minmax(120px,1fr)_120px_100px] gap-2 border-b bg-[hsl(var(--muted))] px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        <span>Photo</span>
-        <span>Code</span>
-        <span>Employee</span>
-        <span>Department</span>
-        <span>Position</span>
-        <span>Shift</span>
-        <span>Status</span>
-        <span>Check In</span>
-        <span>Check Out</span>
-        <span>Worked</span>
-        <span>Late</span>
-        <span>OT</span>
-        <span>Location</span>
-        <span>Device</span>
-        <span>Actions</span>
+        <span>{t("hr.attendance.live.grid.photo")}</span>
+        <span>{t("hr.attendance.live.grid.code")}</span>
+        <span>{t("hr.attendance.live.grid.employee")}</span>
+        <span>{t("hr.common.department")}</span>
+        <span>{t("hr.common.position")}</span>
+        <span>{t("hr.common.shift")}</span>
+        <span>{t("hr.common.status")}</span>
+        <span>{t("hr.attendance.live.grid.checkIn")}</span>
+        <span>{t("hr.attendance.live.grid.checkOut")}</span>
+        <span>{t("hr.attendance.live.grid.worked")}</span>
+        <span>{t("hr.attendance.live.grid.late")}</span>
+        <span>{t("hr.attendance.live.grid.ot")}</span>
+        <span>{t("hr.attendance.live.grid.location")}</span>
+        <span>{t("hr.attendance.live.grid.device")}</span>
+        <span>{t("hr.common.actions")}</span>
       </div>
       <div
         className="max-h-[520px] overflow-auto"
@@ -193,7 +194,7 @@ export function HrAttendanceLiveVirtualGrid({
                 <span>{row.attendanceDeviceLabel ?? "—"}</span>
                 <span>
                   <Button onClick={() => onOpenEmployee(row.employeeId)} size="sm" type="button" variant="secondary">
-                    Open
+                    {t("hr.common.openAction")}
                   </Button>
                 </span>
               </div>
@@ -201,13 +202,16 @@ export function HrAttendanceLiveVirtualGrid({
           </div>
         </div>
       </div>
-      {records.length === 0 ? <p className="p-6 text-center text-sm text-muted-foreground">No employees match the current filters.</p> : null}
+      {records.length === 0 ? (
+        <p className="p-6 text-center text-sm text-muted-foreground">{t("hr.attendance.live.grid.empty")}</p>
+      ) : null}
     </div>
   );
 }
 
 function StatusInline({ status }: Readonly<{ status: import("@/features/hr/application/types/hr-attendance-live.types").HrAttendanceLiveStatus }>) {
-  return <span className="capitalize">{formatHrStatusLabel(status)}</span>;
+  const t = useTranslations();
+  return <span>{translateHrLiveStatus(t, status)}</span>;
 }
 
 export function HrAttendanceLiveMapPanel({
@@ -215,14 +219,15 @@ export function HrAttendanceLiveMapPanel({
 }: Readonly<{
   location: HrAttendanceLiveEmployeeDrawer extends never ? never : import("@/features/hr/application/types/hr-attendance-live.types").HrAttendanceLiveGpsLocation | null;
 }>) {
+  const t = useTranslations();
   if (!location?.latitude || !location.longitude) return null;
   return (
     <div className="rounded-lg border bg-[hsl(var(--surface))] p-4 text-sm">
-      <h4 className="mb-2 font-medium">Last location</h4>
-      <p>{location.label ?? "GPS capture"}</p>
+      <h4 className="mb-2 font-medium">{t("hr.attendance.live.map.lastLocation")}</h4>
+      <p>{location.label ?? t("hr.attendance.live.map.gpsCapture")}</p>
       <p className="text-muted-foreground">
-        Lat {location.latitude}, Long {location.longitude}
-        {location.accuracyMeters !== null ? ` · ±${location.accuracyMeters}m` : ""}
+        {t("hr.attendance.live.map.latLong", { lat: location.latitude, long: location.longitude })}
+        {location.accuracyMeters !== null ? ` · ${t("hr.attendance.live.map.accuracy", { meters: location.accuracyMeters })}` : ""}
         {location.capturedAt ? (
           <>
             {" · "}

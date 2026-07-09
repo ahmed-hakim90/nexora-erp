@@ -9,12 +9,14 @@ import { hydrateLookupOptions } from "@/shared/workspace/entity-lookup-runtime.s
 
 import { getHrFoundationEntity, type HrFoundationDescriptor } from "../../application/foundation-entities";
 import { hrFoundationListQuerySchema } from "../../application/schemas/hr-foundation.schema";
+import { formatHrFoundationListValue, type HrFoundationLookupOption } from "../../application/utils/hr-foundation-display";
 import { formatHrDisplayLabel } from "../../application/utils/hr-display";
 import { HR_PERMISSIONS } from "../../permissions/permission-registry";
 
 type FoundationRow = Record<string, unknown>;
 
-export type HrFoundationLookupOption = Readonly<{ id: string; label: string }>;
+export type { HrFoundationLookupOption };
+export { formatHrFoundationListValue };
 
 export type HrFoundationWorkspaceData = Readonly<{
   descriptor: HrFoundationDescriptor;
@@ -68,25 +70,6 @@ async function buildFoundationLookups(descriptor: HrFoundationDescriptor, record
     }),
   );
   return lookups;
-}
-
-function lookupLabel(lookups: Readonly<Record<string, readonly HrFoundationLookupOption[]>>, field: HrFoundationDescriptor["fields"][number], value: unknown) {
-  if (!field.lookup || value === null || value === undefined || value === "") return "—";
-  const option = lookups[field.lookup]?.find((candidate) => candidate.id === String(value));
-  return option?.label ?? "Selected record";
-}
-
-export function formatHrFoundationListValue(
-  descriptor: HrFoundationDescriptor,
-  lookups: Readonly<Record<string, readonly HrFoundationLookupOption[]>>,
-  field: HrFoundationDescriptor["fields"][number],
-  record: FoundationRow,
-) {
-  const value = record[field.column];
-  if (field.type === "lookup") return lookupLabel(lookups, field, value);
-  if (field.type === "checkbox") return value === true ? "Yes" : "No";
-  if (value === null || value === undefined || value === "") return "—";
-  return formatHrDisplayLabel(value);
 }
 
 export async function loadHrFoundationWorkspace(resource: string, query: unknown = {}): Promise<HrFoundationWorkspaceData> {

@@ -24,15 +24,16 @@ export const Button = forwardRef<
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md border font-medium text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--surface))] disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] border font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--surface))] disabled:pointer-events-none disabled:opacity-50",
         size === "sm" ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm",
         variant === "primary" &&
-          "border-[hsl(var(--accent))] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]",
+          "border-[hsl(var(--accent))] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] hover:border-[hsl(var(--primary-600))] hover:bg-[hsl(var(--primary-600))]",
         variant === "secondary" &&
-          "border-border bg-[hsl(var(--surface-muted))] hover:border-[hsl(var(--muted-foreground)/0.35)] hover:bg-[hsl(var(--surface-elevated))]",
-        variant === "ghost" && "border-transparent bg-transparent hover:bg-[hsl(var(--muted))]",
+          "border-border bg-[hsl(var(--surface-muted))] text-foreground hover:border-[hsl(var(--muted-foreground)/0.35)] hover:bg-[hsl(var(--surface-elevated))]",
+        variant === "ghost" &&
+          "border-transparent bg-transparent text-foreground shadow-none hover:bg-[hsl(var(--muted))]",
         variant === "danger" &&
-          "border-[hsl(var(--danger))] bg-[hsl(var(--danger))] text-white",
+          "border-[hsl(var(--danger))] bg-[hsl(var(--danger))] text-white hover:brightness-95",
         className,
       )}
       ref={ref}
@@ -119,27 +120,40 @@ export function Select({
   placeholder?: string;
   options: readonly { value: string; label: string; disabled?: boolean }[];
 }>) {
+  // Radix Select treats "" as an invalid controlled value and can render like a broken text field.
+  const resolvedValue = value && value.length > 0 ? value : undefined;
+
   return (
-    <SelectPrimitive.Root onValueChange={onValueChange} value={value}>
-      <SelectPrimitive.Trigger className="inline-flex h-10 w-full items-center justify-between rounded-md border bg-[hsl(var(--surface))] px-3 text-sm">
+    <SelectPrimitive.Root onValueChange={onValueChange} value={resolvedValue}>
+      <SelectPrimitive.Trigger
+        className={cn(
+          "inline-flex h-10 w-full items-center justify-between gap-2 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 text-sm text-foreground outline-none",
+          "hover:bg-[hsl(var(--muted))]/40 focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--surface))]",
+          "disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
+        )}
+      >
         <SelectPrimitive.Value placeholder={placeholder} />
-        <SelectPrimitive.Icon>
-          <ChevronDown className="size-4" />
+        <SelectPrimitive.Icon className="shrink-0 text-muted-foreground">
+          <ChevronDown aria-hidden className="size-4" />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content className="z-[var(--z-dropdown)] overflow-hidden rounded-md border bg-[hsl(var(--surface))] shadow-md">
-          <SelectPrimitive.Viewport className="p-1">
+        <SelectPrimitive.Content
+          className="z-[var(--z-dropdown)] overflow-hidden rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-md"
+          position="popper"
+          sideOffset={4}
+        >
+          <SelectPrimitive.Viewport className="max-h-60 min-w-[var(--radix-select-trigger-width)] p-1">
             {options.map((option) => (
               <SelectPrimitive.Item
-                className="flex cursor-pointer items-center justify-between rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-[hsl(var(--muted))]"
+                className="flex cursor-pointer items-center justify-between gap-2 rounded px-3 py-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-[hsl(var(--muted))]"
                 disabled={option.disabled}
                 key={option.value}
                 value={option.value}
               >
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                 <SelectPrimitive.ItemIndicator>
-                  <Check className="size-4" />
+                  <Check className="size-4 shrink-0" />
                 </SelectPrimitive.ItemIndicator>
               </SelectPrimitive.Item>
             ))}

@@ -1,33 +1,120 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
-import type { HrAttendanceDevicePreviewPayload } from "@/features/hr/public-api";
+import type { HrAttendanceDevicePreviewPayload, HrAttendanceDevicePreviewPunch } from "@/features/hr/application/types/hr-attendance-device.types";
 import { formatHrDurationSeconds } from "@/features/hr/public-api";
 import { formatHrStatusLabel } from "@/features/hr/public-api";
-import { saveHrAttendanceDeviceMappingAction } from "@/features/hr/routes/actions/hr-attendance-device.actions";
-import { Button, EntityLookup, EnterpriseDataTable, Input, PlatformTimeline, type PlatformTimelineEvent } from "@/shared/ui";
+import {
+  applyHrAttendanceDevicePreviewEditsAction,
+  saveHrAttendanceDeviceMappingAction,
+} from "@/features/hr/routes/actions/hr-attendance-device.actions";
+import { platformFeedback } from "@/platform/feedback/public-api";
+import {
+  Button,
+  DatePicker,
+  EntityLookup,
+  EnterpriseDataTable,
+  Input,
+  PlatformTimeline,
+  type PlatformTimelineEvent,
+  nativeSelectClassName,
+  useTranslations,
+} from "@/shared/ui";
 import { cn } from "@/shared/ui/utils";
 
-const TABS = ["summary", "employees", "punches", "attendance", "warnings", "errors", "duplicates", "unmatched", "mapping", "statistics", "timeline"] as const;
+function punchRowKey(punch: Pick<HrAttendanceDevicePreviewPunch, "attendanceCode" | "punchTime" | "punchType">) {
+  return `${punch.attendanceCode}::${punch.punchTime}::${punch.punchType}`;
+}
+
+const TABS = [
+  "summary",
+  "employees",
+  "punches",
+  "attendance",
+  "warnings",
+  "errors",
+  "duplicates",
+  "unmatched",
+  "mapping",
+  "statistics",
+  "timeline",
+] as const;
 
 export function HrAttendanceDevicePreviewTabs({
   deviceId,
+  enableInlineEdits = false,
+  onPreviewChange,
   preview,
   sessionId,
 }: Readonly<{
   deviceId: string;
+  enableInlineEdits?: boolean;
+  onPreviewChange?: (preview: HrAttendanceDevicePreviewPayload) => void;
   preview: HrAttendanceDevicePreviewPayload;
   sessionId: string;
 }>) {
+  const t = useTranslations();
+  const [isSavingEdit, startSavingEdit] = useTransition();
+  const [previewState, setPreviewState] = useState(preview);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("summary");
   const [search, setSearch] = useState("");
-  const warnings = preview.issues.filter((issue) => issue.severity === "warning" || issue.severity === "info");
-  const errors = preview.issues.filter((issue) => issue.severity === "error" || issue.severity === "blocking");
-  const duplicates = preview.punches.filter((punch) => punch.importResult === "duplicate");
-  const unmatched = preview.employees.filter((employee) => employee.matchStatus === "unknown");
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [draftAttendanceCode, setDraftAttendanceCode] = useState("");
+  const [draftPunchTime, setDraftPunchTime] = useState("");
+  const [draftPunchType, setDraftPunchType] = useState<"in" | "out">("in");
+
+  useEffect(() => {
+    setPreviewState(preview);
+  }, [preview]);
+
+  function updatePreview(nextPreview: HrAttendanceDevicePreviewPayload) {
+    setPreviewState(nextPreview);
+    onPreviewChange?.(nextPreview);
+  }
+
+  function beginInlineEdit(punch: HrAttendanceDevicePreviewPunch) {
+    setEditingKey(punchRowKey(punch));
+    setDraftAttendanceCode(punch.attendanceCode);
+    setDraftPunchTime(punch.punchTime);
+    setDraftPunchType(punch.punchType);
+  }
+
+  function saveInlineEdit(originalKey: string) {
+    startSavingEdit(async () => {
+      try {
+        const formData = new FormData();
+        formData.set("sessionId", sessionId);
+        formData.set(
+          "edits",
+          JSON.stringify([
+            {
+              attendanceCode: draftAttendanceCode.trim(),
+              originalKey,
+              punchTime: draftPunchTime,
+              punchType: draftPunchType,
+            },
+          ]),
+        );
+        const nextPreview = await applyHrAttendanceDevicePreviewEditsAction(formData);
+        updatePreview(nextPreview);
+        setEditingKey(null);
+        platformFeedback.success(t("hr.attendance.devices.sync.preview.editSaved"), { source: "runtime" });
+      } catch (cause) {
+        platformFeedback.error(t("hr.attendance.devices.sync.preview.editFailed"), {
+          description: cause instanceof Error ? cause.message : undefined,
+          source: "runtime",
+        });
+      }
+    });
+  }
+
+  const warnings = previewState.issues.filter((issue) => issue.severity === "warning" || issue.severity === "info");
+  const errors = previewState.issues.filter((issue) => issue.severity === "error" || issue.severity === "blocking");
+  const duplicates = previewState.punches.filter((punch) => punch.importResult === "duplicate");
+  const unmatched = previewState.employees.filter((employee) => employee.matchStatus === "unknown");
   const searchTerm = search.trim().toLowerCase();
-  const filteredPunches = preview.punches.filter((punch) => {
+  const filteredPunches = previewState.punches.filter((punch) => {
     if (!searchTerm) return true;
     return (
       punch.employeeLabel.toLowerCase().includes(searchTerm) ||
@@ -37,7 +124,7 @@ export function HrAttendanceDevicePreviewTabs({
   });
   const timelineEvents: PlatformTimelineEvent[] = useMemo(
     () =>
-      preview.punches.slice(0, 40).map((punch) => ({
+      previewState.punches.slice(0, 40).map((punch) => ({
         action: `${punch.punchType.toUpperCase()} · ${punch.importResult}`,
         actor: punch.employeeLabel,
         category: "status" as const,
@@ -45,17 +132,17 @@ export function HrAttendanceDevicePreviewTabs({
         source: punch.deviceCode,
         timestamp: punch.punchTime,
       })),
-    [preview.punches],
+    [previewState.punches],
   );
 
   return (
     <div className="space-y-4">
-      <Input onChange={(event) => setSearch(event.target.value)} placeholder="Search preview…" value={search} />
+      <Input onChange={(event) => setSearch(event.target.value)} placeholder={t("hr.attendance.devices.sync.preview.search")} value={search} />
       <div className="flex flex-wrap gap-2">
         {TABS.map((tab) => (
           <button
             className={cn(
-              "rounded-full border px-3 py-1.5 text-sm capitalize transition",
+              "rounded-full border px-3 py-1.5 text-sm transition",
               activeTab === tab
                 ? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]"
                 : "bg-[hsl(var(--surface))] hover:bg-[hsl(var(--muted))]",
@@ -64,71 +151,134 @@ export function HrAttendanceDevicePreviewTabs({
             onClick={() => setActiveTab(tab)}
             type="button"
           >
-            {tab.replaceAll("_", " ")}
+            {t(`hr.attendance.devices.sync.preview.tab.${tab}`)}
           </button>
         ))}
       </div>
 
       {activeTab === "summary" ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Employees read" value={preview.summary.employeesRead} />
-          <SummaryCard label="Matched" value={preview.summary.employeesMatched} />
-          <SummaryCard label="Punches read" value={preview.summary.punchesRead} />
-          <SummaryCard label="Ready to import" value={preview.summary.punchesReady} />
-          <SummaryCard label="Duplicates" value={preview.summary.duplicates} />
-          <SummaryCard label="Warnings" value={preview.summary.warnings} />
-          <SummaryCard label="Errors" value={preview.summary.errors} />
-          <SummaryCard label="Blocking errors" value={preview.summary.blockingErrors} />
-          <SummaryCard label="Est. import time" value={formatHrDurationSeconds(preview.summary.estimatedImportSeconds)} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.employeesRead")} value={previewState.summary.employeesRead} />
+          <SummaryCard label={t("hr.common.matched")} value={previewState.summary.employeesMatched} />
+          <SummaryCard label={t("hr.common.punches")} value={previewState.summary.punchesRead} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.readyToImport")} value={previewState.summary.punchesReady} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.tab.duplicates")} value={previewState.summary.duplicates} />
+          <SummaryCard label={t("hr.common.warnings")} value={previewState.summary.warnings} />
+          <SummaryCard label={t("hr.common.errors")} value={previewState.summary.errors} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.blockingErrors")} value={previewState.summary.blockingErrors} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.estImportTime")} value={formatHrDurationSeconds(previewState.summary.estimatedImportSeconds)} />
         </div>
       ) : null}
 
       {activeTab === "employees" ? (
         <EnterpriseDataTable
           columns={[
-            { header: "Code", key: "code", render: (row) => row.deviceCode },
-            { header: "Employee", key: "employee", render: (row) => row.employeeLabel },
+            { header: t("hr.common.code"), key: "code", render: (row) => row.deviceCode },
+            { header: t("hr.common.employee"), key: "employee", render: (row) => row.employeeLabel },
             {
-              header: "Status",
+              header: t("hr.common.status"),
               key: "status",
               render: (row) => (
                 <span className="rounded-full border px-2 py-0.5 text-xs capitalize">{row.matchStatus}</span>
               ),
             },
           ]}
-          emptyMessage="No employees in preview."
+          emptyMessage={t("hr.attendance.devices.sync.preview.emptyEmployees")}
           getRowId={(row) => row.deviceCode}
-          pagination={{ mode: "page", page: 1, pageSize: preview.employees.length || 1, totalRows: preview.employees.length }}
-          records={preview.employees}
+          pagination={{ mode: "page", page: 1, pageSize: previewState.employees.length || 1, totalRows: previewState.employees.length }}
+          records={previewState.employees}
         />
       ) : null}
 
       {activeTab === "attendance" || activeTab === "punches" ? (
         <EnterpriseDataTable
           columns={[
-            { header: "Employee", key: "employee", render: (row) => row.employeeLabel },
-            { header: "Time", key: "time", render: (row) => new Date(row.punchTime).toLocaleString() },
-            { header: "Type", key: "type", render: (row) => row.punchType.toUpperCase() },
-            { header: "Result", key: "result", render: (row) => formatHrStatusLabel(row.importResult) },
+            {
+              header: t("hr.common.code"),
+              key: "code",
+              render: (row) =>
+                enableInlineEdits && editingKey === punchRowKey(row) ? (
+                  <Input onChange={(event) => setDraftAttendanceCode(event.target.value)} value={draftAttendanceCode} />
+                ) : (
+                  row.attendanceCode
+                ),
+            },
+            { header: t("hr.common.employee"), key: "employee", render: (row) => row.employeeLabel },
+            {
+              header: t("hr.common.time"),
+              key: "time",
+              render: (row) =>
+                enableInlineEdits && editingKey === punchRowKey(row) ? (
+                  <DatePicker mode="datetime" onValueChange={(value) => setDraftPunchTime(value ?? "")} value={draftPunchTime} />
+                ) : (
+                  new Date(row.punchTime).toLocaleString()
+                ),
+            },
+            {
+              header: t("hr.common.type"),
+              key: "type",
+              render: (row) =>
+                enableInlineEdits && editingKey === punchRowKey(row) ? (
+                  <select
+                    className={nativeSelectClassName}
+                    onChange={(event) => setDraftPunchType(event.target.value as "in" | "out")}
+                    value={draftPunchType}
+                  >
+                    <option value="in">{t("hr.attendance.devices.sync.preview.punchIn")}</option>
+                    <option value="out">{t("hr.attendance.devices.sync.preview.punchOut")}</option>
+                  </select>
+                ) : (
+                  row.punchType.toUpperCase()
+                ),
+            },
+            { header: t("hr.common.result"), key: "result", render: (row) => formatHrStatusLabel(row.importResult) },
+            ...(enableInlineEdits
+              ? [
+                  {
+                    header: t("hr.common.actions"),
+                    key: "actions",
+                    render: (row: HrAttendanceDevicePreviewPunch) => {
+                      const rowKey = punchRowKey(row);
+                      if (editingKey === rowKey) {
+                        return (
+                          <div className="flex gap-2">
+                            <Button disabled={isSavingEdit} onClick={() => saveInlineEdit(rowKey)} size="sm" type="button" variant="primary">
+                              {t("hr.common.save")}
+                            </Button>
+                            <Button disabled={isSavingEdit} onClick={() => setEditingKey(null)} size="sm" type="button" variant="secondary">
+                              {t("hr.common.cancel")}
+                            </Button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <Button onClick={() => beginInlineEdit(row)} size="sm" type="button" variant="secondary">
+                          {t("hr.common.edit")}
+                        </Button>
+                      );
+                    },
+                  },
+                ]
+              : []),
           ]}
-          emptyMessage="No punches in preview."
-          getRowId={(row) => `${row.punchTime}-${row.attendanceCode}-${row.punchType}`}
+          emptyMessage={t("hr.attendance.devices.sync.preview.emptyPunches")}
+          getRowId={(row) => punchRowKey(row)}
           pagination={{ mode: "page", page: 1, pageSize: filteredPunches.length || 1, totalRows: filteredPunches.length }}
           records={filteredPunches}
         />
       ) : null}
 
-      {activeTab === "warnings" ? <IssueList empty="No warnings." issues={warnings} /> : null}
-      {activeTab === "errors" ? <IssueList empty="No errors." issues={errors} /> : null}
+      {activeTab === "warnings" ? <IssueList empty={t("hr.attendance.devices.sync.preview.noWarnings")} issues={warnings} /> : null}
+      {activeTab === "errors" ? <IssueList empty={t("hr.attendance.devices.sync.preview.noErrors")} issues={errors} /> : null}
 
       {activeTab === "duplicates" ? (
         <EnterpriseDataTable
           columns={[
-            { header: "Employee", key: "employee", render: (row) => row.employeeLabel },
-            { header: "Time", key: "time", render: (row) => new Date(row.punchTime).toLocaleString() },
-            { header: "Type", key: "type", render: (row) => row.punchType.toUpperCase() },
+            { header: t("hr.common.employee"), key: "employee", render: (row) => row.employeeLabel },
+            { header: t("hr.common.time"), key: "time", render: (row) => new Date(row.punchTime).toLocaleString() },
+            { header: t("hr.common.type"), key: "type", render: (row) => row.punchType.toUpperCase() },
           ]}
-          emptyMessage="No duplicate punches."
+          emptyMessage={t("hr.attendance.devices.sync.preview.emptyDuplicates")}
           getRowId={(row) => `${row.punchTime}-${row.attendanceCode}-${row.punchType}`}
           pagination={{ mode: "page", page: 1, pageSize: duplicates.length || 1, totalRows: duplicates.length }}
           records={duplicates}
@@ -138,31 +288,31 @@ export function HrAttendanceDevicePreviewTabs({
       {activeTab === "mapping" ? (
         <EnterpriseDataTable
           columns={[
-            { header: "Device code", key: "code", render: (row) => row.deviceCode },
-            { header: "Employee", key: "employee", render: (row) => row.employeeLabel },
-            { header: "Match", key: "match", render: (row) => row.matchStatus },
+            { header: t("hr.attendance.devices.form.deviceCode"), key: "code", render: (row) => row.deviceCode },
+            { header: t("hr.common.employee"), key: "employee", render: (row) => row.employeeLabel },
+            { header: t("hr.common.match"), key: "match", render: (row) => row.matchStatus },
           ]}
-          emptyMessage="No mapping rows."
+          emptyMessage={t("hr.attendance.devices.sync.preview.emptyMapping")}
           getRowId={(row) => row.deviceCode}
-          pagination={{ mode: "page", page: 1, pageSize: preview.employees.length || 1, totalRows: preview.employees.length }}
-          records={preview.employees}
+          pagination={{ mode: "page", page: 1, pageSize: previewState.employees.length || 1, totalRows: previewState.employees.length }}
+          records={previewState.employees}
         />
       ) : null}
 
       {activeTab === "statistics" ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Ready punches" value={preview.summary.punchesReady} />
-          <SummaryCard label="Duplicates" value={preview.summary.duplicates} />
-          <SummaryCard label="Unknown employees" value={preview.summary.employeesUnknown} />
-          <SummaryCard label="Blocking errors" value={preview.summary.blockingErrors} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.readyPunches")} value={previewState.summary.punchesReady} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.tab.duplicates")} value={previewState.summary.duplicates} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.unknownEmployees")} value={previewState.summary.employeesUnknown} />
+          <SummaryCard label={t("hr.attendance.devices.sync.preview.blockingErrors")} value={previewState.summary.blockingErrors} />
         </div>
       ) : null}
 
-      {activeTab === "timeline" ? <PlatformTimeline events={timelineEvents} title="Sync preview timeline" /> : null}
+      {activeTab === "timeline" ? <PlatformTimeline events={timelineEvents} title={t("hr.attendance.devices.sync.preview.timelineTitle")} /> : null}
 
       {activeTab === "unmatched" ? (
         <div className="space-y-3">
-          {unmatched.length === 0 ? <p className="text-sm text-muted-foreground">No unmatched employees.</p> : null}
+          {unmatched.length === 0 ? <p className="text-sm text-muted-foreground">{t("hr.attendance.devices.sync.preview.noUnmatched")}</p> : null}
           {unmatched.map((employee) => (
             <form
               action={saveHrAttendanceDeviceMappingAction}
@@ -173,18 +323,18 @@ export function HrAttendanceDevicePreviewTabs({
               <input name="sessionId" type="hidden" value={sessionId} />
               <input name="deviceEmployeeCode" type="hidden" value={employee.deviceCode} />
               <div>
-                <p className="text-sm font-medium">Unknown code: {employee.deviceCode}</p>
-                <p className="text-xs text-muted-foreground">Map to an employee for future imports.</p>
+                <p className="text-sm font-medium">{t("hr.attendance.devices.sync.preview.unknownCode", { code: employee.deviceCode })}</p>
+                <p className="text-xs text-muted-foreground">{t("hr.attendance.devices.sync.preview.mapHint")}</p>
               </div>
               <EntityLookup
-                label="Employee"
+                label={t("hr.common.employee")}
                 name="employeeId"
-                placeholder="Search employee…"
+                placeholder={t("hr.common.searchEmployee")}
                 providerKey="hr.employees.lookup"
                 required
               />
               <Button size="sm" type="submit" variant="secondary">
-                Save mapping
+                {t("hr.attendance.devices.sync.preview.saveMapping")}
               </Button>
             </form>
           ))}

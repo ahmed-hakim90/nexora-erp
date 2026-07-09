@@ -35,7 +35,10 @@ export async function MasterDataShell({
   return (
     <AppShell
       {...createErpShellChrome("master-data", runtime)}
-      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "Master Data", href: "/erp/master-data" }]}
+      breadcrumbs={[
+        { label: "Apps", href: "/erp", messageKey: "shell.apps.label" },
+        { label: "Master Data", href: "/erp/master-data", messageKey: "apps.master-data" },
+      ]}
       workspace={{ key: "master-data", name: "Master Data", icon: <Database className="size-4" /> }}
       workspaceNav={masterDataItems.map((item) => ({ ...item, isActive: item.key === activeKey }))}
     >

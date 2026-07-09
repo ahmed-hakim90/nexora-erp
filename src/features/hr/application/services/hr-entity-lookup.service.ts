@@ -34,6 +34,18 @@ export class HrEntityLookupService {
         resource: "hr.competency-categories.lookup",
         search: (input) => this.repository.searchCompetencyCategories(input),
       },
+      "hr.contract-types.lookup": {
+        hydrate: (ids) => this.repository.hydrateContractTypes(ids),
+        permission: HR_PERMISSIONS.contractsView,
+        resource: "hr.contract-types.lookup",
+        search: (input) => this.repository.searchContractTypes(input),
+      },
+      "hr.required-document-sets.lookup": {
+        hydrate: (ids) => this.repository.hydrateRequiredDocumentSets(ids),
+        permission: HR_PERMISSIONS.templatesView,
+        resource: "hr.required-document-sets.lookup",
+        search: (input) => this.repository.searchRequiredDocumentSets(input),
+      },
       "hr.employees.lookup": {
         hydrate: (ids) => this.repository.hydrateEmployees(ids),
         permission: HR_PERMISSIONS.employeesView,
@@ -93,6 +105,24 @@ export class HrEntityLookupService {
         permission: HR_PERMISSIONS.skillsView,
         resource: "hr.skills.lookup",
         search: (input) => this.repository.searchSkills(input),
+      },
+      "hr.payroll-groups.lookup": {
+        hydrate: (ids) => this.repository.hydratePayrollGroups(ids),
+        permission: HR_PERMISSIONS.payrollView,
+        resource: "hr.payroll-groups.lookup",
+        search: (input) => this.repository.searchPayrollGroups(input),
+      },
+      "hr.salary-package-versions.lookup": {
+        hydrate: (ids) => this.repository.hydrateSalaryPackageVersions(ids),
+        permission: HR_PERMISSIONS.salaryPackagesView,
+        resource: "hr.salary-package-versions.lookup",
+        search: (input) => this.repository.searchSalaryPackageVersions(input),
+      },
+      "hr.shifts.lookup": {
+        hydrate: (ids) => this.repository.hydrateShifts(ids),
+        permission: HR_PERMISSIONS.shiftsView,
+        resource: "hr.shifts.lookup",
+        search: (input) => this.repository.searchShifts(input),
       },
       "hr.work-locations.lookup": {
         hydrate: (ids) => this.repository.hydrateWorkLocations(ids),

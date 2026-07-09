@@ -6,6 +6,7 @@ import {
   defineAuditAction,
   defineDashboardTemplate,
   defineDashboardWidget,
+  createDashboardSearchWidgetContract,
   defineDocumentBehavior,
   defineDocumentLifecycle,
   defineDocumentType,
@@ -406,6 +407,7 @@ export {
   HR_DASHBOARD_METRIC_DEFINITIONS,
   HR_EMPLOYEE_EXPORT_COLUMNS,
   HR_EMPLOYEE_IMPORT_COLUMNS,
+  HR_EMPLOYEE_IMPORT_GENDER_ALIASES,
   HR_EMPLOYEE_IMPORT_VALIDATION_RULES,
   HR_EMPLOYEE_LIFECYCLE_ACTIONS,
   HR_NOTIFICATION_EVENT_KEYS,
@@ -421,7 +423,22 @@ export {
 } from "./hr-production-readiness-foundation";
 export type { HrContractTransition, HrPrintTemplateKey } from "./hr-production-readiness-foundation";
 export { filterHrNavByPermissions, HR_NAV_ITEMS } from "./navigation/hr-navigation";
+export { createHrWorkspaceSearchProviders } from "./navigation/hr-workspace-search";
 export { formatHrDisplayLabel, formatHrStatusLabel, isRawUuid, readContactField } from "./application/utils/hr-display";
+export {
+  translateHrActionType,
+  translateHrAdvanceType,
+  translateHrAssetType,
+  translateHrDisplayValue,
+  translateHrDocumentType,
+  translateHrRequestTypeLabel,
+  translateHrStatus,
+  translateHrLiveStatus,
+  translateHrPunchType,
+  translateHrExportScope,
+  translateHrTimelineEvent,
+  translateHrViolationKind,
+} from "./application/utils/hr-i18n-display";
 export {
   formatHrAttendanceDeviceHealthLabel,
   formatHrAttendanceDevicePhaseLabel,
@@ -2773,6 +2790,33 @@ export const HR_PRINT_READINESS_CONTRACT = definePrintTemplate({
   type: "report",
 });
 
+export const HR_OPERATIONAL_DASHBOARD_WIDGET_CONTRACT = defineDashboardWidget({
+  appKey: "hr",
+  defaultSize: "wide",
+  description: "Daily HR operations KPIs, alerts, and action queue for attendance, leave, and payroll.",
+  drilldowns: [{ href: "/erp/hr", label: "Open HR Dashboard" }],
+  key: "hr.operations.dashboard-widget",
+  label: "HR Operational Dashboard",
+  metadata: {
+    metrics: [
+      "pendingLeaveApprovals",
+      "openAttendanceExceptionsToday",
+      "pendingOvertimeCandidates",
+      "pendingLateEarlyViolations",
+      "payrollReadinessIssues",
+    ],
+    routeHref: "/erp/hr",
+  },
+  requiredPermission: HR_PERMISSIONS.view,
+  searchIntegration: createDashboardSearchWidgetContract({
+    providerKey: "hr.runtime.records",
+    queryTemplate: "hr operational records",
+    resultTypes: ["record", "navigation", "command"],
+  }),
+  supportedExperiences: ["erp"],
+  type: "custom-widget",
+});
+
 export const HR_DASHBOARD_WIDGET_CONTRACT = defineDashboardWidget({
   appKey: "hr",
   defaultSize: "wide",
@@ -2792,24 +2836,43 @@ export const HR_DASHBOARD_TEMPLATE_CONTRACT = defineDashboardTemplate({
   appKey: "hr",
   defaultLayout: {
     pages: [{
-      key: "foundation",
-      label: "Foundation",
+      key: "operations",
+      default: true,
+      label: "Operations",
       order: 1,
-      sections: [{
-        key: "readiness",
-        label: "Readiness",
-        order: 1,
-        widgetKeys: [HR_DASHBOARD_WIDGET_CONTRACT.key],
-      }],
+      sections: [
+        {
+          key: "operations-kpis",
+          label: "Today's Operations",
+          order: 1,
+          widgetKeys: [HR_OPERATIONAL_DASHBOARD_WIDGET_CONTRACT.key],
+        },
+        {
+          key: "readiness",
+          label: "Foundation Readiness",
+          order: 2,
+          widgetKeys: [HR_DASHBOARD_WIDGET_CONTRACT.key],
+        },
+      ],
     }],
-    positions: [{
-      breakpoint: "desktop",
-      height: 4,
-      widgetKey: HR_DASHBOARD_WIDGET_CONTRACT.key,
-      width: 12,
-      x: 0,
-      y: 0,
-    }],
+    positions: [
+      {
+        breakpoint: "desktop",
+        height: 4,
+        widgetKey: HR_OPERATIONAL_DASHBOARD_WIDGET_CONTRACT.key,
+        width: 12,
+        x: 0,
+        y: 0,
+      },
+      {
+        breakpoint: "desktop",
+        height: 4,
+        widgetKey: HR_DASHBOARD_WIDGET_CONTRACT.key,
+        width: 12,
+        x: 0,
+        y: 4,
+      },
+    ],
     responsiveGrid: {
       columns: { desktop: 12, mobile: 4, tablet: 8 },
       gap: 16,
@@ -2818,12 +2881,12 @@ export const HR_DASHBOARD_TEMPLATE_CONTRACT = defineDashboardTemplate({
   },
   key: "hr.foundation.dashboard-template",
   kind: "hr",
-  label: "HR Core Foundation Dashboard Template",
+  label: "HR Operational Dashboard Template",
   providerSource: "business-app",
-  requiredPermission: HR_PERMISSIONS.reportsView,
+  requiredPermission: HR_PERMISSIONS.view,
   supportedExperiences: ["erp"],
   templateOnly: true,
-  widgetKeys: [HR_DASHBOARD_WIDGET_CONTRACT.key],
+  widgetKeys: [HR_OPERATIONAL_DASHBOARD_WIDGET_CONTRACT.key, HR_DASHBOARD_WIDGET_CONTRACT.key],
 });
 
 const hrImportExportSecurity = {
@@ -2841,23 +2904,21 @@ const hrImportExportSecurity = {
 export const HR_EMPLOYEE_IMPORT_CONTRACT = defineImport({
   appKey: "hr",
   columns: [
-    { dataType: "text", key: "employeeNumber", label: "Employee Number", required: true },
+    { dataType: "text", key: "employeeNumber", label: "Employee Code", required: true },
     { dataType: "text", key: "fullName", label: "Full Name", required: true, sensitive: true, pii: true },
-    { dataType: "text", key: "attendanceCode", label: "Attendance Code" },
     { dataType: "text", key: "nationalId", label: "National ID", sensitive: true, pii: true },
     { dataType: "text", key: "passportNumber", label: "Passport", sensitive: true, pii: true },
   ],
   key: "hr.employees.import",
   label: "HR Employee Master Import",
   mappings: [
-    { key: "employee-number", sourceColumn: "Employee Number", targetField: "employeeNumber" },
+    { key: "employee-number", sourceColumn: "Employee Code", targetField: "employeeNumber" },
     { key: "full-name", sourceColumn: "Full Name", targetField: "fullName" },
-    { key: "attendance-code", sourceColumn: "Attendance Code", targetField: "attendanceCode" },
     { key: "national-id", sourceColumn: "National ID", targetField: "nationalId" },
     { key: "passport", sourceColumn: "Passport", targetField: "passportNumber" },
   ],
   maxFileSizeBytes: 25_000_000,
-  metadata: { foundationOnly: true, identityOnly: true },
+  metadata: { foundationOnly: true, identityOnly: true, unifiedEmployeeAttendanceCode: true },
   previewRequired: true,
   providerSource: "business-app",
   requiredPermission: HR_PERMISSIONS.importExportManage,
@@ -2866,9 +2927,15 @@ export const HR_EMPLOYEE_IMPORT_CONTRACT = defineImport({
   supportedFormats: ["csv", "excel", "json"],
   templates: [],
   validationRules: [
-    { fieldKey: "employeeNumber", key: "employee-number-required", message: "Employee number is required.", severity: "error", type: "required" },
+    { fieldKey: "employeeNumber", key: "employee-number-required", message: "Employee code is required.", severity: "error", type: "required" },
     { fieldKey: "fullName", key: "full-name-required", message: "Full name is required.", severity: "error", type: "required" },
-    { fieldKey: "attendanceCode", key: "attendance-code-unique", message: "This attendance code is already assigned to another employee.", severity: "error", type: "duplicate" },
+    {
+      fieldKey: "employeeNumber",
+      key: "employee-code-unique",
+      message: "This employee code is already assigned to another employee.",
+      severity: "error",
+      type: "duplicate",
+    },
   ],
 });
 
@@ -3452,7 +3519,8 @@ export const HR_FOUNDATION_CONTRACTS = {
   payrollSensitiveFieldRegistry: HR_PAYROLL_SENSITIVE_FIELD_REGISTRY,
   contractSeparation: HR_CONTRACT_SEPARATION_CONTRACT,
   dashboardTemplate: HR_DASHBOARD_TEMPLATE_CONTRACT,
-  dashboardWidget: HR_DASHBOARD_WIDGET_CONTRACT,
+  dashboardWidget: HR_OPERATIONAL_DASHBOARD_WIDGET_CONTRACT,
+  dashboardReadinessWidget: HR_DASHBOARD_WIDGET_CONTRACT,
   documentContracts: HR_DOCUMENT_CONTRACTS,
   documentTypes: HR_DOCUMENT_TYPE_DEFINITIONS,
   effectiveDating: HR_EFFECTIVE_DATING_CONTRACT,

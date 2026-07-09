@@ -53,7 +53,7 @@ export function HrAttendanceDeviceDrawerSettingsTab({
           </select>
         </label>
         <div className="flex flex-wrap gap-2 md:col-span-2">
-          <Button type="submit">Save settings</Button>
+          <Button type="submit" variant="primary">Save settings</Button>
           <Button onClick={() => onEdit(device.id)} type="button" variant="secondary">
             Open full editor
           </Button>

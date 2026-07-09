@@ -2,20 +2,20 @@
 
 import type { HrAttendanceDeviceConnectionSnapshot } from "@/features/hr/public-api";
 import { runHrAttendanceDeviceConnectionAction } from "@/features/hr/routes/actions/hr-attendance-device.actions";
-import { Button } from "@/shared/ui";
+import { Button, useTranslations } from "@/shared/ui";
 
 import { DetailItem, DeviceActionForm, TabLoadingState, useDeviceTabData } from "./hr-attendance-device-drawer-shared";
-
-const CONNECTION_ACTIONS = [
-  { action: "ping", label: "Ping" },
-  { action: "reconnect", label: "Reconnect" },
-  { action: "resolve_dns", label: "Resolve DNS" },
-] as const;
 
 export function HrAttendanceDeviceDrawerConnectionTab({
   deviceId,
   enabled,
 }: Readonly<{ deviceId: string; enabled: boolean }>) {
+  const t = useTranslations();
+  const connectionActions = [
+    { action: "ping", label: t("hr.attendance.devices.connection.ping") },
+    { action: "reconnect", label: t("hr.attendance.devices.connection.reconnect") },
+    { action: "resolve_dns", label: t("hr.attendance.devices.connection.resolveDns") },
+  ] as const;
   const { data, error, loading, refetch } = useDeviceTabData<{ connection: HrAttendanceDeviceConnectionSnapshot }>(
     deviceId,
     "connection",
@@ -24,24 +24,27 @@ export function HrAttendanceDeviceDrawerConnectionTab({
 
   if (loading || error) return <TabLoadingState error={error} loading={loading} />;
   const connection = data?.connection;
-  if (!connection) return <p className="text-sm text-muted-foreground">No connection data available.</p>;
+  if (!connection) return <p className="text-sm text-muted-foreground">{t("hr.attendance.devices.drawer.noConnectionData")}</p>;
 
   return (
     <div className="space-y-6">
       <section className="space-y-2">
-        <h3 className="font-medium">Connection</h3>
+        <h3 className="font-medium">{t("hr.attendance.devices.drawer.tab.connection")}</h3>
         <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
-          <DetailItem label="IP" value={connection.ipAddress ?? "—"} />
-          <DetailItem label="Hostname" value={connection.hostname ?? "—"} />
-          <DetailItem label="Port" value={connection.port ? String(connection.port) : "—"} />
-          <DetailItem label="Protocol" value={connection.protocol} />
-          <DetailItem label="MAC" value={connection.macAddress ?? "—"} />
-          <DetailItem label="Packet loss" value={connection.packetLossPct !== null ? `${connection.packetLossPct}%` : "—"} />
+          <DetailItem label={t("hr.attendance.devices.connection.ip")} value={connection.ipAddress ?? "—"} />
+          <DetailItem label={t("hr.attendance.devices.connection.hostname")} value={connection.hostname ?? "—"} />
+          <DetailItem label={t("hr.attendance.devices.form.port")} value={connection.port ? String(connection.port) : "—"} />
+          <DetailItem label={t("hr.attendance.devices.connection.protocol")} value={connection.protocol} />
+          <DetailItem label={t("hr.attendance.devices.connection.mac")} value={connection.macAddress ?? "—"} />
+          <DetailItem
+            label={t("hr.attendance.devices.connection.packetLoss")}
+            value={connection.packetLossPct !== null ? `${connection.packetLossPct}%` : "—"}
+          />
         </dl>
       </section>
 
       <section className="flex flex-wrap gap-2">
-        {CONNECTION_ACTIONS.map((item) => (
+        {connectionActions.map((item) => (
           <DeviceActionForm
             action={runHrAttendanceDeviceConnectionAction}
             hiddenFields={{ connectionAction: item.action, deviceId }}
@@ -56,9 +59,9 @@ export function HrAttendanceDeviceDrawerConnectionTab({
       </section>
 
       <section className="space-y-2">
-        <h3 className="font-medium">Latency history</h3>
+        <h3 className="font-medium">{t("hr.attendance.devices.drawer.latencyHistory")}</h3>
         {connection.latencyHistory.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No latency samples yet.</p>
+          <p className="text-sm text-muted-foreground">{t("hr.attendance.devices.drawer.noLatencySamples")}</p>
         ) : (
           <div className="space-y-2">
             {connection.latencyHistory.slice(-8).map((point) => (
@@ -78,9 +81,9 @@ export function HrAttendanceDeviceDrawerConnectionTab({
       </section>
 
       <section className="space-y-2">
-        <h3 className="font-medium">Heartbeat history</h3>
+        <h3 className="font-medium">{t("hr.attendance.devices.drawer.heartbeatHistory")}</h3>
         {connection.heartbeatHistory.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No heartbeat history yet.</p>
+          <p className="text-sm text-muted-foreground">{t("hr.attendance.devices.drawer.noHeartbeatHistory")}</p>
         ) : (
           <ul className="space-y-1 text-sm">
             {connection.heartbeatHistory.slice(-8).map((point) => (

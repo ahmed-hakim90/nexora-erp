@@ -18,6 +18,7 @@
 | Inline editing | [Inline Editing Standard](INLINE_EDITING_STANDARD.md) |
 | Edit Mode v2 | [Edit Mode v2 Standard](EDIT_MODE_V2_STANDARD.md) |
 | Forms and modals | [Form Guidelines](FORM_GUIDELINES.md) |
+| **Easy operator forms** | [Easy Operator Forms Standard](EASY_OPERATOR_FORMS_STANDARD.md) |
 | Entity lookup | [Lookup Guidelines](LOOKUP_GUIDELINES.md) |
 | Reports | [Report Guidelines](REPORT_GUIDELINES.md) |
 | Printing | [Print Guidelines](PRINT_GUIDELINES.md) |
@@ -416,6 +417,9 @@ Canonical reference: [Edit Mode v2 Standard](EDIT_MODE_V2_STANDARD.md).
 - On success: toast via `platform.feedback`, close modal, refresh list row or navigate to profile.
 - Smart defaults come from context engine — operator confirms when uncertain.
 - Required fields marked consistently; inline validation on blur and submit.
+- Every field has a persistent visible label; placeholders are supplemental only. See [Easy Operator Forms Standard](EASY_OPERATOR_FORMS_STANDARD.md).
+- List workspaces order: KPIs → primary create section → filter → table.
+- Enum and status values displayed to users must be localized — never raw English foundation labels in Arabic UI.
 
 ### 9.3 Wizards
 

@@ -127,7 +127,9 @@ export async function loadHrLateEarlyRuntimeWorkspace(query: HrLateEarlyReportsQ
 
   if (query.periodStart) violationsQuery = violationsQuery.gte("work_date", query.periodStart);
   if (query.periodEnd) violationsQuery = violationsQuery.lte("work_date", query.periodEnd);
-  if (managerTeamIds) violationsQuery = violationsQuery.in("employee_id", managerTeamIds);
+  if (managerTeamIds && managerTeamIds.length > 0) {
+    violationsQuery = violationsQuery.in("employee_id", managerTeamIds);
+  }
 
   const [violationsResult, policiesResult, assignmentsResult, ledgerResult, approvalResult, dashboard] = await Promise.all([
     violationsQuery,

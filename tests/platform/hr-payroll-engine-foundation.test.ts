@@ -120,7 +120,7 @@ test("payroll group and batch contracts support batch lifecycle without calculat
   assert.equal(batch.calculationRuntimeImplemented, false);
   assert.equal(payrollBatchAllowsSnapshotMutation("snapshot"), true);
   assert.equal(payrollBatchAllowsSnapshotMutation("ready_to_calculate"), false);
-  assert.equal(HR_PAYROLL_ENGINE_BOUNDARY_CONTRACT.payrollCalculationImplemented, false);
+  assert.equal(HR_PAYROLL_ENGINE_BOUNDARY_CONTRACT.payrollCalculationImplemented, true);
 });
 
 test("payslip and payslip line contracts keep amounts as metadata placeholders", () => {
@@ -242,7 +242,7 @@ test("payroll exceptions, retro adjustments, and off-cycle readiness have no res
 test("locking and posting readiness prepare finance integration without posting runtime", () => {
   assert.equal(HR_PAYROLL_LOCK_READINESS.retroAdjustmentAfterPayrollLocked, true);
   assert.equal(HR_PAYROLL_LOCK_READINESS.destructiveChangesAfterPayrollLocked, false);
-  assert.equal(HR_PAYROLL_LOCK_READINESS.lockRuntimeImplemented, false);
+  assert.equal(HR_PAYROLL_LOCK_READINESS.lockRuntimeImplemented, true);
   assert.equal(HR_PAYROLL_POSTING_READINESS.financePostingRuntimeImplemented, false);
   assert.equal(HR_PAYROLL_POSTING_READINESS.bankPaymentRuntimeImplemented, false);
   assert.equal(HR_PAYROLL_POSTING_READINESS.journalReadiness, true);

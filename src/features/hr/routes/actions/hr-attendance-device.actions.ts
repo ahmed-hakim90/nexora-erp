@@ -11,8 +11,10 @@ import { requirePermission } from "@/platform/permissions/server";
 import {
   hrAttendanceDeviceCreateSchema,
   hrAttendanceDeviceEnterpriseSyncSchema,
+  hrAttendanceDeviceFileImportSchema,
   hrAttendanceDeviceImportDecisionSchema,
   hrAttendanceDeviceMappingSchema,
+  hrAttendanceDevicePreviewEditsSchema,
   hrAttendanceDeviceSyncModeSchema,
   hrAttendanceDeviceUpdateSchema,
 } from "../../application/schemas/hr-attendance-device.schema";
@@ -157,6 +159,63 @@ export async function startHrAttendanceDeviceEnterpriseSyncAction(formData: Form
 
 export async function startHrAttendanceDeviceEnterpriseSyncFormAction(formData: FormData): Promise<void> {
   await startHrAttendanceDeviceEnterpriseSyncAction(formData);
+}
+
+export async function startHrAttendanceDeviceFileImportSyncAction(formData: FormData) {
+  const { context, service } = await deviceService();
+  await requirePermission({ context, permission: HR_PERMISSIONS.attendanceDevicesSync });
+  await requirePermission({ context, permission: HR_PERMISSIONS.attendanceImport });
+  const parsed = hrAttendanceDeviceFileImportSchema.parse({
+    deviceId: String(formData.get("deviceId") ?? ""),
+    recalculateAttendance: formData.get("recalculateAttendance") !== "false",
+    skipDuplicates: formData.get("skipDuplicates") !== "false",
+  });
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Please choose a CSV or Excel file to import." });
+  }
+  if (file.size > 50_000_000) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: "File is too large. Maximum size is 50 MB." });
+  }
+
+  const buffer = await file.arrayBuffer();
+  const result = await service.startFileImportSync(
+    parsed.deviceId,
+    { buffer, fileName: file.name },
+    {
+      autoBuildPreview: true,
+      dryRun: false,
+      includeBreakPunches: true,
+      includeCheckIn: true,
+      includeCheckOut: true,
+      includeDeviceEvents: false,
+      includeInvalidPunches: false,
+      includeManualPunches: true,
+      recalculateAttendance: parsed.recalculateAttendance,
+      skipDuplicates: parsed.skipDuplicates,
+    },
+  );
+  revalidatePath("/erp/hr/attendance-devices");
+  return result;
+}
+
+export async function applyHrAttendanceDevicePreviewEditsAction(formData: FormData) {
+  const { context, service } = await deviceService();
+  await requirePermission({ context, permission: HR_PERMISSIONS.attendancePreview });
+  const editsRaw = String(formData.get("edits") ?? "[]");
+  let edits: unknown;
+  try {
+    edits = JSON.parse(editsRaw);
+  } catch {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Preview edits payload is invalid." });
+  }
+  const parsed = hrAttendanceDevicePreviewEditsSchema.parse({
+    edits,
+    sessionId: String(formData.get("sessionId") ?? ""),
+  });
+  const preview = await service.applyPreviewEdits(parsed.sessionId, parsed.edits);
+  revalidatePath("/erp/hr/attendance-devices");
+  return preview;
 }
 
 export async function getHrAttendanceDeviceSyncContextAction(deviceId: string, strategy: string) {

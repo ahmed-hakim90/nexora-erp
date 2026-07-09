@@ -515,8 +515,9 @@ function EditableFieldEditor<TValue>({
   if (editorType === "select") {
     return (
       <Select
-        value={stringValue}
         options={selectOptions}
+        placeholder={placeholder ?? "Select…"}
+        value={stringValue}
         onValueChange={(nextValue) => onChange(nextValue as TValue)}
       />
     );

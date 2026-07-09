@@ -1,15 +1,33 @@
 # HCM Production Readiness Report — Final UAT (Freeze Gate)
 
 **Program:** Program 02 — HCM (Human Capital Management)  
-**Date:** 2026-07-06  
-**Version:** UAT Final Freeze Gate v1.0  
+**Date:** 2026-07-07 (v2 gate update)  
+**Version:** UAT Enterprise Production Gate v2.0  
 **Authority:** [NEXORA_ENTERPRISE_BLUEPRINT_V1.md](../00-overview/NEXORA_ENTERPRISE_BLUEPRINT_V1.md), [HR_PAYROLL_ARCHITECTURE_FREEZE_V1.md](../01-platform/HR_PAYROLL_ARCHITECTURE_FREEZE_V1.md)
 
-**Prior reports:** [HR_PRODUCTION_READINESS_REPORT.md](HR_PRODUCTION_READINESS_REPORT.md) (2026-07-01), [SPRINT_OP_30_PRODUCTION_HARDENING.md](SPRINT_OP_30_PRODUCTION_HARDENING.md)
+**Prior reports:** [HR_PRODUCTION_READINESS_REPORT.md](HR_PRODUCTION_READINESS_REPORT.md) (2026-07-01), [SPRINT_OP_30_PRODUCTION_HARDENING.md](SPRINT_OP_30_PRODUCTION_HARDENING.md), v1 UAT (2026-07-06 below)
 
 ---
 
-## 1. Executive Summary
+## v2 Enterprise Production Gate (2026-07-07)
+
+Five mandatory gates before **Enterprise Production Ready**:
+
+| # | Gate | Status |
+|---|------|--------|
+| 1 | Snapshot-only payroll calc (`HR_PAYROLL_ALLOW_LIVE_FALLBACK` dev/test only) | Implemented |
+| 2 | Payroll period lifecycle (open/lock/close/reopen + mutation guards) | Implemented |
+| 3 | Unified `HrShiftResolutionService` for attendance, late/early, OT | Implemented |
+| 4 | UAT E2E on realistic data | Checklist: [HCM_UAT_E2E_CHECKLIST.md](HCM_UAT_E2E_CHECKLIST.md) |
+| 5 | Documentation sync | `IMPLEMENTATION_STATUS`, `OPERATIONAL_ROADMAP` updated |
+
+**v2 Verdict:** **READY FOR PRODUCTION** for HCM Core + Time & Attendance + Payroll operator cycle when UAT checklist is signed off on tenant seed data.
+
+**Post-launch (not blockers):** payslip PDF, email delivery, GL posting, Talent modules, distributed background workers.
+
+---
+
+## 1. Executive Summary (v1 — 2026-07-06)
 
 This UAT gate validated the full HCM scope against a production go-live checklist: employee lifecycle, assignments, contracts, compensation, attendance, leave, financial services, documents, custody, payroll, ESS/MSS portal, reports, print, notifications, security, and automated tests.
 

@@ -15,7 +15,10 @@ export default async function PreferencesPage() {
   return (
     <AppShell
       {...createErpShellChrome(undefined, runtime)}
-      breadcrumbs={[{ href: "/erp", label: "Apps" }, { label: "Preferences" }]}
+      breadcrumbs={[
+        { href: "/erp", label: "Apps", messageKey: "shell.apps.label" },
+        { label: "Preferences", messageKey: "shell.user.preferences" },
+      ]}
       workspace={{ key: "preferences", name: "Preferences", icon: <SlidersHorizontal className="size-4" /> }}
       workspaceNav={[
         { key: "preferences", label: "Preferences", href: "/erp/preferences", isActive: true },

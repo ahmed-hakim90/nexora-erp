@@ -5,6 +5,7 @@ import {
   formatHrAttendanceDevicePhaseLabel,
   formatHrDurationSeconds,
 } from "@/features/hr/public-api";
+import { useTranslations } from "@/shared/ui";
 import { cn } from "@/shared/ui/utils";
 
 export function HrAttendanceDeviceProgress({
@@ -12,6 +13,7 @@ export function HrAttendanceDeviceProgress({
 }: Readonly<{
   progress: HrAttendanceDeviceSyncProgress | null;
 }>) {
+  const t = useTranslations();
   if (!progress) return null;
 
   return (
@@ -39,21 +41,21 @@ export function HrAttendanceDeviceProgress({
       ) : null}
 
       <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4 xl:grid-cols-6">
-        <Metric label="Processed" value={String(progress.recordsProcessed)} />
-        <Metric label="Remaining" value={String(progress.remainingCount)} />
-        <Metric label="Speed" value={`${progress.speedRecordsPerSec}/s`} />
-        <Metric label="ETA" value={progress.etaSeconds ? formatHrDurationSeconds(progress.etaSeconds) : "—"} />
-        <Metric label="Elapsed" value={progress.elapsedSeconds ? formatHrDurationSeconds(progress.elapsedSeconds) : "—"} />
-        <Metric label="Imported" value={String(progress.importedCount)} />
-        <Metric label="Validations" value={String(progress.validationCount)} />
-        <Metric label="Warnings" value={String(progress.warningCount)} />
-        <Metric label="Errors" value={String(progress.errorCount)} />
-        <Metric label="Strategy" value={progress.strategy ? progress.strategy.replaceAll("_", " ") : "—"} />
-        <Metric label="Device" value={progress.currentDeviceLabel ?? "—"} />
-        <Metric label="Employee" value={progress.currentEmployeeLabel ?? "—"} />
-        <Metric label="Date" value={progress.currentDate ?? "—"} />
-        <Metric label="Record" value={progress.currentRecordLabel ?? "—"} />
-        <Metric label="Status" value={progress.status.replaceAll("_", " ")} />
+        <Metric label={t("hr.common.processed")} value={String(progress.recordsProcessed)} />
+        <Metric label={t("hr.common.remaining")} value={String(progress.remainingCount)} />
+        <Metric label={t("hr.common.speed")} value={`${progress.speedRecordsPerSec}/s`} />
+        <Metric label={t("hr.common.eta")} value={progress.etaSeconds ? formatHrDurationSeconds(progress.etaSeconds) : "—"} />
+        <Metric label={t("hr.common.elapsed")} value={progress.elapsedSeconds ? formatHrDurationSeconds(progress.elapsedSeconds) : "—"} />
+        <Metric label={t("hr.common.imported")} value={String(progress.importedCount)} />
+        <Metric label={t("hr.common.validations")} value={String(progress.validationCount)} />
+        <Metric label={t("hr.common.warnings")} value={String(progress.warningCount)} />
+        <Metric label={t("hr.common.errors")} value={String(progress.errorCount)} />
+        <Metric label={t("hr.common.strategy")} value={progress.strategy ? progress.strategy.replaceAll("_", " ") : "—"} />
+        <Metric label={t("hr.common.device")} value={progress.currentDeviceLabel ?? "—"} />
+        <Metric label={t("hr.common.employee")} value={progress.currentEmployeeLabel ?? "—"} />
+        <Metric label={t("hr.common.date")} value={progress.currentDate ?? "—"} />
+        <Metric label={t("hr.common.record")} value={progress.currentRecordLabel ?? "—"} />
+        <Metric label={t("hr.common.status")} value={progress.status.replaceAll("_", " ")} />
       </div>
 
       {progress.logs.length > 0 ? (

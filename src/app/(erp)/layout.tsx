@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveBranchRequestContext } from "@/platform/auth/server";
+import { resolveLocalePreference } from "@/platform/localization/server";
 
 import { ErpExperienceProviders } from "./erp-experience-providers";
 
@@ -10,5 +11,7 @@ export default async function ErpExperienceLayout({
   children: React.ReactNode;
 }>) {
   await resolveBranchRequestContext("erp");
-  return <ErpExperienceProviders>{children}</ErpExperienceProviders>;
+  const { locale } = await resolveLocalePreference();
+
+  return <ErpExperienceProviders locale={locale}>{children}</ErpExperienceProviders>;
 }

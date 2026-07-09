@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { CommandDefinition, NavigationContribution } from "@/platform/navigation/public-api";
 import type { PermissionKey } from "@/platform/permissions/public-api";
@@ -12,17 +13,25 @@ import {
   type PlatformCapabilityContribution,
   type WorkspaceAppModel,
 } from "@/shared/workspace/public-api";
+import type { SearchProvider } from "@/platform/search/public-api";
+import { createHrWorkspaceSearchProviders } from "@/features/hr/public-api";
 
 export function GlobalSearchPanel({
+  additionalProviders = [],
   apps,
+  autoFocus = false,
   capabilities = [],
   commands,
+  includeHrSearch = true,
   navigation,
   context,
 }: Readonly<{
+  additionalProviders?: readonly SearchProvider[];
   apps: readonly WorkspaceAppModel[];
+  autoFocus?: boolean;
   capabilities?: readonly PlatformCapabilityContribution[];
   commands: readonly CommandDefinition[];
+  includeHrSearch?: boolean;
   navigation: readonly NavigationContribution[];
   context: {
     tenantId: string;
@@ -31,6 +40,7 @@ export function GlobalSearchPanel({
     permissions: readonly string[];
   };
 }>) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<readonly SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -38,10 +48,26 @@ export function GlobalSearchPanel({
     () => new Map(commands.map((command) => [command.key, command])),
     [commands],
   );
-  const registry = useMemo(
-    () => createWorkspaceSearchRegistry({ apps, capabilities, commands, navigation }),
-    [apps, capabilities, commands, navigation],
+  const hrProviders = useMemo(
+    () => (includeHrSearch ? createHrWorkspaceSearchProviders() : []),
+    [includeHrSearch],
   );
+  const mergedProviders = useMemo(
+    () => [...hrProviders, ...additionalProviders],
+    [additionalProviders, hrProviders],
+  );
+  const registry = useMemo(
+    () => createWorkspaceSearchRegistry({ additionalProviders: mergedProviders, apps, capabilities, commands, navigation }),
+    [apps, capabilities, commands, mergedProviders, navigation],
+  );
+
+  useEffect(() => {
+    if (!autoFocus) {
+      return;
+    }
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [autoFocus]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -93,6 +119,7 @@ export function GlobalSearchPanel({
         aria-label="Search apps, documents, products, reports, production, finance, inventory, manufacturing, settings, users, and commands"
         onChange={(event) => setTerm(event.target.value)}
         placeholder="Search apps, commands, navigation..."
+        ref={inputRef}
         value={term}
       />
       <p className="text-xs text-muted-foreground">
@@ -101,18 +128,14 @@ export function GlobalSearchPanel({
       </p>
       {isSearching ? <p className="text-sm text-muted-foreground">Searching...</p> : null}
       {!isSearching && term.trim().length >= 2 && results.length === 0 ? (
-        <EmptyState message="Runtime document and record indexes are not connected yet." />
+        <EmptyState message="No matching apps, HR routes, records, or commands were found." />
       ) : null}
       {results.length > 0 ? (
         <div className="max-h-80 space-y-1 overflow-auto">
           {results.map((result) => {
             const href = result.href ?? commandByKey.get(result.commandKey ?? "")?.href;
-            return (
-              <a
-                className="block rounded-md border bg-[hsl(var(--surface))] p-3 transition hover:bg-[hsl(var(--muted))]"
-                href={href ?? "#"}
-                key={`${result.moduleKey}-${result.entityId}`}
-              >
+            const content = (
+              <>
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium">{result.title}</p>
                   <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
@@ -122,7 +145,25 @@ export function GlobalSearchPanel({
                 {result.subtitle ? (
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{result.subtitle}</p>
                 ) : null}
-              </a>
+              </>
+            );
+
+            if (!href || href === "#") {
+              return (
+                <div className="block rounded-md border bg-[hsl(var(--surface))] p-3" key={`${result.moduleKey}-${result.entityId}`}>
+                  {content}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                className="block rounded-md border bg-[hsl(var(--surface))] p-3 transition hover:bg-[hsl(var(--muted))]"
+                href={href}
+                key={`${result.moduleKey}-${result.entityId}`}
+              >
+                {content}
+              </Link>
             );
           })}
         </div>

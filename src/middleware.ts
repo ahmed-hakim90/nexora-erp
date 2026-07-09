@@ -4,6 +4,7 @@ const ACCESS_TOKEN_COOKIE = "nexora_access_token";
 const TENANT_COOKIE = "nexora_tenant_id";
 const COMPANY_COOKIE = "nexora_company_id";
 const BRANCH_COOKIE = "nexora_branch_id";
+const LOCALE_COOKIE = "nexora_locale";
 
 function hasWorkspaceSession(request: NextRequest): boolean {
   return Boolean(
@@ -14,9 +15,20 @@ function hasWorkspaceSession(request: NextRequest): boolean {
   );
 }
 
+function nextWithLocale(request: NextRequest): NextResponse {
+  const locale = request.cookies.get(LOCALE_COOKIE)?.value === "ar" ? "ar" : "en";
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nexora-locale", locale);
+  requestHeaders.set("x-nexora-direction", locale === "ar" ? "rtl" : "ltr");
+
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+}
+
 export function middleware(request: NextRequest) {
   if (hasWorkspaceSession(request)) {
-    return NextResponse.next();
+    return nextWithLocale(request);
   }
 
   const loginUrl = new URL("/login", request.url);

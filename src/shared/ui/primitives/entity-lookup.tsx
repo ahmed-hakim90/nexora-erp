@@ -20,6 +20,24 @@ export type EntityLookupOption = Readonly<{
   disabled?: boolean;
 }>;
 
+function useLookupSelection(
+  value: string | undefined,
+  onValueChange?: (value: string, option?: EntityLookupOption) => void,
+) {
+  const [internalValue, setInternalValue] = useState(value ?? "");
+  // Uncontrolled when parent only needs a form hidden input (most HR create forms).
+  // Controlled when parent manages value via onValueChange.
+  const isControlled = typeof onValueChange === "function";
+  const currentValue = isControlled ? value ?? "" : internalValue;
+
+  function commitValue(nextValue: string, option?: EntityLookupOption) {
+    if (!isControlled) setInternalValue(nextValue);
+    onValueChange?.(nextValue, option);
+  }
+
+  return { commitValue, currentValue };
+}
+
 type SharedProps = Readonly<{
   disabled?: boolean;
   emptyMessage?: string;
@@ -72,13 +90,16 @@ function RemoteEntityLookup({
   onValueChange,
 }: RemoteEntityLookupProps) {
   const [query, setQuery] = useState("");
+  const { commitValue, currentValue } = useLookupSelection(value, onValueChange);
   const lookup = useEntityLookup({
     favoriteIds,
     providerKey,
     recentIds: recentOptionIds,
-    value,
+    value: currentValue || undefined,
   });
   const loading = externalLoading || lookup.loading;
+  const selected =
+    lookup.options.find((option) => option.id === currentValue) ?? undefined;
 
   return (
     <EntityLookupSurface
@@ -97,13 +118,14 @@ function RemoteEntityLookup({
       onValueChange={(nextValue) => {
         const option = lookup.options.find((item) => item.id === nextValue);
         lookup.onValueChange(nextValue);
-        onValueChange?.(nextValue, option);
+        commitValue(nextValue, option);
       }}
       options={lookup.options}
       placeholder={placeholder}
       query={query}
       required={required}
-      value={value}
+      selected={selected}
+      value={currentValue}
     />
   );
 }
@@ -123,9 +145,7 @@ function StaticEntityLookup({
   required = false,
   onValueChange,
 }: StaticEntityLookupProps) {
-  const [internalValue, setInternalValue] = useState(value ?? "");
-  const isControlled = typeof onValueChange === "function";
-  const currentValue = isControlled ? value ?? "" : internalValue;
+  const { commitValue, currentValue } = useLookupSelection(value, onValueChange);
   const [query, setQuery] = useState("");
   const filteredOptions = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -154,11 +174,6 @@ function StaticEntityLookup({
     onSearchChange?.(nextQuery);
   }
 
-  function handleSelect(nextValue: string) {
-    if (!isControlled) setInternalValue(nextValue);
-    onValueChange?.(nextValue);
-  }
-
   return (
     <EntityLookupSurface
       disabled={disabled}
@@ -168,7 +183,7 @@ function StaticEntityLookup({
       loading={loading}
       name={name}
       onSearchChange={handleQueryChange}
-      onValueChange={handleSelect}
+      onValueChange={commitValue}
       options={standardOptions}
       placeholder={placeholder}
       query={query}
@@ -220,6 +235,7 @@ function EntityLookupSurface({
   value?: string;
   onValueChange?: (value: string, option?: EntityLookupOption) => void;
 }>) {
+  const [open, setOpen] = useState(false);
   const currentValue = value;
   const resolvedSelected = selected ?? options.find((option) => option.id === currentValue);
   const errorId = name ? `${name}-error` : undefined;
@@ -229,6 +245,7 @@ function EntityLookupSurface({
 
   function handleSelect(nextValue: string) {
     onValueChange?.(nextValue);
+    setOpen(false);
   }
 
   function handleClear(event: MouseEvent) {
@@ -264,10 +281,13 @@ function EntityLookupSurface({
     <div className="space-y-1">
       {name ? <input name={name} required={required} type="hidden" value={currentValue} /> : null}
       <Popover
+        onOpenChange={setOpen}
+        open={open}
         trigger={
           <div className="flex w-full items-center gap-1">
             <Button
               aria-describedby={error && errorId ? errorId : undefined}
+              aria-expanded={open}
               aria-invalid={Boolean(error)}
               className={cn("w-full justify-between", error && "border-[hsl(var(--danger))]")}
               data-field-name={name}

@@ -20,6 +20,7 @@ This rule applies to **every** Business App: HR, Payroll, Finance, Inventory, Sa
 - Cross-engine fields: in-page workflow dialog — never direct DB updates or `router.push`.
 - Feedback: `platform.feedback` only — never Sonner directly.
 - Dates: `DatePicker` / `DatePickerField` — never `<input type="date">`.
+- Easy operator forms: `FieldGroup` labels, max 3 cols, create before filter, full i18n — see [Easy Operator Forms Standard](../../docs/06-guidelines/EASY_OPERATOR_FORMS_STANDARD.md) and `easy-operator-forms.mdc`.
 - Permissions: visible read-only with lock icon when denied; enforce server-side + RLS.
 
 ## Required Platform Components
@@ -31,6 +32,7 @@ From `@/shared/ui`:
 | Page layout | `PageContainer`, `PageHeader`, `PageContent`, `PageFilters`, `PageActions` |
 | Lists | `ListPageTemplate`, `EnterpriseDataTable`, `FacetedFilterBar`, `ImportExportActions` |
 | Modals | `RecordFormDialog`, `RecordFormSection`, modal query helpers |
+| Form fields | `FieldGroup`, `FormSection`, `FormGrid` |
 | Profiles | `EditableProfileWorkspace`, `EditablePage`, `EditableSectionCard`, `EditableFieldGrid`, `EditableField` |
 | Cross-engine | `CrossEngineLookupWorkflow`, `renderWorkflow` on `EditablePage` |
 | Documents | `DocumentLayout`, `DocumentLifecycleBar` |

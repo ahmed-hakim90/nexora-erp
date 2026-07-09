@@ -27,6 +27,7 @@ export type {
 } from "./workspace-navigation.types";
 export {
   buildNavigationSections,
+  resolveWorkspaceNavGroupLabel,
   workspaceNavItemToNavigationItem,
   workspaceNavItemsToNavigationItems,
   WORKSPACE_NAV_GROUP_ICONS,

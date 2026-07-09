@@ -22,7 +22,10 @@ export default async function SettingsPage() {
   return (
     <AppShell
       {...createErpShellChrome(undefined, runtime)}
-      breadcrumbs={[{ href: "/erp", label: "Apps" }, { label: "Settings" }]}
+      breadcrumbs={[
+        { href: "/erp", label: "Apps", messageKey: "shell.apps.label" },
+        { label: "Settings", messageKey: "shell.settings.tooltip" },
+      ]}
       workspace={{ key: "settings", name: "Settings", icon: <Settings className="size-4" /> }}
       workspaceNav={[
         { key: "settings", label: "Settings", href: "/erp/settings", isActive: true },

@@ -65,6 +65,7 @@ import type {
 import type { WorkspaceRecentDocument } from "@/shared/workspace/public-api";
 
 import { Button } from "../primitives";
+import { useEnterpriseUi } from "../providers/enterprise-ui-context";
 import { cn } from "../utils";
 
 export function WorkspaceHero({
@@ -508,16 +509,19 @@ export function WorkspaceTabBar({
 export function WorkspaceEmptyState({
   title,
   description,
-  label = "Empty state",
+  label,
 }: Readonly<{
   title: string;
   description: string;
   label?: string;
 }>) {
+  const { t } = useEnterpriseUi();
   return (
     <div className="relative overflow-hidden rounded-2xl border border-dashed bg-[hsl(var(--surface))]/78 p-6 text-center shadow-sm backdrop-blur">
       <div aria-hidden="true" className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent" />
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {label ?? t("workspace.empty.label")}
+      </p>
       <h3 className="mt-2 text-lg font-semibold tracking-[-0.02em]">{title}</h3>
       <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
     </div>
@@ -525,9 +529,10 @@ export function WorkspaceEmptyState({
 }
 
 export function WorkspaceErrorState({ message }: Readonly<{ message: string }>) {
+  const { t } = useEnterpriseUi();
   return (
     <div className="rounded-2xl border border-[hsl(var(--danger))]/40 bg-[hsl(var(--surface))]/82 p-6 shadow-sm backdrop-blur">
-      <h3 className="font-semibold">Workspace error</h3>
+      <h3 className="font-semibold">{t("workspace.error.title")}</h3>
       <p className="mt-2 text-sm text-muted-foreground">{message}</p>
     </div>
   );

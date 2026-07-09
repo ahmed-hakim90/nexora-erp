@@ -10,7 +10,16 @@ import {
   payrollRunAllowsCalculation,
   payrollRunAllowsPublish,
 } from "../../payroll-calculation-foundation";
+import type {
+  HrPayrollCalendarCreateInput,
+  HrPayrollCalendarUpdateInput,
+  HrPayrollGroupCreateInput,
+  HrPayrollGroupUpdateInput,
+  HrPayrollPeriodCreateInput,
+  HrPayrollPeriodUpdateInput,
+} from "../schemas/hr-payroll-setup.schema";
 import { HrPayrollCalculationService } from "./hr-payroll-calculation.service";
+import { HrPayrollPeriodLifecycleService } from "./hr-payroll-period-lifecycle.service";
 
 type ScopedPayrollRun = Readonly<{
   id: string;
@@ -166,6 +175,10 @@ export class HrPayrollService {
       });
     }
 
+    const periodLifecycle = new HrPayrollPeriodLifecycleService(this.supabase, this.context);
+    const period = await periodLifecycle.assertPeriodAllowsPayrollMutation(run.payroll_period_id, "calculating payroll");
+    await periodLifecycle.assertCompletedExportExists(period);
+
     if (run.status === "completed" || run.status === "processing") {
       await this.clearPayrollRunCalculation(payrollRunId);
     }
@@ -305,6 +318,9 @@ export class HrPayrollService {
       });
     }
 
+    const periodLifecycle = new HrPayrollPeriodLifecycleService(this.supabase, this.context);
+    await periodLifecycle.assertPeriodAllowsPayrollMutation(run.payroll_period_id, "approving payroll");
+
     const { error } = await this.supabase
       .from("hr_payroll_runs")
       .update({ approved_at: new Date().toISOString(), approved_by: this.context.userId, status: "approved", updated_by: this.context.userId })
@@ -322,6 +338,9 @@ export class HrPayrollService {
         message: `Payroll run must be approved before publishing payslips (current status: ${run.status}).`,
       });
     }
+
+    const periodLifecycle = new HrPayrollPeriodLifecycleService(this.supabase, this.context);
+    await periodLifecycle.assertPeriodAllowsPayrollMutation(run.payroll_period_id, "publishing payslips");
 
     let batchId = run.payroll_batch_id;
     if (!batchId) {
@@ -613,6 +632,287 @@ export class HrPayrollService {
     if (deleteRunError) {
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not delete payroll run.", cause: deleteRunError });
     }
+  }
+
+  private async softArchive(table: "hr_payroll_calendars" | "hr_payroll_groups" | "hr_payroll_periods", id: string, notFoundMessage: string) {
+    const deletedAt = new Date().toISOString();
+    const { data: existing, error: readError } = await this.supabase
+      .from(table)
+      .select("id")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (readError || !existing) {
+      throw new ApplicationError({ code: "NOT_FOUND", message: notFoundMessage });
+    }
+
+    const { error } = await this.supabase
+      .from(table)
+      .update({
+        deleted_at: deletedAt,
+        deleted_by: this.context.userId,
+        is_active: false,
+        ...(table === "hr_payroll_periods" ? {} : { status: "archived" }),
+        updated_by: this.context.userId,
+      })
+      .eq("id", id)
+      .eq("tenant_id", this.context.tenantId);
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not archive ${table}.`, cause: error });
+    }
+  }
+
+  async createPayrollCalendar(input: HrPayrollCalendarCreateInput): Promise<{ id: string }> {
+    const { data, error } = await this.supabase
+      .from("hr_payroll_calendars")
+      .insert({
+        branch_id: this.context.branchId,
+        code: input.code,
+        company_id: this.context.companyId,
+        created_by: this.context.userId,
+        effective_from: input.effectiveFrom,
+        frequency: input.frequency,
+        is_active: input.status !== "inactive",
+        metadata: { payroll_runtime_implemented: true },
+        name: input.name,
+        status: input.status,
+        tenant_id: this.context.tenantId,
+        updated_by: this.context.userId,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create payroll calendar.", cause: error });
+    }
+    return { id: String(data.id) };
+  }
+
+  async updatePayrollCalendar(input: HrPayrollCalendarUpdateInput): Promise<void> {
+    const { data: existing, error: readError } = await this.supabase
+      .from("hr_payroll_calendars")
+      .select("id")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("id", input.calendarId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (readError || !existing) {
+      throw new ApplicationError({ code: "NOT_FOUND", message: "Payroll calendar not found." });
+    }
+
+    const { error } = await this.supabase
+      .from("hr_payroll_calendars")
+      .update({
+        code: input.code,
+        effective_from: input.effectiveFrom,
+        frequency: input.frequency,
+        is_active: input.status !== "inactive",
+        name: input.name,
+        status: input.status,
+        updated_by: this.context.userId,
+      })
+      .eq("id", input.calendarId)
+      .eq("tenant_id", this.context.tenantId);
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not update payroll calendar.", cause: error });
+    }
+  }
+
+  async archivePayrollCalendar(calendarId: string): Promise<void> {
+    await this.softArchive("hr_payroll_calendars", calendarId, "Payroll calendar not found.");
+  }
+
+  async createPayrollGroup(input: HrPayrollGroupCreateInput): Promise<{ id: string }> {
+    const { data: calendar } = await this.supabase
+      .from("hr_payroll_calendars")
+      .select("id")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .eq("id", input.payrollCalendarId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!calendar) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Selected payroll calendar was not found." });
+    }
+
+    const { data: policyVersion } = await this.supabase
+      .from("hr_policy_versions")
+      .select("id, policy_id")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .eq("id", input.payrollPolicyVersionId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!policyVersion) {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: "Selected payroll policy version was not found. Create an active payroll policy version first.",
+      });
+    }
+
+    const { data: policy } = await this.supabase
+      .from("hr_policies")
+      .select("id, policy_type_id")
+      .eq("id", policyVersion.policy_id)
+      .eq("tenant_id", this.context.tenantId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!policy) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Payroll policy for the selected version was not found." });
+    }
+
+    const { data: policyType } = await this.supabase
+      .from("hr_policy_types")
+      .select("id, policy_type_key")
+      .eq("id", policy.policy_type_id)
+      .maybeSingle();
+    if (!policyType || String(policyType.policy_type_key) !== "payroll") {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Policy version must belong to a payroll policy type." });
+    }
+
+    const { data, error } = await this.supabase
+      .from("hr_payroll_groups")
+      .insert({
+        branch_id: this.context.branchId,
+        code: input.code,
+        company_id: this.context.companyId,
+        created_by: this.context.userId,
+        is_active: input.status !== "inactive",
+        metadata: { payroll_runtime_implemented: true },
+        name: input.name,
+        payroll_calendar_id: input.payrollCalendarId,
+        payroll_policy_version_id: input.payrollPolicyVersionId,
+        status: input.status,
+        tenant_id: this.context.tenantId,
+        updated_by: this.context.userId,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create payroll group.", cause: error });
+    }
+    return { id: String(data.id) };
+  }
+
+  async updatePayrollGroup(input: HrPayrollGroupUpdateInput): Promise<void> {
+    const { data: existing, error: readError } = await this.supabase
+      .from("hr_payroll_groups")
+      .select("id")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("id", input.groupId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (readError || !existing) {
+      throw new ApplicationError({ code: "NOT_FOUND", message: "Payroll group not found." });
+    }
+
+    const { error } = await this.supabase
+      .from("hr_payroll_groups")
+      .update({
+        code: input.code,
+        is_active: input.status !== "inactive",
+        name: input.name,
+        payroll_calendar_id: input.payrollCalendarId,
+        payroll_policy_version_id: input.payrollPolicyVersionId,
+        status: input.status,
+        updated_by: this.context.userId,
+      })
+      .eq("id", input.groupId)
+      .eq("tenant_id", this.context.tenantId);
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not update payroll group.", cause: error });
+    }
+  }
+
+  async archivePayrollGroup(groupId: string): Promise<void> {
+    await this.softArchive("hr_payroll_groups", groupId, "Payroll group not found.");
+  }
+
+  async createPayrollPeriod(input: HrPayrollPeriodCreateInput): Promise<{ id: string }> {
+    if (input.endDate < input.startDate) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Period end date must be on or after start date." });
+    }
+    const paymentDate = input.paymentDate || input.endDate;
+
+    const { data: calendar } = await this.supabase
+      .from("hr_payroll_calendars")
+      .select("id")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .eq("id", input.payrollCalendarId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!calendar) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Selected payroll calendar was not found." });
+    }
+
+    const { data, error } = await this.supabase
+      .from("hr_payroll_periods")
+      .insert({
+        branch_id: this.context.branchId,
+        company_id: this.context.companyId,
+        created_by: this.context.userId,
+        cutoff_date: input.endDate,
+        end_date: input.endDate,
+        metadata: { payroll_runtime_implemented: true },
+        payment_date: paymentDate,
+        payroll_calendar_id: input.payrollCalendarId,
+        period_code: input.periodCode,
+        period_name: input.periodName,
+        start_date: input.startDate,
+        status: "open",
+        tenant_id: this.context.tenantId,
+        updated_by: this.context.userId,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create payroll period.", cause: error });
+    }
+    return { id: String(data.id) };
+  }
+
+  async updatePayrollPeriod(input: HrPayrollPeriodUpdateInput): Promise<void> {
+    if (input.endDate < input.startDate) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Period end date must be on or after start date." });
+    }
+    const paymentDate = input.paymentDate || input.endDate;
+
+    const { data: existing, error: readError } = await this.supabase
+      .from("hr_payroll_periods")
+      .select("id, status")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("id", input.periodId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (readError || !existing) {
+      throw new ApplicationError({ code: "NOT_FOUND", message: "Payroll period not found." });
+    }
+    if (["locked", "closed"].includes(String(existing.status))) {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Locked or closed payroll periods cannot be edited." });
+    }
+
+    const { error } = await this.supabase
+      .from("hr_payroll_periods")
+      .update({
+        cutoff_date: input.endDate,
+        end_date: input.endDate,
+        payment_date: paymentDate,
+        payroll_calendar_id: input.payrollCalendarId,
+        period_code: input.periodCode,
+        period_name: input.periodName,
+        start_date: input.startDate,
+        updated_by: this.context.userId,
+      })
+      .eq("id", input.periodId)
+      .eq("tenant_id", this.context.tenantId);
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not update payroll period.", cause: error });
+    }
+  }
+
+  async archivePayrollPeriod(periodId: string): Promise<void> {
+    await this.softArchive("hr_payroll_periods", periodId, "Payroll period not found.");
   }
 
   async resetSeededPayrollSetup() {

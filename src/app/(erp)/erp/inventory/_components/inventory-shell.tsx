@@ -6,6 +6,7 @@ import { AppShell } from "@/shared/ui";
 
 import { resolveErpShellRuntime } from "../../../erp-security.server";
 import { createErpShellChrome } from "../../../erp-shell-model";
+import { ErpGlobalSearchSlot } from "../../_components/erp-global-search-slot";
 
 const inventoryItems = [
   { key: "overview", label: "Overview", href: "/erp/inventory" },
@@ -57,7 +58,11 @@ export async function InventoryShell({
   return (
     <AppShell
       {...createErpShellChrome("inventory", runtime)}
-      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "Inventory", href: "/erp/inventory" }]}
+      breadcrumbs={[
+        { label: "Apps", href: "/erp", messageKey: "shell.apps.label" },
+        { label: "Inventory", href: "/erp/inventory", messageKey: "apps.inventory" },
+      ]}
+      globalSearchSlot={<ErpGlobalSearchSlot activePath="/erp/inventory" runtime={runtime} />}
       workspace={{ key: "inventory", name: "Inventory", icon: <Boxes className="size-4" /> }}
       workspaceNav={inventoryItems.map((item) => ({ ...item, isActive: item.key === activeKey }))}
     >

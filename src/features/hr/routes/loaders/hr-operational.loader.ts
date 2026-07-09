@@ -22,8 +22,15 @@ export type HrDocumentRecord = Readonly<{
   uploadedAt: string;
 }>;
 
+export type HrDocumentAlert = Readonly<{
+  id: string;
+  labelKey: "hr.documents.alert.expired" | "hr.documents.alert.expiring" | "hr.documents.alert.noDate";
+  labelParams: Readonly<{ employee: string; fileName: string; date?: string }>;
+  severity: "warning" | "error";
+}>;
+
 export type HrDocumentsWorkspaceData = Readonly<{
-  alerts: readonly { id: string; label: string; severity: "warning" | "error" }[];
+  alerts: readonly HrDocumentAlert[];
   records: readonly HrDocumentRecord[];
 }>;
 
@@ -85,14 +92,28 @@ export async function loadHrDocumentsWorkspace(query: { employeeId?: string } = 
     };
   });
 
-  const alerts = records
+  const today = new Date().toISOString().slice(0, 10);
+  const alerts: HrDocumentAlert[] = records
     .filter((record) => record.status.toLowerCase().includes("expir"))
     .slice(0, 5)
-    .map((record) => ({
-      id: record.id,
-      label: `${record.fileName} for ${record.employeeLabel} ${record.expiresOn ? `(expires ${record.expiresOn})` : ""}`,
-      severity: record.status.toLowerCase().includes("expired") ? ("error" as const) : ("warning" as const),
-    }));
+    .map((record) => {
+      const expired = Boolean(record.expiresOn && record.expiresOn < today);
+      const labelKey = record.expiresOn
+        ? expired
+          ? ("hr.documents.alert.expired" as const)
+          : ("hr.documents.alert.expiring" as const)
+        : ("hr.documents.alert.noDate" as const);
+      return {
+        id: record.id,
+        labelKey,
+        labelParams: {
+          date: record.expiresOn ?? undefined,
+          employee: record.employeeLabel,
+          fileName: record.fileName,
+        },
+        severity: expired ? ("error" as const) : ("warning" as const),
+      };
+    });
 
   return { alerts, records };
 }

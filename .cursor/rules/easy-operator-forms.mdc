@@ -1,0 +1,74 @@
+---
+description: Easy operator forms — labels, layout, i18n, section order (Ahmed's standing UX bar)
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Easy Operator Forms — Nexora Platform Law
+
+Canonical reference: [Easy Operator Forms Standard](../../docs/06-guidelines/EASY_OPERATOR_FORMS_STANDARD.md)
+
+Ahmed's recurring UX requirements are **platform defaults**. Do not wait to be reminded per screen.
+
+## Standing Requirements (always)
+
+### Labels
+
+- **Every** input, select, and lookup has a **persistent visible label**.
+- Placeholder is example/format only — **never** the sole label.
+- Use `FieldGroup` from `@/shared/ui` or `EntityLookup` with `label` prop.
+- **Never** create module-local labeled-field wrappers (`AdvanceFormField`, `LabeledInput`, etc.).
+
+### Layout
+
+- Operator create forms: **max 3 columns** on `xl+`, **2** on `md`, **1** on mobile.
+- **Never** put 4+ mixed fields + submit button in one row.
+- Primary submit: `w-full sm:w-auto`, aligned end on its own row when the form is wide.
+- Long text fields span 2 columns on `md+`. Use `gap-4` between fields.
+
+### List workspace order
+
+```text
+KPIs → Primary create section → Filter → Table
+```
+
+- Create block: `EditableSectionCard` or `FormSection` with **title + description**.
+- Filter block: **separate** form — never merged with create.
+
+### Localization
+
+- All labels, buttons, placeholders, hints, statuses, enum options via `t("…")`.
+- Tables and selects: use `translateHrStatus`, `translateHrAdvanceType`, or sibling `translateCatalogKey` helpers — **never** raw English foundation constants in Arabic UI.
+- Add `hr.<catalog>.<value>` keys in both `hr-en.ts` and `hr-ar.ts`.
+
+### Clarity
+
+- Numeric defaults (e.g. `deductionMonths = 1`) **must** have a `FieldGroup` description explaining meaning.
+- Optional fields: label states optional.
+- Money fields: currency in label; placeholder shows example (`e.g. 1500`).
+
+## Platform components (required)
+
+| Need | Component |
+| --- | --- |
+| Labeled field | `FieldGroup` |
+| Section shell | `EditableSectionCard`, `FormSection`, `RecordFormSection` |
+| Modal create | `RecordFormDialog` |
+| Relation | `EntityLookup` |
+| Date | `DatePicker` |
+| List | `EnterpriseDataTable` |
+
+## Forbidden
+
+- Placeholder-only forms
+- `xl:grid-cols-4` through `xl:grid-cols-6` for mixed operator create forms
+- English enum/status labels in localized UI
+- Create + filter in one `<form>`
+- Module-local form field abstractions when `FieldGroup` exists
+
+## When touching any form UI
+
+1. Read [Easy Operator Forms Standard](../../docs/06-guidelines/EASY_OPERATOR_FORMS_STANDARD.md).
+2. Apply `FieldGroup` + section card + column limits without being asked.
+3. Add missing i18n keys for any new catalog values shown to users.

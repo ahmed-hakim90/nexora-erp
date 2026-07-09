@@ -9,7 +9,7 @@ import type {
   HrAttendanceDeviceEditRecord,
   HrAttendanceDevicesWorkspaceData,
 } from "@/features/hr/public-api";
-import { Input, PageContainer, nativeSelectClassName, primaryButtonLinkClassName } from "@/shared/ui";
+import { Input, PageContainer, nativeSelectClassName, primaryButtonLinkClassName, useTranslations } from "@/shared/ui";
 
 import { HrRelativeTime } from "../hr-relative-time";
 import { HrWorkforceFilterBar, HrWorkforceSearchFilter } from "../hr-workforce-filter-bar";
@@ -43,6 +43,7 @@ export function HrAttendanceDevicesWorkspace({
   editDevice?: HrAttendanceDeviceEditRecord | null;
   query: Record<string, string | undefined>;
 }>) {
+  const t = useTranslations();
   const router = useRouter();
   const [drawerDeviceId, setDrawerDeviceId] = useState<string | null>(null);
   const drawerDevice = useMemo(
@@ -53,39 +54,79 @@ export function HrAttendanceDevicesWorkspace({
   const activeTab = query.tab ?? "devices";
 
   const navItems = [
-    { href: buildHref(query, { tab: "devices" }), key: "devices", label: "Devices" },
-    { href: buildHref(query, { tab: "analytics" }), key: "analytics", label: "Analytics" },
-    { href: buildHref(query, { tab: "sync-history" }), key: "sync-history", label: "Sync History" },
+    { href: buildHref(query, { tab: "devices" }), key: "devices", label: t("hr.attendance.devices.tab.devices") },
+    { href: buildHref(query, { tab: "analytics" }), key: "analytics", label: t("hr.attendance.devices.tab.analytics") },
+    { href: buildHref(query, { tab: "sync-history" }), key: "sync-history", label: t("hr.attendance.devices.tab.syncHistory") },
   ] as const;
 
   return (
     <PageContainer className="max-w-[96rem]">
       <HrWorkforceWorkspaceShell
         activeTab={activeTab}
-        description="Enterprise device control center with health monitoring, sync center, preview validation, diagnostics, analytics, and import reporting."
+        description={t("hr.attendance.devices.description")}
         navItems={navItems}
         summaryMetrics={[
-          { helper: "Online or syncing", href: buildHref(query, { healthStatus: "healthy", tab: "devices" }), label: "Connected", value: data.kpis.connectedCount },
-          { helper: "Unreachable devices", href: buildHref(query, { healthStatus: "offline", tab: "devices" }), label: "Offline", value: data.kpis.offlineCount },
-          { helper: "Active sync jobs", href: buildHref(query, { status: "syncing", tab: "devices" }), label: "Syncing", value: data.kpis.syncingCount },
-          { helper: "Imported today", href: buildHref(query, { tab: "sync-history" }), label: "Today's punches", value: data.kpis.todayPunches },
-          { helper: "Awaiting import approval", href: buildHref(query, { tab: "sync-history" }), label: "Pending imports", value: data.kpis.pendingImports },
-          { helper: "Failed sessions", href: buildHref(query, { tab: "sync-history" }), label: "Import errors", value: data.kpis.importErrors },
-          { helper: "Average sync duration", href: buildHref(query, { tab: "sync-history" }), label: "Avg sync", value: formatHrDurationSeconds(data.kpis.avgSyncDurationSeconds) },
-          { helper: "Last successful sync", href: buildHref(query, { tab: "sync-history" }), label: "Last sync", value: <HrRelativeTime value={data.kpis.lastSuccessfulSyncAt} /> },
+          {
+            helper: t("hr.attendance.devices.kpi.connected.helper"),
+            href: buildHref(query, { healthStatus: "healthy", tab: "devices" }),
+            label: t("hr.attendance.devices.kpi.connected"),
+            value: data.kpis.connectedCount,
+          },
+          {
+            helper: t("hr.attendance.devices.kpi.offline.helper"),
+            href: buildHref(query, { healthStatus: "offline", tab: "devices" }),
+            label: t("hr.attendance.devices.kpi.offline"),
+            value: data.kpis.offlineCount,
+          },
+          {
+            helper: t("hr.attendance.devices.kpi.syncing.helper"),
+            href: buildHref(query, { status: "syncing", tab: "devices" }),
+            label: t("hr.attendance.devices.kpi.syncing"),
+            value: data.kpis.syncingCount,
+          },
+          {
+            helper: t("hr.attendance.devices.kpi.todayPunches.helper"),
+            href: buildHref(query, { tab: "sync-history" }),
+            label: t("hr.attendance.devices.kpi.todayPunches"),
+            value: data.kpis.todayPunches,
+          },
+          {
+            helper: t("hr.attendance.devices.kpi.pendingImports.helper"),
+            href: buildHref(query, { tab: "sync-history" }),
+            label: t("hr.attendance.devices.kpi.pendingImports"),
+            value: data.kpis.pendingImports,
+          },
+          {
+            helper: t("hr.attendance.devices.kpi.importErrors.helper"),
+            href: buildHref(query, { tab: "sync-history" }),
+            label: t("hr.attendance.devices.kpi.importErrors"),
+            value: data.kpis.importErrors,
+          },
+          {
+            helper: t("hr.attendance.devices.kpi.avgSync.helper"),
+            href: buildHref(query, { tab: "sync-history" }),
+            label: t("hr.attendance.devices.kpi.avgSync"),
+            value: formatHrDurationSeconds(data.kpis.avgSyncDurationSeconds),
+          },
+          {
+            helper: t("hr.attendance.devices.kpi.lastSync.helper"),
+            href: buildHref(query, { tab: "sync-history" }),
+            label: t("hr.attendance.devices.kpi.lastSync"),
+            value: <HrRelativeTime value={data.kpis.lastSuccessfulSyncAt} />,
+          },
         ]}
-        title="Attendance Devices"
+        title={t("hr.attendance.devices.title")}
         workspaceKey="attendance-devices"
         headerActions={
           <Link className={primaryButtonLinkClassName} href={buildHref(query, { create: "1" })}>
-            Register device
+            {t("hr.attendance.devices.register")}
           </Link>
         }
         filters={
           <HrWorkforceFilterBar basePath="/erp/hr/attendance-devices" query={{ tab: activeTab }} resetHref={buildHref({ tab: activeTab })}>
-            <HrWorkforceSearchFilter defaultValue={query.search} placeholder="Device, code, serial" />
+            <HrWorkforceSearchFilter defaultValue={query.search} placeholder={t("hr.attendance.devices.filter.search")} />
             <select className={nativeSelectClassName} defaultValue={query.deviceType ?? ""} name="deviceType">
-              <option value="">All types</option>
+              <option value="">{t("hr.attendance.devices.filter.allTypes")}</option>
               {data.deviceTypeOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -93,7 +134,7 @@ export function HrAttendanceDevicesWorkspace({
               ))}
             </select>
             <select className={nativeSelectClassName} defaultValue={query.healthStatus ?? ""} name="healthStatus">
-              <option value="">All health</option>
+              <option value="">{t("hr.attendance.devices.filter.allHealth")}</option>
               {data.healthStatusOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
@@ -101,14 +142,14 @@ export function HrAttendanceDevicesWorkspace({
               ))}
             </select>
             <select className={nativeSelectClassName} defaultValue={query.status ?? ""} name="status">
-              <option value="">All statuses</option>
+              <option value="">{t("hr.attendance.devices.filter.allStatuses")}</option>
               {data.statusOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
-            <Input defaultValue={query.ipAddress ?? ""} name="ipAddress" placeholder="IP address" />
+            <Input defaultValue={query.ipAddress ?? ""} name="ipAddress" placeholder={t("hr.attendance.devices.filter.ip")} />
           </HrWorkforceFilterBar>
         }
       >
@@ -121,10 +162,10 @@ export function HrAttendanceDevicesWorkspace({
         {activeTab === "devices" ? (
           data.records.length === 0 ? (
             <div className="rounded-2xl border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">No attendance devices registered</p>
-              <p className="mt-2 text-sm text-muted-foreground">Register a device to start syncing punches with preview and validation.</p>
+              <p className="text-lg font-medium">{t("hr.attendance.devices.empty.title")}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t("hr.attendance.devices.empty.body")}</p>
               <Link className={`mt-4 ${primaryButtonLinkClassName}`} href={buildHref(query, { create: "1" })}>
-                Register device
+                {t("hr.attendance.devices.register")}
               </Link>
             </div>
           ) : (
@@ -146,7 +187,12 @@ export function HrAttendanceDevicesWorkspace({
       {query.create === "1" ? <HrAttendanceDeviceFormDialog mode="create" query={query} /> : null}
       {query.edit && editDevice ? <HrAttendanceDeviceFormDialog device={editDevice} mode="edit" query={query} /> : null}
       {query.sync ? (
-        <HrAttendanceDeviceSyncWizard deviceId={query.sync} query={query} sessionId={query.syncSession} />
+        <HrAttendanceDeviceSyncWizard
+          deviceId={query.sync}
+          deviceType={data.records.find((record) => record.id === query.sync)?.deviceType}
+          query={query}
+          sessionId={query.syncSession}
+        />
       ) : null}
 
       <HrAttendanceDeviceDrawer

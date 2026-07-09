@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 import type { HrEmployeesWorkspaceData } from "@/features/hr/routes/loaders/hr-employees.loader";
@@ -11,6 +13,7 @@ import {
   PageHeader,
   secondaryButtonLinkClassName,
   nativeSelectClassName,
+  useTranslations,
 } from "@/shared/ui";
 
 import { HrEmployeeWizardDialog } from "./hr-employee-wizard";
@@ -27,28 +30,30 @@ export function HrEmployeesWorkspace({
   errorMessage?: string;
   query: Record<string, string | undefined>;
 }>) {
+  const t = useTranslations();
+
   return (
     <PageContainer className="max-w-[96rem]">
       <PageHeader
-        description="Employee directory with assignment-resolved organization context. Search by name, code, attendance code, phone, email, or national ID."
+        description={t("hr.employees.description")}
         help={resolveHrPageHelp("employees")}
-        title="Employees"
+        title={t("hr.employees.title")}
       >
         <PageActions>
           <Link className={secondaryButtonLinkClassName} href={buildHrEmployeesHref(query, { import: "1" })}>
-            Import CSV
+            {t("hr.employees.importExcel")}
           </Link>
           <a className={secondaryButtonLinkClassName} href="/api/hr/employees/import-template">
-            Import template
+            {t("hr.employees.arabicTemplate")}
           </a>
           <a className={secondaryButtonLinkClassName} href={buildHrEmployeesExportHref(query)}>
-            Export CSV
+            {t("hr.common.exportCsv")}
           </a>
           <Link
             className="inline-flex h-10 items-center justify-center rounded-md border border-[hsl(var(--accent))] bg-[hsl(var(--accent))] px-4 text-sm font-medium text-[hsl(var(--accent-foreground))] shadow-sm transition-colors"
             href={buildHrEmployeesHref(query, { wizard: "1" })}
           >
-            Add Employee
+            {t("hr.employees.add")}
           </Link>
         </PageActions>
       </PageHeader>
@@ -56,10 +61,18 @@ export function HrEmployeesWorkspace({
         {errorMessage ? <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">{errorMessage}</p> : null}
 
         <PageFilters>
+          {query.unassigned === "1" ? (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface-muted))]/40 px-3 py-2 text-sm">
+              <span>{t("hr.employees.filter.unassignedActive")}</span>
+              <Link className="text-[hsl(var(--accent))] hover:underline" href={buildHrEmployeesHref(query, { unassigned: null })}>
+                {t("hr.common.clearFilter")}
+              </Link>
+            </div>
+          ) : null}
           <form action="/erp/hr/employees" className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <Input defaultValue={query.search ?? ""} name="search" placeholder="Name, code, attendance code, phone, email, national ID" />
+            <Input defaultValue={query.search ?? ""} name="search" placeholder={t("hr.employees.filter.search")} />
             <select className={nativeSelectClassName} defaultValue={query.status ?? ""} name="status">
-              <option value="">All statuses</option>
+              <option value="">{t("hr.employees.filter.allStatuses")}</option>
               {data.statusOptions.map((status) => (
                 <option key={status} value={status}>
                   {formatHrStatusLabel(status)}
@@ -67,7 +80,7 @@ export function HrEmployeesWorkspace({
               ))}
             </select>
             <select className={nativeSelectClassName} defaultValue={query.departmentId ?? ""} name="departmentId">
-              <option value="">All departments</option>
+              <option value="">{t("hr.employees.filter.allDepartments")}</option>
               {data.departmentOptions.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
@@ -75,7 +88,7 @@ export function HrEmployeesWorkspace({
               ))}
             </select>
             <select className={nativeSelectClassName} defaultValue={query.positionId ?? ""} name="positionId">
-              <option value="">All positions</option>
+              <option value="">{t("hr.employees.filter.allPositions")}</option>
               {data.positionOptions.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
@@ -83,7 +96,7 @@ export function HrEmployeesWorkspace({
               ))}
             </select>
             <Button type="submit" variant="secondary">
-              Apply filters
+              {t("hr.common.applyFilters")}
             </Button>
           </form>
         </PageFilters>
@@ -93,13 +106,13 @@ export function HrEmployeesWorkspace({
         {data.nextCursor ? (
           <div className="flex justify-end">
             <Link className={secondaryButtonLinkClassName} href={buildHrEmployeesHref(query, { cursor: data.nextCursor })}>
-              Load more
+              {t("hr.employees.loadMore")}
             </Link>
           </div>
         ) : null}
       </div>
 
-      {query.wizard === "1" ? <HrEmployeeWizardDialog query={query} /> : null}
+      {query.wizard === "1" ? <HrEmployeeWizardDialog query={query} wizardContext={data.wizardContext} /> : null}
       {query.import === "1" ? <HrEmployeesImportDialog query={query} /> : null}
     </PageContainer>
   );

@@ -30,6 +30,13 @@ function decodeCursor(cursor?: string | null) {
   }
 }
 
+export type HrEmployeeWizardContext = Readonly<{
+  hasPayrollFoundation: boolean;
+  hasPayrollGroups: boolean;
+  hasSalaryPackages: boolean;
+  hasShiftDefinitions: boolean;
+}>;
+
 export type HrEmployeesWorkspaceData = Readonly<{
   branchOptions: readonly { id: string; label: string }[];
   departmentOptions: readonly { id: string; label: string }[];
@@ -39,7 +46,55 @@ export type HrEmployeesWorkspaceData = Readonly<{
   positionOptions: readonly { id: string; label: string }[];
   records: readonly HrEmployeeListRow[];
   statusOptions: readonly string[];
+  wizardContext: HrEmployeeWizardContext;
 }>;
+
+async function loadHrEmployeeWizardContext(
+  supabase: SupabaseClient,
+  context: BranchRequestContext,
+): Promise<HrEmployeeWizardContext> {
+  const [salaryPackages, payrollGroups, shifts, payrollPeriods] = await Promise.all([
+    supabase
+      .from("hr_salary_packages")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("status", "active")
+      .is("deleted_at", null),
+    supabase
+      .from("hr_payroll_groups")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("status", "active")
+      .is("deleted_at", null),
+    supabase
+      .from("hr_shift_definitions")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("status", "active")
+      .is("deleted_at", null),
+    supabase
+      .from("hr_payroll_periods")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .is("deleted_at", null),
+  ]);
+
+  const hasSalaryPackages = (salaryPackages.count ?? 0) > 0;
+  const hasPayrollGroups = (payrollGroups.count ?? 0) > 0;
+  const hasShiftDefinitions = (shifts.count ?? 0) > 0;
+  const hasPayrollFoundation = hasSalaryPackages || hasPayrollGroups || (payrollPeriods.count ?? 0) > 0;
+
+  return {
+    hasPayrollFoundation,
+    hasPayrollGroups,
+    hasSalaryPackages,
+    hasShiftDefinitions,
+  };
+}
 
 function withBranchLabel(
   assignment: HrEmployeeAssignmentSnapshot,
@@ -72,6 +127,76 @@ async function loadBranchLabels(
   }));
 }
 
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function resolveDepartmentEmployeeIds(
+  supabase: SupabaseClient,
+  context: BranchRequestContext,
+  departmentId: string,
+): Promise<string[]> {
+  const today = todayIsoDate();
+  const { data, error } = await supabase
+    .from("hr_assignments")
+    .select("employee_id")
+    .eq("tenant_id", context.tenantId)
+    .eq("company_id", context.companyId)
+    .eq("assignment_type", "department")
+    .eq("reference_entity_id", departmentId)
+    .eq("assignment_status", "active")
+    .lte("effective_from", today)
+    .or(`effective_to.is.null,effective_to.gte.${today}`)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not resolve department employees.", cause: error });
+  }
+
+  return [...new Set((data ?? []).map((row) => String(row.employee_id)))];
+}
+
+async function resolveUnassignedEmployeeIds(
+  supabase: SupabaseClient,
+  context: BranchRequestContext,
+  status?: string,
+): Promise<string[]> {
+  const today = todayIsoDate();
+  let employeesQuery = supabase
+    .from("hr_employees")
+    .select("id")
+    .eq("tenant_id", context.tenantId)
+    .eq("company_id", context.companyId)
+    .is("deleted_at", null);
+
+  if (status) {
+    employeesQuery = employeesQuery.eq("status", status);
+  }
+
+  const [employeesResult, assignmentsResult] = await Promise.all([
+    employeesQuery,
+    supabase
+      .from("hr_assignments")
+      .select("employee_id")
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("assignment_type", "department")
+      .eq("assignment_status", "active")
+      .lte("effective_from", today)
+      .or(`effective_to.is.null,effective_to.gte.${today}`)
+      .is("deleted_at", null),
+  ]);
+
+  if (employeesResult.error) {
+    throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not resolve unassigned employees.", cause: employeesResult.error });
+  }
+
+  const assignedEmployeeIds = new Set((assignmentsResult.data ?? []).map((row) => String(row.employee_id)));
+  return (employeesResult.data ?? [])
+    .map((row) => String(row.id))
+    .filter((employeeId) => !assignedEmployeeIds.has(employeeId));
+}
+
 export async function loadHrEmployeesWorkspace(query: unknown = {}): Promise<HrEmployeesWorkspaceData> {
   const context = await resolveBranchRequestContext("erp");
   await requirePermission({ context, permission: HR_PERMISSIONS.employeesView });
@@ -79,6 +204,53 @@ export async function loadHrEmployeesWorkspace(query: unknown = {}): Promise<HrE
   const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
   const pageSize = parsed.pageSize;
   const cursor = decodeCursor(parsed.cursor);
+
+  let scopedEmployeeIds: string[] | null = null;
+  if (parsed.departmentId) {
+    scopedEmployeeIds = await resolveDepartmentEmployeeIds(supabase, context, parsed.departmentId);
+  } else if (parsed.unassigned === "1") {
+    scopedEmployeeIds = await resolveUnassignedEmployeeIds(supabase, context, parsed.status);
+  }
+
+  if (scopedEmployeeIds !== null && scopedEmployeeIds.length === 0) {
+    const [departmentsResult, positionsResult, wizardContext] = await Promise.all([
+      supabase
+        .from("hr_org_units")
+        .select("id, name")
+        .eq("tenant_id", context.tenantId)
+        .eq("company_id", context.companyId)
+        .is("deleted_at", null)
+        .order("name")
+        .limit(100),
+      supabase
+        .from("hr_positions")
+        .select("id, name")
+        .eq("tenant_id", context.tenantId)
+        .eq("company_id", context.companyId)
+        .is("deleted_at", null)
+        .order("name")
+        .limit(100),
+      loadHrEmployeeWizardContext(supabase, context),
+    ]);
+
+    return {
+      branchOptions: [],
+      departmentOptions: (departmentsResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        label: formatHrDisplayLabel(row.name, "Department"),
+      })),
+      managerOptions: [],
+      nextCursor: null,
+      pageSize,
+      positionOptions: (positionsResult.data ?? []).map((row) => ({
+        id: String(row.id),
+        label: formatHrDisplayLabel(row.name, "Position"),
+      })),
+      records: [],
+      statusOptions: ["draft", "active", "inactive", "suspended", "separated", "archived"],
+      wizardContext,
+    };
+  }
 
   let request = supabase
     .from("hr_employees")
@@ -92,6 +264,7 @@ export async function loadHrEmployeesWorkspace(query: unknown = {}): Promise<HrE
 
   if (parsed.status) request = request.eq("status", parsed.status);
   if (parsed.branchId) request = request.eq("branch_id", parsed.branchId);
+  if (scopedEmployeeIds) request = request.in("id", scopedEmployeeIds);
   if (parsed.search) {
     const term = parsed.search.replaceAll("%", "").trim();
     if (term.length > 0) {
@@ -105,7 +278,7 @@ export async function loadHrEmployeesWorkspace(query: unknown = {}): Promise<HrE
 
   const resolver = new HrAssignmentResolverService(supabase, context);
 
-  const [employeesResult, departmentsResult, positionsResult] = await Promise.all([
+  const [employeesResult, departmentsResult, positionsResult, wizardContext] = await Promise.all([
     request,
     supabase
       .from("hr_org_units")
@@ -123,6 +296,7 @@ export async function loadHrEmployeesWorkspace(query: unknown = {}): Promise<HrE
       .is("deleted_at", null)
       .order("name")
       .limit(100),
+    loadHrEmployeeWizardContext(supabase, context),
   ]);
 
   if (employeesResult.error) {
@@ -199,9 +373,6 @@ export async function loadHrEmployeesWorkspace(query: unknown = {}): Promise<HrE
     };
   });
 
-  if (parsed.departmentId) {
-    records = records.filter((record) => record.assignment.department?.referenceEntityId === parsed.departmentId);
-  }
   if (parsed.positionId) {
     records = records.filter((record) => record.assignment.position?.referenceEntityId === parsed.positionId);
   }
@@ -227,6 +398,7 @@ export async function loadHrEmployeesWorkspace(query: unknown = {}): Promise<HrE
     })),
     records,
     statusOptions: ["draft", "active", "inactive", "suspended", "separated", "archived"],
+    wizardContext,
   };
 }
 
@@ -270,16 +442,16 @@ export async function exportHrEmployeesCsv(query: unknown = {}): Promise<string>
   const resolver = new HrAssignmentResolverService(supabase, context);
   const assignments = employeeIds.length > 0 ? await resolver.resolveManyEmployeeAssignments(employeeIds) : new Map();
 
-  const headers = ["Employee Number", "Attendance Code", "Full Name", "National ID", "Status", "Department", "Position", "Manager", "Email", "Phone"];
+  const headers = ["Employee Code", "Full Name", "National ID", "Status", "Department", "Position", "Manager", "Email", "Phone"];
   const lines = [headers.join(",")];
 
   for (const row of rows) {
     const id = String(row.id);
     const assignment = assignments.get(id);
+    const employeeCode = formatHrDisplayLabel(row.employee_number ?? row.attendance_code, "");
     lines.push(
       [
-        csvEscape(formatHrDisplayLabel(row.employee_number, "")),
-        csvEscape(row.attendance_code ? String(row.attendance_code) : ""),
+        csvEscape(employeeCode),
         csvEscape(formatHrDisplayLabel(row.full_name, "")),
         csvEscape(row.national_id ? String(row.national_id) : ""),
         csvEscape(formatHrDisplayLabel(String(row.status), "")),

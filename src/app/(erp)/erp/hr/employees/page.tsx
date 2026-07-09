@@ -42,6 +42,12 @@ export default async function HrEmployeesPage({
             positionOptions: [],
             records: [],
             statusOptions: [],
+            wizardContext: {
+              hasPayrollFoundation: false,
+              hasPayrollGroups: false,
+              hasSalaryPackages: false,
+              hasShiftDefinitions: false,
+            },
           }
         }
         errorMessage={errorMessage}

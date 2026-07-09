@@ -19,6 +19,7 @@ import {
   cancelHrAttendanceDeviceSyncAction,
   importHrAttendanceDeviceSyncAction,
   startHrAttendanceDeviceEnterpriseSyncAction,
+  startHrAttendanceDeviceFileImportSyncAction,
 } from "@/features/hr/routes/actions/hr-attendance-device.actions";
 import {
   Button,
@@ -29,6 +30,7 @@ import {
   buildModalCloseHref,
   nativeSelectClassName,
   useRecordFormModal,
+  useTranslations,
 } from "@/shared/ui";
 import { cn } from "@/shared/ui/utils";
 
@@ -38,22 +40,41 @@ import { HrAttendanceDeviceProgress } from "./hr-attendance-device-progress";
 const ATTENDANCE_DEVICES_PATH = "/erp/hr/attendance-devices";
 const SYNC_MODAL_QUERY_KEYS = ["create", "edit", "sync", "syncSession"] as const;
 
-type WizardStep = "strategy" | "options" | "progress" | "preview" | "import";
+type WizardStep = "strategy" | "file" | "options" | "progress" | "preview" | "import";
+
+const SYNC_OPTION_KEYS = [
+  "autoBuildPreview",
+  "dryRun",
+  "includeBreakPunches",
+  "includeCheckIn",
+  "includeCheckOut",
+  "includeDeviceEvents",
+  "includeInvalidPunches",
+  "includeManualPunches",
+  "recalculateAttendance",
+  "skipDuplicates",
+] as const;
 
 export function HrAttendanceDeviceSyncWizard({
   deviceId,
+  deviceType,
   query,
   sessionId: initialSessionId,
 }: Readonly<{
   deviceId: string;
+  deviceType?: string;
   query: Record<string, string | undefined>;
   sessionId?: string;
 }>) {
+  const t = useTranslations();
   const router = useRouter();
+  const isFileImportDevice = deviceType === "excel_import";
   const closeHref = buildModalCloseHref(ATTENDANCE_DEVICES_PATH, query, SYNC_MODAL_QUERY_KEYS);
   const { closeModal, handleOpenChange, open } = useRecordFormModal({ autoOpen: true, closeHref });
   const [sessionId, setSessionId] = useState(initialSessionId ?? null);
-  const [step, setStep] = useState<WizardStep>(initialSessionId ? "progress" : "strategy");
+  const [step, setStep] = useState<WizardStep>(
+    initialSessionId ? "progress" : isFileImportDevice ? "file" : "strategy",
+  );
   const [strategy, setStrategy] = useState<HrAttendanceDeviceSyncStrategy>("incremental");
   const [specificDate, setSpecificDate] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -82,6 +103,9 @@ export function HrAttendanceDeviceSyncWizard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<Record<string, unknown> | null>(null);
   const [lockedPeriodAcknowledged, setLockedPeriodAcknowledged] = useState(false);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [parseWarnings, setParseWarnings] = useState<readonly string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const recommendations = useMemo(
     () => [...(startContext?.recommendations ?? [])],
@@ -102,14 +126,14 @@ export function HrAttendanceDeviceSyncWizard({
   const pollProgress = useCallback(async (activeSessionId: string): Promise<HrAttendanceDeviceSyncProgress | null> => {
     const response = await fetch(`/api/hr/attendance-devices/sync/${activeSessionId}/progress`);
     if (!response.ok) {
-      setErrorMessage("Could not load sync progress.");
+      setErrorMessage(t("hr.attendance.devices.sync.error.loadProgress"));
       return null;
     }
     const payload = (await response.json()) as HrAttendanceDeviceSyncProgress;
     setProgress(payload);
     if (payload.errorMessage) setErrorMessage(payload.errorMessage);
     return payload;
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!sessionId) return undefined;
@@ -143,6 +167,27 @@ export function HrAttendanceDeviceSyncWizard({
     })();
   }, [progress?.previewReady, sessionId]);
 
+  async function handleFileImport(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErrorMessage(null);
+    setIsUploading(true);
+    const formData = new FormData(event.currentTarget);
+    formData.set("deviceId", deviceId);
+    formData.set("recalculateAttendance", syncOptions.recalculateAttendance ? "true" : "false");
+    formData.set("skipDuplicates", syncOptions.skipDuplicates ? "true" : "false");
+    try {
+      const result = await startHrAttendanceDeviceFileImportSyncAction(formData);
+      setSessionId(result.sessionId);
+      setParseWarnings(result.warnings);
+      setStep("progress");
+      await pollProgress(result.sessionId);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : t("hr.attendance.devices.sync.error.fileImport"));
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   async function handleStart() {
     setErrorMessage(null);
     const formData = new FormData();
@@ -164,13 +209,13 @@ export function HrAttendanceDeviceSyncWizard({
       setStep("progress");
       await pollProgress(result.sessionId);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not start sync.");
+      setErrorMessage(error instanceof Error ? error.message : t("hr.attendance.devices.sync.error.start"));
     }
   }
 
   async function handleCancel() {
     if (!sessionId) return;
-    if (!window.confirm("Cancel sync? No attendance records will be imported.")) return;
+    if (!window.confirm(t("hr.attendance.devices.sync.confirmCancel"))) return;
     await cancelHrAttendanceDeviceSyncAction(sessionId);
     closeModal();
     router.refresh();
@@ -194,12 +239,86 @@ export function HrAttendanceDeviceSyncWizard({
       onOpenChange={handleOpenChange}
       open={open}
       size="wide"
-      subtitle="Enterprise sync wizard: choose strategy, validate, preview, then import through attendance runtime."
-      title="Enterprise device sync"
+      subtitle={
+        isFileImportDevice
+          ? t("hr.attendance.devices.sync.fileImportSubtitle")
+          : t("hr.attendance.devices.sync.subtitle")
+      }
+      title={
+        isFileImportDevice ? t("hr.attendance.devices.sync.fileImportTitle") : t("hr.attendance.devices.sync.title")
+      }
     >
       <div className="space-y-4">
         {errorMessage ? (
           <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{errorMessage}</p>
+        ) : null}
+
+        {parseWarnings.length > 0 ? (
+          <ul className="rounded-md border border-[hsl(var(--warning))]/40 bg-[hsl(var(--warning))]/10 px-3 py-2 text-sm">
+            {parseWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        {step === "file" ? (
+          <form className="space-y-4" onSubmit={(event) => void handleFileImport(event)}>
+            <section className="space-y-3 rounded-xl border bg-[hsl(var(--muted))]/20 p-4">
+              <p className="text-sm font-medium">{t("hr.attendance.devices.sync.fileImport.helpTitle")}</p>
+              <p className="text-sm text-muted-foreground">{t("hr.attendance.devices.sync.fileImport.helpBody")}</p>
+              <a
+                className="inline-flex text-sm font-medium text-[hsl(var(--accent))] underline-offset-4 hover:underline"
+                href="/api/hr/attendance-devices/import-template"
+              >
+                {t("hr.attendance.devices.sync.fileImport.downloadTemplate")}
+              </a>
+            </section>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium">{t("hr.attendance.devices.sync.fileImport.chooseFile")}</span>
+              <input
+                accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                className="block w-full rounded-xl border border-border bg-[hsl(var(--surface))] px-3 py-2 text-sm file:me-3 file:rounded-md file:border-0 file:bg-[hsl(var(--muted))] file:px-3 file:py-1.5 file:text-sm"
+                name="file"
+                onChange={(event) => setSelectedFileName(event.target.files?.[0]?.name ?? null)}
+                required
+                type="file"
+              />
+              {selectedFileName ? (
+                <span className="text-xs text-muted-foreground">
+                  {t("hr.attendance.devices.sync.fileImport.selectedFile", { fileName: selectedFileName })}
+                </span>
+              ) : null}
+            </label>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm">
+                <span>{t("hr.attendance.devices.sync.option.recalculateAttendance")}</span>
+                <Switch
+                  checked={syncOptions.recalculateAttendance}
+                  onCheckedChange={(checked) => setSyncOptions((current) => ({ ...current, recalculateAttendance: checked }))}
+                />
+              </label>
+              <label className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm">
+                <span>{t("hr.attendance.devices.sync.option.skipDuplicates")}</span>
+                <Switch
+                  checked={syncOptions.skipDuplicates}
+                  onCheckedChange={(checked) => setSyncOptions((current) => ({ ...current, skipDuplicates: checked }))}
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button onClick={closeModal} type="button" variant="secondary">
+                {t("hr.common.close")}
+              </Button>
+              <Button disabled={isUploading} type="submit" variant="primary">
+                {isUploading
+                  ? t("hr.attendance.devices.sync.fileImport.processing")
+                  : t("hr.attendance.devices.sync.fileImport.start")}
+              </Button>
+            </div>
+          </form>
         ) : null}
 
         {step === "strategy" ? (
@@ -225,14 +344,14 @@ export function HrAttendanceDeviceSyncWizard({
               <DatePicker
                 name="specificDate"
                 onValueChange={(value) => setSpecificDate(value ?? "")}
-                placeholder="Sync date"
+                placeholder={t("hr.attendance.devices.sync.syncDate")}
                 value={specificDate}
               />
             ) : null}
             {strategy === "date_range" ? (
               <div className="grid gap-3 md:grid-cols-2">
-                <DatePicker name="dateFrom" onValueChange={(value) => setDateFrom(value ?? "")} placeholder="From date" value={dateFrom} />
-                <DatePicker name="dateTo" onValueChange={(value) => setDateTo(value ?? "")} placeholder="To date" value={dateTo} />
+                <DatePicker name="dateFrom" onValueChange={(value) => setDateFrom(value ?? "")} placeholder={t("hr.attendance.devices.drawer.fromDate")} value={dateFrom} />
+                <DatePicker name="dateTo" onValueChange={(value) => setDateTo(value ?? "")} placeholder={t("hr.common.toDate")} value={dateTo} />
               </div>
             ) : null}
             {strategy === "month" ? (
@@ -255,7 +374,7 @@ export function HrAttendanceDeviceSyncWizard({
             {strategy === "employees" ? (
               <div className="space-y-2">
                 <EntityLookup
-                  label="Add employee"
+                  label={t("hr.common.addEmployee")}
                   name="pendingEmployeeId"
                   onValueChange={(value) => {
                     setPendingEmployeeId(value);
@@ -263,19 +382,19 @@ export function HrAttendanceDeviceSyncWizard({
                       setEmployeeIds((current) => [...current, value]);
                     }
                   }}
-                  placeholder="Search employees…"
+                  placeholder={t("hr.common.searchEmployee")}
                   providerKey="hr.employees.lookup"
                   value={pendingEmployeeId}
                 />
                 {employeeIds.length > 0 ? (
-                  <p className="text-xs text-muted-foreground">Selected: {employeeIds.length} employee(s)</p>
+                  <p className="text-xs text-muted-foreground">{t("hr.common.selectedEmployees", { count: employeeIds.length })}</p>
                 ) : null}
               </div>
             ) : null}
             {strategy === "departments" ? (
               <div className="space-y-2">
                 <EntityLookup
-                  label="Add department"
+                  label={t("hr.common.addDepartment")}
                   name="pendingDepartmentId"
                   onValueChange={(value) => {
                     setPendingDepartmentId(value);
@@ -283,12 +402,12 @@ export function HrAttendanceDeviceSyncWizard({
                       setDepartmentIds((current) => [...current, value]);
                     }
                   }}
-                  placeholder="Search departments…"
+                  placeholder={t("hr.common.searchDepartments")}
                   providerKey="hr.departments.lookup"
                   value={pendingDepartmentId}
                 />
                 {departmentIds.length > 0 ? (
-                  <p className="text-xs text-muted-foreground">Selected: {departmentIds.length} department(s)</p>
+                  <p className="text-xs text-muted-foreground">{t("hr.common.selectedDepartments", { count: departmentIds.length })}</p>
                 ) : null}
               </div>
             ) : null}
@@ -296,13 +415,13 @@ export function HrAttendanceDeviceSyncWizard({
             {hasLockedPeriod ? (
               <label className="flex items-center gap-2 text-sm">
                 <input checked={lockedPeriodAcknowledged} onChange={(event) => setLockedPeriodAcknowledged(event.target.checked)} type="checkbox" />
-                I understand the selected period includes locked attendance/payroll dates.
+                {t("hr.attendance.devices.sync.lockedPeriodAck")}
               </label>
             ) : null}
 
             <div className="flex justify-end gap-2">
               <Button onClick={closeModal} type="button" variant="secondary">
-                Close
+                {t("hr.common.close")}
               </Button>
               <Button
                 disabled={hasBlockingRecommendation || (hasLockedPeriod && !lockedPeriodAcknowledged)}
@@ -310,14 +429,15 @@ export function HrAttendanceDeviceSyncWizard({
                 type="button"
                 variant="secondary"
               >
-                Sync options
+                {t("hr.attendance.devices.sync.syncOptions")}
               </Button>
               <Button
                 disabled={hasBlockingRecommendation || (hasLockedPeriod && !lockedPeriodAcknowledged)}
                 onClick={() => void handleStart()}
                 type="button"
+                variant="primary"
               >
-                Start sync
+                {t("hr.attendance.devices.sync.startSync")}
               </Button>
             </div>
           </section>
@@ -325,18 +445,21 @@ export function HrAttendanceDeviceSyncWizard({
 
         {step === "options" ? (
           <section className="grid gap-3 md:grid-cols-2">
-            {Object.entries(syncOptions).map(([key, value]) => (
+            {SYNC_OPTION_KEYS.map((key) => (
               <label className="flex items-center justify-between rounded-xl border px-3 py-2 text-sm" key={key}>
-                <span className="capitalize">{key.replaceAll(/([A-Z])/g, " $1")}</span>
-                <Switch checked={value} onCheckedChange={(checked) => setSyncOptions((current) => ({ ...current, [key]: checked }))} />
+                <span>{t(`hr.attendance.devices.sync.option.${key}`)}</span>
+                <Switch
+                  checked={syncOptions[key]}
+                  onCheckedChange={(checked) => setSyncOptions((current) => ({ ...current, [key]: checked }))}
+                />
               </label>
             ))}
             <div className="md:col-span-2 flex justify-end gap-2">
               <Button onClick={() => setStep("strategy")} type="button" variant="secondary">
-                Back
+                {t("hr.common.back")}
               </Button>
-              <Button onClick={() => void handleStart()} type="button">
-                Start sync
+              <Button onClick={() => void handleStart()} type="button" variant="primary">
+                {t("hr.attendance.devices.sync.startSync")}
               </Button>
             </div>
           </section>
@@ -344,7 +467,7 @@ export function HrAttendanceDeviceSyncWizard({
 
         {(step === "progress" || step === "preview" || step === "import") && sessionId ? (
           <>
-            <nav aria-label="Sync wizard progress" className="rounded-2xl border bg-[hsl(var(--surface))] p-4">
+            <nav aria-label={t("hr.attendance.devices.sync.progressNavAria")} className="rounded-2xl border bg-[hsl(var(--surface))] p-4">
               <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {HR_ATTENDANCE_DEVICE_SYNC_PHASES.filter((phase) => phase !== "import").map((phase) => {
                   const currentIndex = progress ? HR_ATTENDANCE_DEVICE_SYNC_PHASES.indexOf(progress.phase) : -1;
@@ -356,7 +479,9 @@ export function HrAttendanceDeviceSyncWizard({
                       key={phase}
                     >
                       <span className="block font-medium">{formatHrAttendanceDevicePhaseLabel(phase)}</span>
-                      <span className="mt-1 block text-xs capitalize text-muted-foreground">{state}</span>
+                      <span className="mt-1 block text-xs capitalize text-muted-foreground">
+                        {t(`hr.attendance.devices.sync.phaseState.${state}`)}
+                      </span>
                     </li>
                   );
                 })}
@@ -369,28 +494,34 @@ export function HrAttendanceDeviceSyncWizard({
         {step === "progress" && sessionId ? (
           <div className="flex justify-end gap-2">
             <Button onClick={() => void handleCancel()} type="button" variant="secondary">
-              Cancel sync
+              {t("hr.attendance.devices.sync.cancelSync")}
             </Button>
           </div>
         ) : null}
 
         {step === "preview" && preview && sessionId ? (
           <>
-            <HrAttendanceDevicePreviewTabs deviceId={deviceId} preview={preview} sessionId={sessionId} />
+            <HrAttendanceDevicePreviewTabs
+              deviceId={deviceId}
+              enableInlineEdits
+              onPreviewChange={setPreview}
+              preview={preview}
+              sessionId={sessionId}
+            />
             <div className="flex flex-wrap justify-end gap-2">
               <Button onClick={() => void handleImport("cancel")} type="button" variant="secondary">
-                Cancel
+                {t("hr.common.cancel")}
               </Button>
               {hasLockedPeriod ? (
                 <Button onClick={() => void handleImport("valid_only", true)} type="button" variant="secondary">
-                  Import without processing
+                  {t("hr.attendance.devices.sync.importWithoutProcessing")}
                 </Button>
               ) : null}
               <Button onClick={() => void handleImport("valid_only")} type="button" variant="secondary">
-                Import valid only
+                {t("hr.attendance.devices.sync.importValidOnly")}
               </Button>
-              <Button onClick={() => void handleImport("all")} type="button">
-                Import all
+              <Button onClick={() => void handleImport("all")} type="button" variant="primary">
+                {t("hr.attendance.devices.sync.importAll")}
               </Button>
             </div>
           </>
@@ -398,17 +529,17 @@ export function HrAttendanceDeviceSyncWizard({
 
         {step === "import" && importReport ? (
           <div className="rounded-md border bg-[hsl(var(--muted))]/30 p-4 text-sm">
-            <p className="font-medium">Import completed</p>
+            <p className="font-medium">{t("hr.attendance.devices.sync.importCompleted")}</p>
             <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap">{JSON.stringify(importReport, null, 2)}</pre>
             <div className="mt-3 flex justify-end gap-2">
               <a
                 className="inline-flex h-9 items-center rounded-md border px-3 text-sm"
                 href={`/api/hr/attendance-devices/sync/${sessionId}/report`}
               >
-                Download report
+                {t("hr.attendance.devices.sync.downloadReport")}
               </a>
-              <Button onClick={closeModal} type="button">
-                Done
+              <Button onClick={closeModal} type="button" variant="primary">
+                {t("hr.common.done")}
               </Button>
             </div>
           </div>
@@ -425,16 +556,19 @@ function RecommendationPanel({
   recommendations: readonly HrAttendanceDeviceSyncRecommendation[];
   startContext: HrAttendanceDeviceSyncStartContext | null;
 }>) {
+  const t = useTranslations();
   return (
     <div className="space-y-2 rounded-xl border bg-[hsl(var(--muted))]/20 p-4">
-      <p className="text-sm font-medium">Smart recommendations</p>
+      <p className="text-sm font-medium">{t("hr.attendance.devices.sync.smartRecommendations")}</p>
       {startContext?.lastSuccessfulSyncAt ? (
         <p className="text-xs text-muted-foreground">
-          Last successful sync: {new Date(startContext.lastSuccessfulSyncAt).toLocaleString()} · Records since last sync:{" "}
-          {startContext.recordsSinceLastSync}
+          {t("hr.attendance.devices.sync.lastSuccessfulSync", {
+            at: new Date(startContext.lastSuccessfulSyncAt).toLocaleString(),
+            count: startContext.recordsSinceLastSync,
+          })}
         </p>
       ) : null}
-      {recommendations.length === 0 ? <p className="text-sm text-muted-foreground">No recommendations.</p> : null}
+      {recommendations.length === 0 ? <p className="text-sm text-muted-foreground">{t("hr.attendance.devices.sync.noRecommendations")}</p> : null}
       <ul className="space-y-1">
         {recommendations.map((item) => (
           <li

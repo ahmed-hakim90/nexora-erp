@@ -18,10 +18,35 @@ export const hrEmployeeSalaryAssignmentSchema = z.object({
   salaryPackageVersionId: z.string().uuid(),
 });
 
-export const hrContractCreateSchema = z.object({
-  contractNumber: z.string().min(1),
-  contractType: z.string().min(1),
-  employeeId: z.string().uuid(),
-  endsOn: z.string().optional(),
-  startsOn: z.string().min(1),
+export const hrSalaryPackageLineSchema = z.object({
+  amount: z.coerce.number().min(0),
+  componentVersionId: z.string().uuid(),
+  salaryPackageVersionId: z.string().uuid(),
 });
+
+export const hrSalaryPackageLineUpdateSchema = z.object({
+  amount: z.coerce.number().min(0),
+  lineId: z.string().uuid(),
+});
+
+export const hrSalaryPackageLineArchiveSchema = z.object({
+  lineId: z.string().uuid(),
+});
+
+export const hrEmployeeBasicSalaryOverrideSchema = z.object({
+  basicSalary: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : value),
+    z.coerce.number().min(0).nullable(),
+  ),
+  effectiveFrom: z.string().min(1).optional(),
+  employeeId: z.string().uuid(),
+  reason: z.string().trim().optional(),
+});
+
+export const hrEmployeeBasicSalaryClearSchema = z.object({
+  employeeId: z.string().uuid(),
+});
+
+export type HrSalaryPackageLineInput = z.infer<typeof hrSalaryPackageLineSchema>;
+export type HrSalaryPackageLineUpdateInput = z.infer<typeof hrSalaryPackageLineUpdateSchema>;
+export type HrEmployeeBasicSalaryOverrideInput = z.infer<typeof hrEmployeeBasicSalaryOverrideSchema>;

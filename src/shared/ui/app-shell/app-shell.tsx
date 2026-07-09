@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentPropsWithoutRef, ComponentType, CSSProperties, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BadgeDollarSign,
   Bell,
@@ -36,9 +36,13 @@ import {
   useCommandPalette,
   type CommandPaletteItem,
 } from "../primitives";
-import { Popover, Tooltip } from "../layout";
-import { useEnterpriseTheme } from "../providers/enterprise-ui-context";
+import { Popover, Dialog, Tooltip } from "../layout";
+import { useEnterpriseTheme, useEnterpriseUi } from "../providers/enterprise-ui-context";
 import { cn, type Direction } from "../utils";
+import {
+  isSupportedLocale,
+  type SupportedLocale,
+} from "@/platform/localization/public-api";
 import {
   ApplicationLauncher,
   type ApplicationLauncherContext,
@@ -50,6 +54,10 @@ import {
 } from "./workspace-nav";
 import type { AppRegistrySnapshot } from "@/platform/app-registry/public-api";
 import type { ThemePreference } from "../providers/enterprise-ui-context";
+
+function isLocalePreference(value: string): value is SupportedLocale {
+  return isSupportedLocale(value);
+}
 
 export type { WorkspaceIdentity, WorkspaceNavItem } from "./workspace-navigation.types";
 export { EnterpriseWorkspaceNavigation } from "./enterprise-workspace-navigation";
@@ -95,6 +103,8 @@ export type NavigationGroup = Readonly<{
 export type BreadcrumbItem = Readonly<{
   label: string;
   href?: string;
+  /** When set, AppShell resolves the visible label via platform localization. */
+  messageKey?: import("@/platform/localization/public-api").MessageKey;
 }>;
 
 export type SwitcherOption = Readonly<{
@@ -342,9 +352,12 @@ function ContextSwitcher({
   activeCompanyKey?: string;
   activeBranchKey?: string;
 }>) {
+  const { t } = useEnterpriseUi();
   const activeCompany = companyOptions.find((option) => option.key === activeCompanyKey);
   const activeBranch = branchOptions.find((option) => option.key === activeBranchKey);
-  const label = `${activeCompany?.label ?? "Company"} · ${activeBranch?.label ?? "Branch"}`;
+  const companyLabel = activeCompany?.label ?? t("shell.context.company");
+  const branchLabel = activeBranch?.label ?? t("shell.context.branch");
+  const label = `${companyLabel} · ${branchLabel}`;
 
   return (
     <DropdownMenu
@@ -352,36 +365,46 @@ function ContextSwitcher({
       items={[
         {
           key: "company",
-          label: <DetailRow label="Company" value={activeCompany?.label ?? "Not selected"} />,
+          label: (
+            <DetailRow
+              label={t("shell.context.company")}
+              value={activeCompany?.label ?? t("shell.context.notSelected")}
+            />
+          ),
         },
         {
           key: "branch",
-          label: <DetailRow label="Branch" value={activeBranch?.label ?? "Not selected"} />,
+          label: (
+            <DetailRow
+              label={t("shell.context.branch")}
+              value={activeBranch?.label ?? t("shell.context.notSelected")}
+            />
+          ),
         },
         {
           disabled: companyOptions.length <= 1,
           key: "switch-company",
-          label: "Switch company",
+          label: t("shell.context.switchCompany"),
         },
         {
           disabled: branchOptions.length <= 1,
           key: "switch-branch",
-          label: "Switch branch",
+          label: t("shell.context.switchBranch"),
         },
       ]}
       trigger={
         <Button
-          aria-label={`Open context switcher. ${label}`}
+          aria-label={t("shell.context.open", { label })}
           className="h-10 max-w-[15rem] justify-start rounded-xl border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-glass))] px-2.5 shadow-sm backdrop-blur"
-          title={`Context: ${label}`}
+          title={t("shell.context.title", { label })}
           type="button"
           variant="secondary"
         >
           <Building2 aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <span className="hidden min-w-0 text-start text-xs font-medium md:block">
-            <span className="block truncate">{activeCompany?.label ?? "Company"}</span>
+            <span className="block truncate">{companyLabel}</span>
             <span className="block truncate text-[0.68rem] text-muted-foreground">
-              {activeBranch?.label ?? "Branch"}
+              {branchLabel}
             </span>
           </span>
         </Button>
@@ -400,6 +423,7 @@ function SettingsMenu({
   const activeTheme = themeOptions.find((action) => action.isActive);
   const activeLanguage = languageOptions.find((action) => action.isActive);
   const { setTheme } = useEnterpriseTheme();
+  const { setLocale, t } = useEnterpriseUi();
 
   return (
     <DropdownMenu
@@ -407,7 +431,12 @@ function SettingsMenu({
       items={[
         {
           key: "theme-heading",
-          label: <DetailRow label="Theme" value={activeTheme?.label ?? "System"} />,
+          label: (
+            <DetailRow
+              label={t("shell.settings.theme")}
+              value={activeTheme?.label ?? t("shell.theme.system")}
+            />
+          ),
         },
         ...themeOptions.map((action) => ({
           disabled: action.isDisabled,
@@ -426,7 +455,12 @@ function SettingsMenu({
         })),
         {
           key: "language-heading",
-          label: <DetailRow label="Language" value={activeLanguage?.label ?? "Default"} />,
+          label: (
+            <DetailRow
+              label={t("shell.settings.language")}
+              value={activeLanguage?.label ?? t("shell.settings.default")}
+            />
+          ),
         },
         ...languageOptions.map((action) => ({
           disabled: action.isDisabled,
@@ -437,18 +471,33 @@ function SettingsMenu({
               {action.label}
             </span>
           ),
+          onSelect: () => {
+            if (isLocalePreference(action.value)) {
+              setLocale(action.value);
+            }
+          },
         })),
         {
           key: "system-mode",
-          label: <DetailRow label="System mode" value={activeTheme?.label ?? "System"} />,
+          label: (
+            <DetailRow
+              label={t("shell.settings.systemMode")}
+              value={activeTheme?.label ?? t("shell.theme.system")}
+            />
+          ),
         },
         {
           key: "density",
-          label: <DetailRow label="Display density" value="Comfortable" />,
+          label: (
+            <DetailRow
+              label={t("shell.settings.density")}
+              value={t("shell.settings.density.comfortable")}
+            />
+          ),
         },
       ]}
       trigger={
-        <TopbarIconButton label="Open display and language settings" tooltip="Settings">
+        <TopbarIconButton label={t("shell.settings.open")} tooltip={t("shell.settings.tooltip")}>
           <Settings2 aria-hidden className="size-4" />
         </TopbarIconButton>
       }
@@ -465,8 +514,9 @@ function UserMenuControl({
   companyName?: string;
   branchName?: string;
 }>) {
-  const displayName = user?.name ?? "User";
-  const email = user?.email ?? "Email not configured";
+  const { t } = useEnterpriseUi();
+  const displayName = user?.name ?? t("shell.user.fallback");
+  const email = user?.email ?? t("shell.user.emailMissing");
 
   return (
     <DropdownMenu
@@ -483,28 +533,38 @@ function UserMenuControl({
         },
         {
           key: "company",
-          label: <DetailRow label="Company" value={companyName ?? "Not selected"} />,
+          label: (
+            <DetailRow
+              label={t("shell.context.company")}
+              value={companyName ?? t("shell.context.notSelected")}
+            />
+          ),
         },
         {
           key: "branch",
-          label: <DetailRow label="Branch" value={branchName ?? "Not selected"} />,
+          label: (
+            <DetailRow
+              label={t("shell.context.branch")}
+              value={branchName ?? t("shell.context.notSelected")}
+            />
+          ),
         },
-        { href: "/erp/profile", key: "profile", label: "Profile" },
-        { href: "/erp/preferences", key: "preferences", label: "Preferences" },
+        { href: "/erp/profile", key: "profile", label: t("shell.user.profile") },
+        { href: "/erp/preferences", key: "preferences", label: t("shell.user.preferences") },
         {
           href: "/logout",
           key: "sign-out",
           label: (
             <span className="inline-flex items-center gap-2">
               <LogOut aria-hidden className="size-3.5 text-muted-foreground" />
-              Sign out
+              {t("shell.user.signOut")}
             </span>
           ),
         },
       ]}
       trigger={
         <Button
-          aria-label={`Open user menu for ${displayName}`}
+          aria-label={t("shell.user.menuOpen", { name: displayName })}
           className="h-10 rounded-xl border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-glass))] px-1.5 pe-2 shadow-sm backdrop-blur"
           title={displayName}
           type="button"
@@ -522,7 +582,7 @@ function UserMenuControl({
 }
 
 export function AppShell({
-  direction = "ltr",
+  direction: directionProp,
   sidebarGroups = [],
   breadcrumbs = [],
   workspace,
@@ -545,12 +605,68 @@ export function AppShell({
   user,
   children,
 }: AppShellProps) {
+  const { direction: uiDirection, locale, t, theme } = useEnterpriseUi();
+  const direction = directionProp ?? uiDirection;
   const commandPalette = useCommandPalette();
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const paletteItems = [...commandItems, ...quickActions];
   const rootStyle = accent ? ({ "--accent": accent } as CSSProperties) : undefined;
   const showWorkspaceNav = Boolean(workspace && workspaceNav.length > 0);
   const hasSidebar = sidebarGroups.length > 0;
+  const resolvedThemeOptions = useMemo(() => {
+    const base =
+      themeOptions && themeOptions.length > 0
+        ? themeOptions
+        : ([
+            { label: t("shell.theme.system"), value: "system" },
+            { label: t("shell.theme.light"), value: "light" },
+            { label: t("shell.theme.dark"), value: "dark" },
+          ] as const);
+    return base.map((action) => ({
+      ...action,
+      isActive: action.value === theme,
+      label:
+        action.value === "system"
+          ? t("shell.theme.system")
+          : action.value === "light"
+            ? t("shell.theme.light")
+            : action.value === "dark"
+              ? t("shell.theme.dark")
+              : action.label,
+    }));
+  }, [t, theme, themeOptions]);
+  const resolvedLanguageOptions = useMemo(() => {
+    const base =
+      languageOptions && languageOptions.length > 0
+        ? languageOptions
+        : ([
+            { label: t("shell.language.en"), value: "en" },
+            { label: t("shell.language.ar"), value: "ar" },
+          ] as const);
+    return base.map((action) => ({
+      ...action,
+      isActive: action.value === locale,
+      label:
+        action.value === "en"
+          ? t("shell.language.en")
+          : action.value === "ar"
+            ? t("shell.language.ar")
+            : action.label,
+    }));
+  }, [languageOptions, locale, t]);
+
+  useEffect(() => {
+    function handleGlobalSearchShortcut(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    }
+
+    document.addEventListener("keydown", handleGlobalSearchShortcut);
+    return () => document.removeEventListener("keydown", handleGlobalSearchShortcut);
+  }, []);
 
   const brand = (
     <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-md">
@@ -560,7 +676,7 @@ export function AppShell({
         </div>
         <div className="min-w-0">
           <p className="truncate text-base font-semibold tracking-tight text-[hsl(var(--sidebar-text-active))]">Nexora</p>
-          <p className="truncate text-xs text-[hsl(var(--sidebar-text))]/70">Enterprise ERP workspace</p>
+          <p className="truncate text-xs text-[hsl(var(--sidebar-text))]/70">{t("shell.brand.subtitle")}</p>
         </div>
       </div>
     </div>
@@ -598,7 +714,7 @@ export function AppShell({
         {hasSidebar && mobileNavOpen ? (
           <div className="fixed inset-0 z-[var(--z-modal)] lg:hidden">
             <button
-              aria-label="Close navigation"
+              aria-label={t("shell.nav.close")}
               className="absolute inset-0 bg-black/50"
               onClick={() => setMobileNavOpen(false)}
               type="button"
@@ -606,7 +722,7 @@ export function AppShell({
             <aside className="absolute inset-y-0 start-0 flex w-[min(20rem,calc(100vw-3rem))] flex-col overflow-y-auto border-e border-white/10 bg-[hsl(var(--shell-sidebar))] p-5 text-[hsl(var(--sidebar-text))] shadow-[var(--shadow-lg)]">
               <div className="mb-3 flex justify-end">
                 <button
-                  aria-label="Close navigation"
+                  aria-label={t("shell.nav.close")}
                   className="grid size-9 place-items-center rounded-xl border border-white/15 bg-white/5"
                   onClick={() => setMobileNavOpen(false)}
                   type="button"
@@ -624,7 +740,7 @@ export function AppShell({
             <div className="flex h-14 min-w-0 items-center gap-2 px-4 lg:px-6">
               {hasSidebar ? (
                 <Button
-                  aria-label="Open navigation"
+                  aria-label={t("shell.nav.open")}
                   className="size-10 rounded-xl border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-glass))] p-0 shadow-sm backdrop-blur lg:hidden"
                   onClick={() => setMobileNavOpen(true)}
                   type="button"
@@ -635,7 +751,7 @@ export function AppShell({
               ) : null}
 
               <a
-                aria-label="Nexora home"
+                aria-label={t("shell.nav.home")}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl px-1.5 py-1"
                 href={homeHref}
               >
@@ -656,9 +772,9 @@ export function AppShell({
                   }))}
                   trigger={
                     <Button
-                      aria-label="Open applications"
+                      aria-label={t("shell.apps.open")}
                       className="size-10 rounded-xl border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-glass))] p-0 shadow-sm backdrop-blur"
-                      title="Apps"
+                      title={t("shell.apps.label")}
                       type="button"
                       variant="secondary"
                     >
@@ -667,9 +783,9 @@ export function AppShell({
                   }
                 />
               ) : (
-                <Tooltip content="Apps">
+                <Tooltip content={t("shell.apps.label")}>
                   <a
-                    aria-label="Open applications"
+                    aria-label={t("shell.apps.open")}
                     className="inline-grid size-10 place-items-center rounded-xl border border-[hsl(var(--border))]/70 bg-[hsl(var(--surface-glass))] shadow-sm backdrop-blur transition hover:bg-[hsl(var(--muted))]"
                     href={homeHref}
                   >
@@ -678,29 +794,21 @@ export function AppShell({
                 </Tooltip>
               )}
 
-              <Popover
-                trigger={
-                  <Button className="h-10 min-w-0 flex-1 justify-start rounded-xl border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))]/85 px-3 text-muted-foreground shadow-sm backdrop-blur md:min-w-[18rem] xl:max-w-[34rem]" type="button" variant="secondary">
-                    <Search aria-hidden className="size-4" />
-                    <span className="min-w-0 flex-1 truncate text-start">Search apps, commands, records...</span>
-                    <span className="hidden rounded-md border bg-[hsl(var(--muted))] px-1.5 py-0.5 text-[0.65rem] text-muted-foreground md:inline">
-                      Ctrl K
-                    </span>
-                  </Button>
-                }
+              <Button
+                className="h-10 min-w-0 flex-1 justify-start rounded-xl border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))]/85 px-3 text-muted-foreground shadow-sm backdrop-blur md:min-w-[18rem] xl:max-w-[34rem]"
+                onClick={() => setGlobalSearchOpen(true)}
+                type="button"
+                variant="secondary"
               >
-                {globalSearchSlot ?? (
-                  <div className="space-y-3">
-                    <Input placeholder="Search apps, pages, and records..." />
-                    <p className="text-xs text-muted-foreground">
-                      Search providers are filtered by tenant, company, branch, and permissions.
-                    </p>
-                  </div>
-                )}
-              </Popover>
+                <Search aria-hidden className="size-4" />
+                <span className="min-w-0 flex-1 truncate text-start">{t("shell.search.placeholder")}</span>
+                <span className="hidden rounded-md border bg-[hsl(var(--muted))] px-1.5 py-0.5 text-[0.65rem] text-muted-foreground md:inline">
+                  Ctrl K
+                </span>
+              </Button>
 
               <TopbarIconButton
-                label="Open command palette"
+                label={t("shell.command.open")}
                 onClick={() => commandPalette.setOpen(true)}
               >
                 <CommandIcon aria-hidden className="size-4" />
@@ -709,14 +817,17 @@ export function AppShell({
               <Popover
                 align="end"
                 trigger={
-                  <TopbarIconButton label="Open notifications" tooltip="Notifications">
+                  <TopbarIconButton
+                    label={t("shell.notifications.open")}
+                    tooltip={t("shell.notifications.title")}
+                  >
                     <Bell aria-hidden className="size-4" />
                   </TopbarIconButton>
                 }
               >
                 {notificationsSlot ?? (
                   <div className="space-y-3">
-                    <h3 className="font-medium">Notifications</h3>
+                    <h3 className="font-medium">{t("shell.notifications.title")}</h3>
                     {notifications.length > 0 ? (
                       notifications.map((notification) => (
                         <div className="rounded-md border p-3" key={notification.key}>
@@ -727,7 +838,7 @@ export function AppShell({
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">No notifications.</p>
+                      <p className="text-sm text-muted-foreground">{t("shell.notifications.empty")}</p>
                     )}
                   </div>
                 )}
@@ -740,7 +851,10 @@ export function AppShell({
                   branchOptions={branchOptions}
                   companyOptions={companyOptions}
                 />
-                <SettingsMenu languageOptions={languageOptions} themeOptions={themeOptions} />
+                <SettingsMenu
+                  languageOptions={resolvedLanguageOptions}
+                  themeOptions={resolvedThemeOptions}
+                />
                 <UserMenuControl
                   branchName={branchOptions?.find((option) => option.key === activeBranchKey)?.label}
                   companyName={companyOptions?.find((option) => option.key === activeCompanyKey)?.label}
@@ -751,13 +865,16 @@ export function AppShell({
           </header>
 
           {breadcrumbs.length > 0 ? (
-            <nav aria-label="Breadcrumb" className="sr-only">
+            <nav aria-label={t("shell.breadcrumb")} className="sr-only">
               <ol>
-                {breadcrumbs.map((item, index) => (
-                  <li key={`${item.label}-${index}`}>
-                    {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
-                  </li>
-                ))}
+                {breadcrumbs.map((item, index) => {
+                  const label = item.messageKey ? t(item.messageKey) : item.label;
+                  return (
+                    <li key={`${item.label}-${index}`}>
+                      {item.href ? <a href={item.href}>{label}</a> : <span>{label}</span>}
+                    </li>
+                  );
+                })}
               </ol>
             </nav>
           ) : null}
@@ -771,7 +888,16 @@ export function AppShell({
           <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
         </div>
       </div>
+      <Dialog onOpenChange={setGlobalSearchOpen} open={globalSearchOpen} title={t("shell.search.dialogTitle")}>
+        {globalSearchSlot ?? (
+          <div className="space-y-3">
+            <Input autoFocus placeholder={t("shell.search.dialogPlaceholder")} />
+            <p className="text-xs text-muted-foreground">{t("shell.search.dialogHint")}</p>
+          </div>
+        )}
+      </Dialog>
       <CommandPalette
+        enableShortcut={false}
         items={paletteItems}
         onOpenChange={commandPalette.setOpen}
         open={commandPalette.open}

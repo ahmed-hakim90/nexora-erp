@@ -24,6 +24,7 @@ import {
 import { DropdownMenu, Input } from "../primitives";
 import { Tooltip } from "../layout";
 import { Popover, PopoverContent, PopoverTrigger } from "../primitives/popover";
+import { useEnterpriseUi } from "../providers/enterprise-ui-context";
 import { cn } from "../utils";
 import { useWorkspaceNavigationPreferences } from "./use-workspace-navigation-preferences";
 import type {
@@ -70,6 +71,7 @@ export function EnterpriseWorkspaceNavigation({
   enableFavorites = true,
   enableRecent = true,
 }: EnterpriseWorkspaceNavigationProps) {
+  const { locale, t } = useEnterpriseUi();
   const visibleItems = useMemo(() => getVisibleNavigationItems(items), [items]);
   const {
     isFavorite,
@@ -91,7 +93,7 @@ export function EnterpriseWorkspaceNavigation({
 
   return (
     <nav
-      aria-label={`${workspace.name} navigation`}
+      aria-label={t("workspace.nav.aria", { name: workspace.name })}
       className="sticky top-14 z-[45] border-b border-[hsl(var(--border))] bg-[hsl(var(--shell-topbar))]"
     >
       <div className="flex h-11 items-center gap-2 px-4 lg:px-6">
@@ -109,6 +111,7 @@ export function EnterpriseWorkspaceNavigation({
           isFavorite={isFavorite}
           isGroupExpanded={isGroupExpanded}
           items={visibleItems}
+          locale={locale}
           onToggleFavorite={toggleFavorite}
           onToggleGroupExpanded={toggleGroupExpanded}
           recentItems={recentItems}
@@ -116,6 +119,7 @@ export function EnterpriseWorkspaceNavigation({
         <MobileNavigation
           isGroupExpanded={isGroupExpanded}
           items={visibleItems}
+          locale={locale}
           onToggleGroupExpanded={toggleGroupExpanded}
           workspaceName={workspace.name}
         />
@@ -134,6 +138,7 @@ function DesktopNavigation({
   recentItems,
   enableFavorites,
   enableRecent,
+  locale,
 }: Readonly<{
   items: readonly WorkspaceNavigationItem[];
   favoriteKeys: readonly string[];
@@ -144,15 +149,17 @@ function DesktopNavigation({
   recentItems: readonly { id: string; title: string; route: string }[];
   enableFavorites: boolean;
   enableRecent: boolean;
+  locale: "ar" | "en";
 }>) {
+  const { t } = useEnterpriseUi();
   const sections = useMemo(
-    () => buildNavigationSections(items, favoriteKeys),
-    [favoriteKeys, items],
+    () => buildNavigationSections(items, favoriteKeys, locale),
+    [favoriteKeys, items, locale],
   );
 
   return (
     <div
-      aria-label="Workspace sections"
+      aria-label={t("workspace.nav.sections")}
       className="relative hidden min-w-0 flex-1 lg:flex lg:items-center lg:gap-1.5"
       role="navigation"
     >
@@ -181,6 +188,7 @@ function GroupNavigationControl({
 }: Readonly<{
   section: WorkspaceNavigationSection;
 }>) {
+  const { t } = useEnterpriseUi();
   const activeItem = section.items.find((item) => item.isActive);
   const isGroupActive = Boolean(activeItem);
 
@@ -224,7 +232,7 @@ function GroupNavigationControl({
         <button
           aria-current={isGroupActive ? "page" : undefined}
           aria-haspopup="menu"
-          aria-label={`Open ${section.title} pages`}
+          aria-label={t("workspace.nav.openGroupPages", { title: section.title })}
           className={cn(
             "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-2.5 text-xs font-medium text-muted-foreground transition hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]",
             isGroupActive &&
@@ -267,6 +275,7 @@ function QuickAccessPanel({
   enableFavorites: boolean;
   enableRecent: boolean;
 }>) {
+  const { t } = useEnterpriseUi();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -305,7 +314,7 @@ function QuickAccessPanel({
         <button
           aria-expanded={open}
           aria-haspopup="menu"
-          aria-label="Open quick access navigation"
+          aria-label={t("workspace.nav.quickAccessOpen")}
           className={cn(
             "inline-flex h-8 shrink-0 items-center gap-1 rounded-xl border bg-[hsl(var(--surface-glass))] px-2.5 text-xs shadow-sm backdrop-blur transition hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]",
             items.some((item) => item.isActive && !open) &&
@@ -314,7 +323,7 @@ function QuickAccessPanel({
           type="button"
         >
           <LayoutGrid aria-hidden className="size-4" />
-          Quick Access
+          {t("workspace.nav.quickAccess")}
           <ChevronDown aria-hidden className="size-3.5" />
         </button>
       </PopoverTrigger>
@@ -330,10 +339,10 @@ function QuickAccessPanel({
               className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             />
             <Input
-              aria-label="Search sections"
+              aria-label={t("workspace.nav.searchSections")}
               className="ps-9"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search sections..."
+              placeholder={t("workspace.nav.searchPlaceholder")}
               ref={searchRef}
               value={query}
             />
@@ -341,7 +350,7 @@ function QuickAccessPanel({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {enableRecent && !query && recentItems.length > 0 ? (
-            <OverflowSection title="Recently Opened" icon={Clock3}>
+            <OverflowSection title={t("workspace.nav.recent")} icon={Clock3}>
               <ul className="space-y-0.5">
                 {recentItems.map((recent) => (
                   <OverflowLink
@@ -356,7 +365,7 @@ function QuickAccessPanel({
             </OverflowSection>
           ) : null}
           {enableFavorites && !query && favoriteItems.length > 0 ? (
-            <OverflowSection title="Favorites" icon={Star}>
+            <OverflowSection title={t("workspace.nav.favorites")} icon={Star}>
               <ul className="space-y-0.5">
                 {favoriteItems.map((item) => (
                   <OverflowNavItem
@@ -385,7 +394,7 @@ function QuickAccessPanel({
           ))}
           {filteredSections.length === 0 ? (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-              No sections match your search.
+              {t("workspace.nav.noMatch")}
             </p>
           ) : null}
         </div>
@@ -487,6 +496,7 @@ function OverflowNavItem({
   onNavigate: () => void;
   enableFavorites: boolean;
 }>) {
+  const { t } = useEnterpriseUi();
   return (
     <li className="group flex items-center gap-1">
       <OverflowLink
@@ -498,7 +508,11 @@ function OverflowNavItem({
       {item.badge ? <NavigationBadge badge={item.badge} /> : null}
       {enableFavorites ? (
         <button
-          aria-label={isFavorite ? `Unpin ${item.title}` : `Pin ${item.title}`}
+          aria-label={
+            isFavorite
+              ? t("workspace.nav.unpin", { title: item.title })
+              : t("workspace.nav.pin", { title: item.title })
+          }
           className="grid size-8 shrink-0 place-items-center rounded-lg opacity-0 transition hover:bg-[hsl(var(--muted))] group-hover:opacity-100 focus-visible:opacity-100"
           onClick={() => onToggleFavorite(item.id)}
           type="button"
@@ -570,14 +584,17 @@ function MobileNavigation({
   workspaceName,
   isGroupExpanded,
   onToggleGroupExpanded,
+  locale,
 }: Readonly<{
   items: readonly WorkspaceNavigationItem[];
   workspaceName: string;
   isGroupExpanded: (groupKey: string, defaultExpanded?: boolean) => boolean;
   onToggleGroupExpanded: (groupKey: string) => void;
+  locale: "ar" | "en";
 }>) {
+  const { t } = useEnterpriseUi();
   const [open, setOpen] = useState(false);
-  const sections = useMemo(() => buildNavigationSections(items), [items]);
+  const sections = useMemo(() => buildNavigationSections(items, [], locale), [items, locale]);
   const activeItem = items.find((item) => item.isActive);
 
   return (
@@ -585,11 +602,13 @@ function MobileNavigation({
       <DialogPrimitive.Root onOpenChange={setOpen} open={open}>
         <DialogPrimitive.Trigger asChild>
           <button
-            aria-label={`Open ${workspaceName} sections`}
+            aria-label={t("workspace.nav.openSections", { name: workspaceName })}
             className="inline-flex h-11 min-w-11 items-center gap-2 rounded-xl border bg-[hsl(var(--surface-glass))] px-2.5 text-xs shadow-sm backdrop-blur"
             type="button"
           >
-            <span className="max-w-[9rem] truncate">{activeItem?.mobileLabel ?? activeItem?.title ?? "Sections"}</span>
+            <span className="max-w-[9rem] truncate">
+              {activeItem?.mobileLabel ?? activeItem?.title ?? t("workspace.nav.sectionsFallback")}
+            </span>
             <ChevronDown aria-hidden className="size-4" />
           </button>
         </DialogPrimitive.Trigger>
@@ -599,7 +618,7 @@ function MobileNavigation({
             <div className="flex items-center justify-between border-b p-4">
               <DialogPrimitive.Title className="font-semibold">{workspaceName}</DialogPrimitive.Title>
               <DialogPrimitive.Close
-                aria-label="Close navigation"
+                aria-label={t("workspace.nav.close")}
                 className="grid size-11 place-items-center rounded-xl border bg-[hsl(var(--surface-glass))] shadow-sm"
               >
                 <X aria-hidden className="size-4" />

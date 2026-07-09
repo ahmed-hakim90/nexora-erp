@@ -30,6 +30,7 @@ export type UseEditablePageOptions = Readonly<{
 }>;
 
 export type UseEditablePageResult = Readonly<{
+  canEdit: boolean;
   cancelEdit: () => void;
   changedFields: ReadonlySet<string>;
   closeWorkflow: () => void;
@@ -292,6 +293,7 @@ export function useEditablePage({
   }, [isDirty, pageMode]);
 
   return {
+    canEdit,
     cancelEdit,
     changedFields,
     closeWorkflow,

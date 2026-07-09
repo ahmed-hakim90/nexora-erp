@@ -6,6 +6,7 @@ import { FINANCE_ENTITIES, FINANCE_PERMISSIONS } from "@/features/finance/public
 
 import { resolveErpShellRuntime } from "../../../erp-security.server";
 import { createErpShellChrome } from "../../../erp-shell-model";
+import { ErpGlobalSearchSlot } from "../../_components/erp-global-search-slot";
 
 const financeNavItems = [
   { key: "dashboard", label: "Dashboard", href: "/erp/finance", group: "overview" as const },
@@ -38,7 +39,11 @@ export async function FinanceShell({
   return (
     <AppShell
       {...createErpShellChrome("finance", runtime)}
-      breadcrumbs={[{ label: "Apps", href: "/erp" }, { label: "Finance", href: "/erp/finance" }]}
+      breadcrumbs={[
+        { label: "Apps", href: "/erp", messageKey: "shell.apps.label" },
+        { label: "Finance", href: "/erp/finance", messageKey: "apps.finance" },
+      ]}
+      globalSearchSlot={<ErpGlobalSearchSlot activePath="/erp/finance" runtime={runtime} />}
       workspace={{ key: "finance", name: "Finance", icon: <Landmark className="size-4" /> }}
       workspaceNav={financeNavItems.map((item) => ({ ...item, isActive: item.key === activeKey }))}
     >

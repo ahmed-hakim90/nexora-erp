@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { HR_ASSIGNMENT_QUICK_ACTIONS } from "@/features/hr/public-api";
 import { resolveHrFieldHelp } from "@/features/hr/public-api";
-import { Button, DatePickerField, EntityLookup, FieldGroup, nativeSelectClassName, nativeTextareaClassName } from "@/shared/ui";
+import { Button, DatePickerField, EntityLookup, FieldGroup, nativeSelectClassName, nativeTextareaClassName, useTranslations } from "@/shared/ui";
 
 const assignmentTypeOptions = [
   "position",
@@ -17,6 +17,8 @@ const assignmentTypeOptions = [
   "shift_schedule",
   "payroll_group",
 ] as const;
+
+const assignmentScopeOptions = ["primary", "temporary", "acting", "delegated", "project", "emergency"] as const;
 
 const lookupByReferenceType: Record<string, string> = {
   hr_employees: "hr.employees.lookup",
@@ -37,7 +39,10 @@ export function HrAssignmentCreateForm({
   employmentProfileId?: string;
   preset?: string;
 }>) {
-  const initialPreset = HR_ASSIGNMENT_QUICK_ACTIONS.find((item) => item.label === preset) ?? HR_ASSIGNMENT_QUICK_ACTIONS[0];
+  const t = useTranslations();
+  const initialPreset =
+    HR_ASSIGNMENT_QUICK_ACTIONS.find((item) => item.actionKey === preset || item.label === preset) ??
+    HR_ASSIGNMENT_QUICK_ACTIONS[0];
   const [assignmentType, setAssignmentType] = useState<string>(initialPreset.assignmentType);
   const [assignmentScope, setAssignmentScope] = useState<string>(initialPreset.assignmentScope);
   const [referenceEntityType, setReferenceEntityType] = useState(initialPreset.referenceEntityType);
@@ -45,21 +50,24 @@ export function HrAssignmentCreateForm({
 
   const impactPreview = useMemo(
     () => [
-      { label: "Assignment type", value: assignmentType.replaceAll("_", " ") },
-      { label: "Scope", value: assignmentScope },
-      { label: "Effective date", value: "Set before save" },
-      { label: "Payroll / attendance readiness", value: "Validated by assignment conflict engine on save" },
+      { label: t("hr.assignments.field.type"), value: assignmentType.replaceAll("_", " ") },
+      { label: t("hr.common.scope"), value: assignmentScope },
+      { label: t("hr.assignments.impact.effectiveDate"), value: t("hr.assignments.impact.effectiveDatePending") },
+      {
+        label: t("hr.assignments.impact.payrollReadiness"),
+        value: t("hr.assignments.impact.payrollReadinessValue"),
+      },
     ],
-    [assignmentScope, assignmentType],
+    [assignmentScope, assignmentType, t],
   );
 
   return (
     <form action={action} className="space-y-4 rounded-lg border p-5">
-      <h2 className="font-medium">Create Assignment</h2>
+      <h2 className="font-medium">{t("hr.assignments.createTitle")}</h2>
       <div className="flex flex-wrap gap-2">
         {HR_ASSIGNMENT_QUICK_ACTIONS.map((item) => (
           <Button
-            key={item.label}
+            key={item.actionKey}
             onClick={() => {
               setAssignmentType(item.assignmentType);
               setAssignmentScope(item.assignmentScope);
@@ -69,13 +77,13 @@ export function HrAssignmentCreateForm({
             type="button"
             variant="secondary"
           >
-            {item.label}
+            {t(`hr.assignments.quick.${item.actionKey}`)}
           </Button>
         ))}
       </div>
       <input name="employeeId" type="hidden" value={employeeId} />
       <input name="employmentProfileId" type="hidden" value={employmentProfileId ?? ""} />
-      <FieldGroup help={resolveHrFieldHelp("status")} isRequired label="Assignment type">
+      <FieldGroup help={resolveHrFieldHelp("status")} isRequired label={t("hr.assignments.field.type")}>
         <select className={nativeSelectClassName} name="assignmentType" onChange={(event) => setAssignmentType(event.target.value)} required value={assignmentType}>
           {assignmentTypeOptions.map((option) => (
             <option key={option} value={option}>
@@ -84,25 +92,24 @@ export function HrAssignmentCreateForm({
           ))}
         </select>
       </FieldGroup>
-      <FieldGroup label="Scope">
+      <FieldGroup label={t("hr.common.scope")}>
         <select className={nativeSelectClassName} name="assignmentScope" onChange={(event) => setAssignmentScope(event.target.value)} value={assignmentScope}>
-          <option value="primary">Primary</option>
-          <option value="temporary">Temporary</option>
-          <option value="acting">Acting</option>
-          <option value="delegated">Delegated</option>
-          <option value="project">Project</option>
-          <option value="emergency">Emergency</option>
+          {assignmentScopeOptions.map((option) => (
+            <option key={option} value={option}>
+              {t(`hr.assignments.scope.${option}`)}
+            </option>
+          ))}
         </select>
       </FieldGroup>
-      <EntityLookup key={providerKey} label="Target entity" name="referenceEntityId" providerKey={providerKey} required />
+      <EntityLookup key={providerKey} label={t("hr.assignments.field.targetEntity")} name="referenceEntityId" providerKey={providerKey} required />
       <input name="referenceEntityType" type="hidden" value={referenceEntityType} />
-      <DatePickerField isRequired label="Effective from" name="effectiveFrom" />
-      <DatePickerField label="Effective to" name="effectiveTo" />
-      <FieldGroup help={resolveHrFieldHelp("reason")} label="Reason">
-        <textarea className={nativeTextareaClassName} name="reason" placeholder="Reason" />
+      <DatePickerField isRequired label={t("hr.common.effectiveFrom")} name="effectiveFrom" />
+      <DatePickerField label={t("hr.common.effectiveTo")} name="effectiveTo" />
+      <FieldGroup help={resolveHrFieldHelp("reason")} label={t("hr.common.reason")}>
+        <textarea className={nativeTextareaClassName} name="reason" placeholder={t("hr.common.reason")} />
       </FieldGroup>
       <div className="rounded-md border bg-[hsl(var(--muted))] p-3 text-sm">
-        <p className="font-medium">Impact preview</p>
+        <p className="font-medium">{t("hr.assignments.impactPreview")}</p>
         <ul className="mt-2 space-y-1">
           {impactPreview.map((item) => (
             <li key={item.label}>
@@ -112,7 +119,7 @@ export function HrAssignmentCreateForm({
         </ul>
       </div>
       <Button type="submit" variant="primary">
-        Save assignment
+        {t("hr.assignments.save")}
       </Button>
     </form>
   );

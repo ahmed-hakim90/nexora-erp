@@ -22,7 +22,9 @@ export {
 } from "./editable-field";
 export {
   EditablePage,
+  type EditablePageToolbarPlacement,
 } from "./editable-page";
+export { EditablePageToolbar } from "./editable-page-toolbar";
 export {
   EditablePageProvider,
   useEditablePageContext,

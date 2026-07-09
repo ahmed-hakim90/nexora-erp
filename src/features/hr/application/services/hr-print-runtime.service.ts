@@ -21,7 +21,10 @@ import {
 import { HR_PERMISSIONS } from "../../permissions/permission-registry";
 import type { HrEmployeeAssignmentSnapshot } from "../types/hr-ui.types";
 import { formatHrDisplayLabel, formatHrStatusLabel, readContactField } from "../utils/hr-display";
+import { renderContractArticlesHtml } from "../utils/hr-contract-legal-terms.render";
+import { parseContractLegalTermsSnapshot, type HrContractPlaceholderContext } from "../../contract-type-foundation";
 import { HrAssignmentResolverService } from "./hr-assignment-resolver.service";
+import { HrEmployeeCompensationService } from "./hr-employee-compensation.service";
 
 const HR_RUNTIME_PRINT_TEMPLATE_KEYS = [
   HR_PRINT_TEMPLATE_KEYS.employeeProfile,
@@ -49,11 +52,12 @@ type HrPrintEmployeeRecord = Readonly<{
 type HrPrintContractRecord = Readonly<{
   contractNumber: string;
   contractType: string;
-  status: string;
-  startsOn: string;
   endsOn: string | null;
+  legalTerms: ReturnType<typeof parseContractLegalTermsSnapshot>;
   probationPeriodDays: number | null;
   signedDate: string | null;
+  startsOn: string;
+  status: string;
 }>;
 
 type HrPrintSalaryLine = Readonly<{
@@ -217,7 +221,18 @@ function renderEmployeeProfile(context: HrPrintRenderContext): string {
 
 function renderContractDocument(context: HrPrintRenderContext): string {
   const contract = context.contracts[0];
-  const body = `
+  const placeholderContext: HrContractPlaceholderContext = {
+    company: context.companyName,
+    department: context.assignment.department?.label ?? null,
+    employeeName: context.employee.fullName,
+    employeeNumber: context.employee.employeeNumber,
+    endDate: contract?.endsOn ?? null,
+    jobTitle: context.assignment.position?.label ?? null,
+    salary: context.salaryLines[0]?.amount ?? null,
+    startDate: contract?.startsOn ?? null,
+  };
+
+  const header = `
     <h1>Employment Contract</h1>
     <p class="muted">${escapeHtml(context.companyName)} · Generated ${escapeHtml(context.generatedOn)}</p>
     <p>This employment contract is issued for <strong>${escapeHtml(context.employee.fullName)}</strong> (${escapeHtml(context.employee.employeeNumber)}).</p>
@@ -235,8 +250,25 @@ function renderContractDocument(context: HrPrintRenderContext): string {
           { label: "Department", value: context.assignment.department?.label },
         ])
       : "<p>No active contract record is available for this employee.</p>"
-  }
-    <p>The parties agree to the employment terms recorded in the HR contract register. This printout is generated from the current HR system of record.</p>
+  }`;
+
+  const articles =
+    contract?.legalTerms && contract.legalTerms.articles.length > 0
+      ? renderContractArticlesHtml({
+          articles: contract.legalTerms.articles,
+          companyName: context.companyName,
+          contractTypeCode: contract.legalTerms.contract_type_code,
+          contractTypeName: contract.contractType,
+          generatedOn: context.generatedOn,
+          placeholderContext,
+          resolvePlaceholders: true,
+        })
+      : "<p>The parties agree to the employment terms recorded in the HR contract register. This printout is generated from the current HR system of record.</p>";
+
+  const body = `
+    ${header}
+    <h2>Contract Terms</h2>
+    ${articles}
     <div class="signature">
       <div class="signature-line">Employer representative</div>
       <div class="signature-line">Employee signature</div>
@@ -328,7 +360,7 @@ export class HrPrintRuntimeService {
   }
 
   private async loadRenderContext(employeeId: string): Promise<HrPrintRenderContext> {
-    const [employeeResult, companyResult, contractsResult, profileResult] = await Promise.all([
+    const [employeeResult, companyResult, contractsResult] = await Promise.all([
       this.supabase
         .from("hr_employees")
         .select("id, employee_number, full_name, status, national_id, birth_date, gender, nationality, marital_status, contact_info")
@@ -346,23 +378,12 @@ export class HrPrintRuntimeService {
         .maybeSingle(),
       this.supabase
         .from("hr_contracts")
-        .select("contract_number, contract_type, status, starts_on, ends_on, probation_period_days, signed_date")
+        .select("contract_number, contract_type, status, starts_on, ends_on, probation_period_days, signed_date, legal_terms")
         .eq("tenant_id", this.context.tenantId)
         .eq("company_id", this.context.companyId)
         .eq("employee_id", employeeId)
         .is("deleted_at", null)
         .order("starts_on", { ascending: false }),
-      this.supabase
-        .from("hr_employment_profiles")
-        .select("salary_package_ref")
-        .eq("tenant_id", this.context.tenantId)
-        .eq("company_id", this.context.companyId)
-        .eq("employee_id", employeeId)
-        .eq("status", "active")
-        .is("deleted_at", null)
-        .order("effective_from", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
     ]);
 
     if (employeeResult.error) {
@@ -394,7 +415,12 @@ export class HrPrintRuntimeService {
     }
 
     const assignment = await this.assignmentResolver.resolveEmployeeAssignments(employeeId);
-    const salaryLines = await this.loadSalaryLines(profileResult.data?.salary_package_ref ? String(profileResult.data.salary_package_ref) : null);
+    const compensationService = new HrEmployeeCompensationService(this.supabase, this.context);
+    const compensation = await compensationService.resolveEmployeeCompensation({ employeeId });
+    const salaryLines: readonly HrPrintSalaryLine[] = compensation.lines.map((line) => ({
+      amount: Number(line.amount).toFixed(2),
+      label: line.name,
+    }));
 
     return {
       assignment,
@@ -403,6 +429,7 @@ export class HrPrintRuntimeService {
         contractNumber: formatHrDisplayLabel(row.contract_number, "Contract"),
         contractType: formatHrDisplayLabel(row.contract_type, "Contract"),
         endsOn: row.ends_on ? String(row.ends_on) : null,
+        legalTerms: parseContractLegalTermsSnapshot(row.legal_terms),
         probationPeriodDays: row.probation_period_days === null ? null : Number(row.probation_period_days),
         signedDate: row.signed_date ? String(row.signed_date) : null,
         startsOn: String(row.starts_on),

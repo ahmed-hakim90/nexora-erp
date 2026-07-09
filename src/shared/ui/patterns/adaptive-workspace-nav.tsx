@@ -17,6 +17,12 @@ export type AdaptiveWorkspaceNavItem = Readonly<{
   onToggleFavorite?: () => void;
 }>;
 
+const MORE_BUTTON_RESERVE_PX = 96;
+
+function sameKeys(left: readonly string[], right: readonly string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 export function AdaptiveWorkspaceNav({
   activeKey,
   className,
@@ -24,7 +30,7 @@ export function AdaptiveWorkspaceNav({
   items,
   label = "Workspace sections",
   onToggleFavorite,
-  recentKeys = [],
+  recentKeys: _recentKeys = [],
 }: Readonly<{
   activeKey: string;
   className?: string;
@@ -32,79 +38,106 @@ export function AdaptiveWorkspaceNav({
   items: readonly AdaptiveWorkspaceNavItem[];
   label?: string;
   onToggleFavorite?: (key: string) => void;
+  /** @deprecated Recents are stored by callers but no longer reorder the strip (avoids tab jump/jitter). */
   recentKeys?: readonly string[];
 }>) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
   const [overflowKeys, setOverflowKeys] = useState<readonly string[]>([]);
 
+  // Favorites pin to the front. Recent keys are tracked by callers for UX hints,
+  // but must not reorder the tab strip — that jumps tabs on every click.
   const orderedItems = useMemo(() => {
     const favoriteSet = new Set(favoriteKeys);
-    const recentSet = new Set(recentKeys);
     const favorites = items.filter((item) => favoriteSet.has(item.key));
-    const recent = items.filter((item) => recentSet.has(item.key) && !favoriteSet.has(item.key));
-    const rest = items.filter((item) => !favoriteSet.has(item.key) && !recentSet.has(item.key));
-    return [...favorites, ...recent, ...rest];
-  }, [favoriteKeys, items, recentKeys]);
+    const rest = items.filter((item) => !favoriteSet.has(item.key));
+    return [...favorites, ...rest];
+  }, [favoriteKeys, items]);
 
-  const visibleItems = orderedItems.filter((item) => !overflowKeys.includes(item.key));
-  const hiddenItems = orderedItems.filter((item) => overflowKeys.includes(item.key));
+  const itemSignature = useMemo(
+    () => orderedItems.map((item) => `${item.key}:${item.href}`).join("|"),
+    [orderedItems],
+  );
+
+  const visibleItems = useMemo(
+    () => orderedItems.filter((item) => !overflowKeys.includes(item.key)),
+    [orderedItems, overflowKeys],
+  );
+  const hiddenItems = useMemo(
+    () => orderedItems.filter((item) => overflowKeys.includes(item.key)),
+    [orderedItems, overflowKeys],
+  );
 
   useEffect(() => {
-    const container = scrollRef.current;
-    if (!container) return;
+    const measureRoot = measureRef.current;
+    if (!measureRoot) return;
 
     const measure = () => {
-      const children = Array.from(container.querySelectorAll<HTMLElement>("[data-nav-item]"));
+      const children = Array.from(measureRoot.querySelectorAll<HTMLElement>("[data-nav-measure-item]"));
       if (children.length === 0) {
-        setOverflowKeys([]);
+        setOverflowKeys((current) => (current.length === 0 ? current : []));
         return;
       }
 
-      const containerRight = container.getBoundingClientRect().right - 96;
+      const containerRight = measureRoot.getBoundingClientRect().right - MORE_BUTTON_RESERVE_PX;
       const nextOverflow: string[] = [];
-      let activeVisible = false;
+      let activeFits = true;
 
       for (const child of children) {
-        const key = child.dataset.navItem;
+        const key = child.dataset.navMeasureItem;
         if (!key) continue;
-        const rect = child.getBoundingClientRect();
-        const fits = rect.right <= containerRight;
-        if (key === activeKey) {
-          activeVisible = fits || nextOverflow.length === 0;
-        }
+        const fits = child.getBoundingClientRect().right <= containerRight;
         if (!fits) {
           nextOverflow.push(key);
+          if (key === activeKey) activeFits = false;
         }
       }
 
-      if (activeKey && !activeVisible && !nextOverflow.includes(activeKey)) {
+      // Keep the active tab in the primary strip when it would otherwise overflow.
+      let resolvedOverflow = nextOverflow;
+      if (activeKey && !activeFits && nextOverflow.includes(activeKey)) {
         const withoutActive = nextOverflow.filter((key) => key !== activeKey);
-        const widest = withoutActive[withoutActive.length - 1];
-        if (widest) {
-          setOverflowKeys([...withoutActive.slice(0, -1), activeKey, widest].filter((key, index, array) => array.indexOf(key) === index));
-          return;
-        }
+        const swapTarget = withoutActive.at(-1);
+        resolvedOverflow = swapTarget
+          ? [...withoutActive.slice(0, -1), activeKey].filter(
+              (key, index, array) => array.indexOf(key) === index,
+            )
+          : withoutActive;
       }
 
-      setOverflowKeys(nextOverflow);
+      setOverflowKeys((current) => (sameKeys(current, resolvedOverflow) ? current : resolvedOverflow));
     };
 
     measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(container);
+    const observer = new ResizeObserver(() => {
+      measure();
+    });
+    observer.observe(measureRoot);
     window.addEventListener("resize", measure);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [activeKey, orderedItems]);
+  }, [activeKey, itemSignature]);
+
+  void _recentKeys;
 
   return (
     <nav aria-label={label} className={cn("relative", className)}>
+      {/* Stable full-width measure row — never hides children, so ResizeObserver cannot oscillate. */}
       <div
-        className="flex items-center gap-2 overflow-x-auto rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2 shadow-sm [scrollbar-width:thin]"
-        ref={scrollRef}
+        aria-hidden
+        className="pointer-events-none invisible absolute inset-0 -z-10 flex items-center gap-2 overflow-hidden p-2"
+        ref={measureRef}
       >
+        {orderedItems.map((item) => (
+          <div className="inline-flex shrink-0 items-center gap-1" data-nav-measure-item={item.key} key={item.key}>
+            <span className={navTabTriggerClassName(false)}>{item.label}</span>
+            {onToggleFavorite ? <span aria-hidden className="inline-block size-[1.625rem] shrink-0" /> : null}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 overflow-x-auto rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2 shadow-sm [scrollbar-width:thin]">
         {visibleItems.map((item) => (
           <AdaptiveWorkspaceNavLink
             active={item.key === activeKey}

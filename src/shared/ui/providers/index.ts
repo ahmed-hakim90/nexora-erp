@@ -3,6 +3,7 @@ export {
   useEnterpriseTheme,
   useEnterpriseUi,
   usePermission,
+  useTranslations,
   type EnterpriseUiContextValue,
   type Locale,
   type ResolvedTheme,

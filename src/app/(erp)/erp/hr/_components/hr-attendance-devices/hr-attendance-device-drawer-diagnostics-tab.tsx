@@ -4,36 +4,41 @@ import { HR_ATTENDANCE_DEVICE_DIAGNOSTIC_ACTIONS } from "@/features/hr/public-ap
 import type { HrAttendanceDeviceDiagnosticRecord } from "@/features/hr/public-api";
 import { healthDimensionTone } from "@/features/hr/public-api";
 import { runHrAttendanceDeviceDiagnosticAction } from "@/features/hr/routes/actions/hr-attendance-device.actions";
-import { Button, EnterpriseDataTable } from "@/shared/ui";
+import { Button, EnterpriseDataTable, useTranslations } from "@/shared/ui";
 import { cn } from "@/shared/ui/utils";
 
 import { TabLoadingState, DeviceActionForm, useDeviceTabData } from "./hr-attendance-device-drawer-shared";
 
-const DIAGNOSTIC_LABELS: Record<string, string> = {
-  clear_queue: "Clear queue",
-  ping: "Ping",
-  read_battery: "Battery",
-  read_clock_drift: "Clock drift",
-  read_cpu: "CPU",
-  read_device_time: "Device time",
-  read_door_status: "Door status",
-  read_firmware: "Firmware",
-  read_memory: "Memory",
-  read_punch_count: "Punches",
-  read_relay: "Relay",
-  read_sdk: "SDK",
-  read_storage: "Storage",
-  read_tamper: "Tamper",
-  read_temperature: "Temperature",
-  read_user_count: "Users",
-  restart_connection: "Restart connection",
-  test_connection: "Test connection",
-};
+function useDiagnosticLabels() {
+  const t = useTranslations();
+  return {
+    clear_queue: t("hr.attendance.devices.diagnostic.clearQueue"),
+    ping: t("hr.attendance.devices.diagnostic.ping"),
+    read_battery: t("hr.attendance.devices.diagnostic.readBattery"),
+    read_clock_drift: t("hr.attendance.devices.diagnostic.readClockDrift"),
+    read_cpu: t("hr.attendance.devices.diagnostic.readCpu"),
+    read_device_time: t("hr.attendance.devices.diagnostic.readDeviceTime"),
+    read_door_status: t("hr.attendance.devices.diagnostic.readDoorStatus"),
+    read_firmware: t("hr.attendance.devices.diagnostic.readFirmware"),
+    read_memory: t("hr.attendance.devices.diagnostic.readMemory"),
+    read_punch_count: t("hr.attendance.devices.diagnostic.readPunchCount"),
+    read_relay: t("hr.attendance.devices.diagnostic.readRelay"),
+    read_sdk: t("hr.attendance.devices.diagnostic.readSdk"),
+    read_storage: t("hr.attendance.devices.diagnostic.readStorage"),
+    read_tamper: t("hr.attendance.devices.diagnostic.readTamper"),
+    read_temperature: t("hr.attendance.devices.diagnostic.readTemperature"),
+    read_user_count: t("hr.attendance.devices.diagnostic.readUserCount"),
+    restart_connection: t("hr.attendance.devices.diagnostic.restartConnection"),
+    test_connection: t("hr.attendance.devices.diagnostic.testConnection"),
+  } as const;
+}
 
 export function HrAttendanceDeviceDrawerDiagnosticsTab({
   deviceId,
   enabled,
 }: Readonly<{ deviceId: string; enabled: boolean }>) {
+  const t = useTranslations();
+  const diagnosticLabels = useDiagnosticLabels();
   const { data, error, loading, refetch } = useDeviceTabData<{ diagnostics: readonly HrAttendanceDeviceDiagnosticRecord[] }>(
     deviceId,
     "logs?kind=diagnostics",
@@ -51,9 +56,9 @@ export function HrAttendanceDeviceDrawerDiagnosticsTab({
             key={action}
             onCompleted={refetch}
           >
-            <p className="text-sm font-medium">{DIAGNOSTIC_LABELS[action] ?? action}</p>
+            <p className="text-sm font-medium">{diagnosticLabels[action as keyof typeof diagnosticLabels] ?? action}</p>
             <Button className="mt-3" size="sm" type="submit" variant="secondary">
-              Run
+              {t("hr.common.run")}
             </Button>
           </DeviceActionForm>
         ))}
@@ -62,18 +67,18 @@ export function HrAttendanceDeviceDrawerDiagnosticsTab({
       {loading || error ? <TabLoadingState error={error} loading={loading} /> : null}
       <EnterpriseDataTable
         columns={[
-          { header: "Action", key: "action", render: (row) => DIAGNOSTIC_LABELS[row.action] ?? row.action },
-          { header: "Result", key: "message", render: (row) => row.message },
+          { header: t("hr.common.action"), key: "action", render: (row) => diagnosticLabels[row.action as keyof typeof diagnosticLabels] ?? row.action },
+          { header: t("hr.common.result"), key: "message", render: (row) => row.message },
           {
-            header: "Status",
+            header: t("hr.common.status"),
             key: "status",
             render: (row) => (
               <span className={cn("capitalize", healthDimensionTone(row.resultStatus))}>{row.resultStatus}</span>
             ),
           },
-          { header: "When", key: "when", render: (row) => new Date(row.createdAt).toLocaleString() },
+          { header: t("hr.common.when"), key: "when", render: (row) => new Date(row.createdAt).toLocaleString() },
         ]}
-        emptyMessage="No diagnostic history yet."
+        emptyMessage={t("hr.attendance.devices.drawer.emptyDiagnostics")}
         getRowId={(row) => row.id}
         pagination={{
           mode: "page",

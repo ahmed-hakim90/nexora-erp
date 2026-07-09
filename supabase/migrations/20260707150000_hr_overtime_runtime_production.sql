@@ -67,7 +67,7 @@ alter table public.hr_overtime_requests
   add column if not exists attendance_day_id uuid references public.hr_attendance_days(id) on delete restrict,
   add column if not exists cost_center text,
   add column if not exists project_ref text,
-  add column if not exists shift_id uuid references public.hr_shifts(id) on delete restrict,
+  add column if not exists shift_id uuid references public.hr_shift_definitions(id) on delete restrict,
   add column if not exists priority integer not null default 50 check (priority >= 0 and priority <= 100),
   add column if not exists payroll_eligible boolean not null default true,
   add column if not exists compensation_type public.hr_overtime_compensation_type not null default 'pay',

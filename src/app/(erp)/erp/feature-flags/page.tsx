@@ -21,7 +21,10 @@ export default async function FeatureFlagsPage() {
   return (
     <AppShell
       {...createErpShellChrome(undefined, runtime)}
-      breadcrumbs={[{ href: "/erp", label: "Apps" }, { label: "Feature Flags" }]}
+      breadcrumbs={[
+        { href: "/erp", label: "Apps", messageKey: "shell.apps.label" },
+        { label: "Feature Flags" },
+      ]}
       workspace={{ key: "feature-flags", name: "Feature Flags", icon: <Flag className="size-4" /> }}
       workspaceNav={[
         { key: "flags", label: "Flags", href: "/erp/feature-flags", isActive: true },

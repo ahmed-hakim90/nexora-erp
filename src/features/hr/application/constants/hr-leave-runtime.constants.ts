@@ -37,17 +37,6 @@ export const LEAVE_CONFLICT_CODES = [
 
 export type LeaveConflictCode = (typeof LEAVE_CONFLICT_CODES)[number];
 
-export const DEFAULT_LEAVE_TYPE_SEEDS = [
-  { code: "ANNUAL", name: "Annual Leave", paid: true },
-  { code: "CASUAL", name: "Casual Leave", paid: true },
-  { code: "SICK", name: "Sick Leave", paid: true },
-  { code: "MATERNITY", name: "Maternity Leave", paid: true },
-  { code: "PATERNITY", name: "Paternity Leave", paid: true },
-  { code: "EMERGENCY", name: "Emergency Leave", paid: true },
-  { code: "UNPAID", name: "Unpaid Leave", paid: false },
-  { code: "BUSINESS_TRIP", name: "Business Trip", paid: true },
-] as const;
-
 export type LeavePolicyRules = Readonly<{
   attachmentRequired?: boolean;
   autoApproval?: boolean;

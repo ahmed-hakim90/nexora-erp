@@ -10,7 +10,7 @@ import {
   formatHrAttendanceDeviceHealthLabel,
   formatHrAttendanceDeviceSubtitle,
 } from "@/features/hr/public-api";
-import { Button, Drawer, Tabs } from "@/shared/ui";
+import { Button, Drawer, Tabs, useTranslations } from "@/shared/ui";
 import { cn } from "@/shared/ui/utils";
 
 import {
@@ -53,7 +53,8 @@ type DrawerTabKey =
   | "audit";
 
 function TabFallback() {
-  return <p className="text-sm text-muted-foreground">Loading tab…</p>;
+  const t = useTranslations();
+  return <p className="text-sm text-muted-foreground">{t("hr.common.loadingTab")}</p>;
 }
 
 export function HrAttendanceDeviceDrawer({
@@ -73,6 +74,7 @@ export function HrAttendanceDeviceDrawer({
   onEdit: (deviceId: string) => void;
   open: boolean;
 }>) {
+  const t = useTranslations();
   const [activeTab, setActiveTab] = useState<DrawerTabKey>("overview");
 
   if (!device) return null;
@@ -85,7 +87,7 @@ export function HrAttendanceDeviceDrawer({
         </Suspense>
       ),
       key: "overview",
-      label: "Overview",
+      label: t("hr.attendance.devices.drawer.tab.overview"),
     },
     {
       content: (
@@ -94,7 +96,7 @@ export function HrAttendanceDeviceDrawer({
         </Suspense>
       ),
       key: "connection",
-      label: "Connection",
+      label: t("hr.attendance.devices.drawer.tab.connection"),
     },
     {
       content: (
@@ -103,7 +105,7 @@ export function HrAttendanceDeviceDrawer({
         </Suspense>
       ),
       key: "realtime",
-      label: "Realtime",
+      label: t("hr.attendance.devices.drawer.tab.realtime"),
     },
     {
       content: (
@@ -112,7 +114,7 @@ export function HrAttendanceDeviceDrawer({
         </Suspense>
       ),
       key: "users",
-      label: "Users",
+      label: t("hr.attendance.devices.drawer.tab.users"),
     },
     {
       content: (
@@ -121,7 +123,7 @@ export function HrAttendanceDeviceDrawer({
         </Suspense>
       ),
       key: "punches",
-      label: "Punches",
+      label: t("hr.attendance.devices.drawer.tab.punches"),
     },
     {
       content: (
@@ -130,27 +132,27 @@ export function HrAttendanceDeviceDrawer({
         </Suspense>
       ),
       key: "diagnostics",
-      label: "Diagnostics",
+      label: t("hr.attendance.devices.drawer.tab.diagnostics"),
     },
     {
       content: <HrAttendanceDeviceDrawerSyncTab buildHref={buildHref} deviceId={device.id} history={history} />,
       key: "sync",
-      label: "Sync sessions",
+      label: t("hr.attendance.devices.drawer.tab.sync"),
     },
     {
       content: <HrAttendanceDeviceDrawerLogsTab deviceId={device.id} enabled={activeTab === "logs"} />,
       key: "logs",
-      label: "Logs",
+      label: t("hr.attendance.devices.drawer.tab.logs"),
     },
     {
       content: <HrAttendanceDeviceDrawerSettingsTab autoSyncOptions={autoSyncOptions} device={device} onEdit={onEdit} />,
       key: "settings",
-      label: "Settings",
+      label: t("hr.attendance.devices.drawer.tab.settings"),
     },
     {
       content: <HrAttendanceDeviceDrawerAuditTab deviceId={device.id} enabled={activeTab === "audit"} />,
       key: "audit",
-      label: "Audit",
+      label: t("hr.attendance.devices.drawer.tab.audit"),
     },
   ];
 
@@ -183,11 +185,11 @@ export function HrAttendanceDeviceDrawer({
         <HrAttendanceDeviceHealthBadge dimensions={device.healthDimensions} score={device.healthDimensions.overallScorePercent} />
 
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => onEdit(device.id)} size="sm" type="button">
-            Edit device
+          <Button onClick={() => onEdit(device.id)} size="sm" type="button" variant="primary">
+            {t("hr.attendance.devices.drawer.editDevice")}
           </Button>
           <Button onClick={() => window.location.assign(buildHref({ sync: device.id }))} size="sm" type="button" variant="secondary">
-            Open sync wizard
+            {t("hr.attendance.devices.drawer.openSyncWizard")}
           </Button>
         </div>
 

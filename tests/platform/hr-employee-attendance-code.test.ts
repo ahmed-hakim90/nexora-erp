@@ -87,20 +87,34 @@ test("hr employee quick edit schema accepts attendanceCode update and blank clea
   }
 });
 
-test("hr employee import contract maps attendance code column", () => {
-  const mapping = HR_EMPLOYEE_IMPORT_CONTRACT.mappings.find((item) => item.targetField === "attendanceCode");
-  assert.ok(mapping, "Import contract must map Attendance Code.");
-  assert.equal(mapping.sourceColumn, "Attendance Code");
+test("hr employee import contract uses unified employee code", () => {
+  const mapping = HR_EMPLOYEE_IMPORT_CONTRACT.mappings.find((item) => item.targetField === "employeeNumber");
+  assert.ok(mapping, "Import contract must map Employee Code.");
+  assert.equal(mapping.sourceColumn, "Employee Code");
   assert.equal(
-    HR_EMPLOYEE_IMPORT_CONTRACT.validationRules.some((rule) => rule.fieldKey === "attendanceCode"),
+    HR_EMPLOYEE_IMPORT_CONTRACT.mappings.some((item) => item.targetField === "attendanceCode"),
+    false,
+  );
+  assert.equal(
+    HR_EMPLOYEE_IMPORT_CONTRACT.validationRules.some((rule) => rule.fieldKey === "employeeNumber" && rule.type === "duplicate"),
     true,
   );
 });
 
-test("hr employee import and export columns include attendanceCode", () => {
-  assert.ok(HR_EMPLOYEE_IMPORT_COLUMNS.some((column) => column.field === "attendanceCode"));
-  assert.ok(HR_EMPLOYEE_EXPORT_COLUMNS.some((column) => column.field === "attendanceCode"));
-  assert.ok(HR_EMPLOYEE_IMPORT_VALIDATION_RULES.some((rule) => rule.includes("Attendance code")));
+test("hr employee import has one code column; export drops separate attendance column", () => {
+  assert.equal(HR_EMPLOYEE_IMPORT_COLUMNS.filter((column) => column.field === "employeeNumber").length, 1);
+  assert.equal(
+    HR_EMPLOYEE_IMPORT_COLUMNS.some((column) => column.field === "attendanceCode"),
+    false,
+  );
+  assert.ok(HR_EMPLOYEE_IMPORT_COLUMNS.some((column) => column.aliases.includes("كود الحضور")));
+  assert.ok(HR_EMPLOYEE_IMPORT_COLUMNS.some((column) => column.aliases.includes("attendance code")));
+  assert.equal(
+    HR_EMPLOYEE_EXPORT_COLUMNS.some((column) => column.field === "attendanceCode"),
+    false,
+  );
+  assert.ok(HR_EMPLOYEE_EXPORT_COLUMNS.some((column) => column.field === "employeeNumber"));
+  assert.ok(HR_EMPLOYEE_IMPORT_VALIDATION_RULES.some((rule) => rule.includes("Employee code")));
 });
 
 test("hr employee search provider includes attendanceCode field", () => {
@@ -126,7 +140,7 @@ test("hr employee validation service defines duplicate attendance code guard", (
   assert.match(source, /attendanceCode/);
 });
 
-test("hr employee wizard and edit UI modules export attendance code surfaces", async () => {
+test("hr employee wizard and edit UI use employee code as attendance identity", async () => {
   const wizardSource = fs.readFileSync(
     path.join(process.cwd(), "src/app/(erp)/erp/hr/_components/hr-employee-wizard.tsx"),
     "utf8",
@@ -139,11 +153,27 @@ test("hr employee wizard and edit UI modules export attendance code surfaces", a
     path.join(process.cwd(), "src/app/(erp)/erp/hr/_components/hr-employees-table.tsx"),
     "utf8",
   );
+  const createActionSource = fs.readFileSync(
+    path.join(process.cwd(), "src/features/hr/routes/actions/hr-employees.actions.ts"),
+    "utf8",
+  );
 
-  assert.match(wizardSource, /name="attendanceCode"/);
   assert.match(wizardSource, /name="employeeNumber"/);
-  assert.match(wizardSource, /Attendance Code \/ رمز الحضور/);
-  assert.match(editSource, /name="attendanceCode"/);
+  assert.doesNotMatch(wizardSource, /name="attendanceCode"/);
+  assert.match(wizardSource, /Employee code \/ كود الموظف|hr\.employees\.(wizard|form|column)\.employeeCode|كود الموظف/);
   assert.match(editSource, /name="employeeNumber"/);
-  assert.match(tableSource, /attendanceCode/);
+  assert.doesNotMatch(editSource, /name="attendanceCode"/);
+  assert.match(tableSource, /hr\.employees\.column\.employeeCode|Employee code \/ كود الموظف/);
+  assert.match(createActionSource, /resolveEmployeeAttendanceCode/);
+});
+
+test("employee identity helpers unify job code and attendance code", async () => {
+  const { resolveEmployeeAttendanceCode, resolveEmployeeIdentityCode } = await import(
+    "@/features/hr/application/utils/hr-employee-identity-code"
+  );
+
+  assert.equal(resolveEmployeeAttendanceCode("  emp-12  "), "EMP-12");
+  assert.equal(resolveEmployeeIdentityCode({ employeeNumber: "e-9", attendanceCode: "FP-1" }), "E-9");
+  assert.equal(resolveEmployeeIdentityCode({ attendanceCode: "  fp-77  " }), "FP-77");
+  assert.equal(resolveEmployeeIdentityCode({}), null);
 });

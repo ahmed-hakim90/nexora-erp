@@ -1,6 +1,20 @@
 # Implementation Status
 
-Last updated: 2026-07-07 (HCM production completion sprint)
+Last updated: 2026-07-07 (HCM Enterprise Production Ready gate)
+
+## HCM Enterprise Production Ready Gate
+
+**Overall HCM completion:** ~80–85% (pre-gate) → **Enterprise Production Ready** after all 5 gates pass.
+
+| Gate | Condition | Status |
+| --- | --- | --- |
+| 1 | Snapshot-only payroll calculation (no live fallback in production) | **Implemented** |
+| 2 | Payroll Period Lifecycle (open → lock → close → reopen) | **Implemented** |
+| 3 | Unified Shift Resolution (attendance + late/early + OT) | **Implemented** |
+| 4 | UAT end-to-end on realistic data | **Checklist ready** — [HCM_UAT_E2E_CHECKLIST.md](../09-history/HCM_UAT_E2E_CHECKLIST.md) |
+| 5 | Documentation accuracy | **Updated** |
+
+**Post-launch expansions (not launch blockers):** Talent (OP-19→23), GL posting, distributed workers, Egypt pack-driven rules, payslip PDF, email notifications.
 
 ## Related Documents
 
@@ -91,7 +105,7 @@ Established **2026-07-07** — turns the [Nexora Platform UX Constitution](../06
 
 | App | Work | Reference |
 | --- | --- | --- |
-| **HR** | OP-01→OP-30: Wave B complete (OP-11 hardened); ESS/MSS portal leave runtime; OP-07 sync v2; talent/payroll calc in progress | [Operational Roadmap](OPERATIONAL_ROADMAP.md), [OP-11 Sprint](../09-history/SPRINT_OP_11_LATE_EARLY_RUNTIME_COMPLETED.md) |
+| **HR** | **Enterprise Production Ready gate shipped** — snapshot-only calc, period lifecycle, unified shift resolution; UAT checklist v2 | [Operational Roadmap](OPERATIONAL_ROADMAP.md), [UAT Checklist](../09-history/HCM_UAT_E2E_CHECKLIST.md) |
 | **Inventory** | Reservation engine runtime RPCs, warehouse execution, catalog lookup migration | [Reservation Engine](../02-business-apps/INVENTORY_RESERVATION_ENGINE.md) |
 | **Manufacturing** | JSON column reconciliation to normalized lines | [Legacy Reconciliation](../02-business-apps/MANUFACTURING_LEGACY_RECONCILIATION.md) |
 | **Administration** | User access layer, preferences | `supabase/migrations/20260628151500_*.sql` |

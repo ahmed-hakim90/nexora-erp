@@ -290,12 +290,12 @@ export function createErpLauncher(runtime?: ErpRuntimeContext): AppShellLauncher
 }
 
 const ERP_THEME_OPTIONS: readonly ShellAction[] = [
-  { isActive: true, label: "System", value: "system" },
+  { label: "System", value: "system" },
   { label: "Light", value: "light" },
   { label: "Dark", value: "dark" },
 ];
 const ERP_LANGUAGE_OPTIONS: readonly ShellAction[] = [
-  { isActive: true, label: "English", value: "en" },
+  { label: "English", value: "en" },
   { label: "Arabic", value: "ar" },
 ];
 

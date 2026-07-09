@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { HrAttendanceDeviceRealtimeEvent } from "@/features/hr/public-api";
-import { EnterpriseDataTable } from "@/shared/ui";
+import { EnterpriseDataTable, useTranslations } from "@/shared/ui";
 import { cn } from "@/shared/ui/utils";
 
 import { TabLoadingState } from "./hr-attendance-device-drawer-shared";
@@ -12,6 +12,7 @@ export function HrAttendanceDeviceDrawerRealtimeTab({
   deviceId,
   enabled,
 }: Readonly<{ deviceId: string; enabled: boolean }>) {
+  const t = useTranslations();
   const [events, setEvents] = useState<readonly HrAttendanceDeviceRealtimeEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export function HrAttendanceDeviceDrawerRealtimeTab({
     const load = async () => {
       try {
         const response = await fetch(`/api/hr/attendance-devices/${deviceId}/realtime`);
-        if (!response.ok) throw new Error("Could not load realtime events.");
+        if (!response.ok) throw new Error(t("hr.attendance.devices.feedback.couldNotLoadRealtime"));
         const payload = (await response.json()) as { events: readonly HrAttendanceDeviceRealtimeEvent[] };
         if (cancelled) return;
         const nextEvents = payload.events ?? [];
@@ -38,7 +39,7 @@ export function HrAttendanceDeviceDrawerRealtimeTab({
         setEvents(nextEvents);
         setError(null);
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load realtime events.");
+        if (!cancelled) setError(cause instanceof Error ? cause.message : t("hr.attendance.devices.feedback.couldNotLoadRealtime"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -53,29 +54,29 @@ export function HrAttendanceDeviceDrawerRealtimeTab({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [deviceId, enabled]);
+  }, [deviceId, enabled, t]);
 
   if (loading && events.length === 0) return <TabLoadingState error={error} loading={loading} />;
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Live punch stream with auto-refresh every 5 seconds.</p>
+      <p className="text-sm text-muted-foreground">{t("hr.attendance.devices.drawer.realtimeHint")}</p>
       {error ? <TabLoadingState error={error} loading={false} /> : null}
       <EnterpriseDataTable
         columns={[
-          { header: "Employee", key: "employee", render: (row) => row.employeeLabel },
-          { header: "Time", key: "time", render: (row) => new Date(row.punchTime).toLocaleString() },
-          { header: "Device", key: "device", render: (row) => row.deviceCode },
-          { header: "Direction", key: "direction", render: (row) => row.direction.toUpperCase() },
+          { header: t("hr.common.employee"), key: "employee", render: (row) => row.employeeLabel },
+          { header: t("hr.common.time"), key: "time", render: (row) => new Date(row.punchTime).toLocaleString() },
+          { header: t("hr.common.device"), key: "device", render: (row) => row.deviceCode },
+          { header: t("hr.common.direction"), key: "direction", render: (row) => row.direction.toUpperCase() },
           {
-            header: "Status",
+            header: t("hr.common.status"),
             key: "status",
             render: (row) => (
               <span className={cn(highlightId === row.id && "rounded-full bg-[hsl(var(--accent))]/15 px-2 py-0.5")}>{row.status}</span>
             ),
           },
         ]}
-        emptyMessage="No live punches yet."
+        emptyMessage={t("hr.attendance.devices.drawer.emptyRealtime")}
         getRowId={(row) => row.id}
         pagination={{ mode: "page", page: 1, pageSize: events.length || 1, totalRows: events.length }}
         records={events}

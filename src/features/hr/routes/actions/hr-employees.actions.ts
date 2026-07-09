@@ -16,89 +16,35 @@ import {
   validateEmployeeUniqueness,
 } from "../../application/services/hr-employee-validation.service";
 import {
-  validateEmployeeImportCsv,
+  previewEmployeeImportFile,
+  revalidateCommitRows,
+  validateEmployeeImportFile,
+  type HrEmployeeImportCommitRow,
+  type HrEmployeeImportPreviewRow,
   type HrEmployeeImportRow,
 } from "../../application/services/hr-import.service";
 import { HR_EMPLOYEE_EXPORT_COLUMNS } from "../../hr-production-readiness-foundation";
 import { HR_PERMISSIONS } from "../../permissions/permission-registry";
 import { formatHrDisplayLabel, readContactField } from "../../application/utils/hr-display";
+import {
+  resolveEmployeeAttendanceCode,
+  resolveEmployeeIdentityCode,
+} from "../../application/utils/hr-employee-identity-code";
 import { HrAssignmentResolverService } from "../../application/services/hr-assignment-resolver.service";
+import { HrEmployeeHireOrchestrationService } from "../../application/services/hr-employee-hire-orchestration.service";
 
-async function createInitialAssignments(
-  supabase: ReturnType<typeof createRequestSupabaseClient>,
-  context: Awaited<ReturnType<typeof resolveBranchRequestContext>>,
-  input: {
-    departmentId: string;
-    effectiveFrom: string;
-    employeeId: string;
-    employmentProfileId: string;
-    managerEmployeeId?: string;
-    positionId?: string;
-  },
-) {
-  const base = {
-    assignment_status: "active" as const,
-    branch_id: context.branchId,
-    company_id: context.companyId,
-    created_by: context.userId,
-    effective_from: input.effectiveFrom,
-    employee_id: input.employeeId,
-    employment_profile_id: input.employmentProfileId,
-    tenant_id: context.tenantId,
-    updated_by: context.userId,
-  };
-
-  const assignments = [
-    {
-      ...base,
-      assignment_scope: "primary",
-      assignment_type: "department",
-      priority: 100,
-      reference_entity_id: input.departmentId,
-      reference_entity_type: "hr_org_units",
-    },
-  ];
-
-  if (input.positionId) {
-    assignments.push({
-      ...base,
-      assignment_scope: "primary",
-      assignment_type: "position",
-      priority: 100,
-      reference_entity_id: input.positionId,
-      reference_entity_type: "hr_positions",
-    });
-  }
-
-  if (input.managerEmployeeId) {
-    assignments.push({
-      ...base,
-      assignment_scope: "primary",
-      assignment_type: "manager",
-      priority: 100,
-      reference_entity_id: input.managerEmployeeId,
-      reference_entity_type: "hr_employees",
-    });
-  }
-
-  const { error } = await supabase.from("hr_assignments").insert(assignments);
-  if (error) {
-    throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create initial assignments.", cause: error });
-  }
-}
-
-export async function createEmployeeWizardAction(formData: FormData) {
-  const context = await resolveBranchRequestContext("erp");
-  await requirePermission({ context, permission: HR_PERMISSIONS.employeesManage });
-  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
-
-  const parsed = hrEmployeeWizardSchema.parse({
+function parseEmployeeWizardFormData(formData: FormData) {
+  return hrEmployeeWizardSchema.parse({
+    accountHolderName: formData.get("accountHolderName") || undefined,
+    accountNumber: formData.get("accountNumber") || undefined,
     attendanceCode: formData.get("attendanceCode") || undefined,
+    bankIsPrimary: formData.get("bankIsPrimary") ?? undefined,
+    bankName: formData.get("bankName") || undefined,
     birthDate: formData.get("birthDate") || undefined,
     branchId: formData.get("branchId") || undefined,
     contractNumber: formData.get("contractNumber") || undefined,
     contractStartsOn: formData.get("contractStartsOn") || undefined,
-    contractType: formData.get("contractType") || undefined,
+    contractTypeVersionId: formData.get("contractTypeVersionId") || undefined,
     departmentId: formData.get("departmentId"),
     effectiveFrom: formData.get("effectiveFrom"),
     email: formData.get("email") || undefined,
@@ -108,21 +54,36 @@ export async function createEmployeeWizardAction(formData: FormData) {
     employmentType: formData.get("employmentType"),
     fullName: formData.get("fullName"),
     gender: formData.get("gender") || undefined,
+    iban: formData.get("iban") || undefined,
     managerEmployeeId: formData.get("managerEmployeeId") || undefined,
     maritalStatus: formData.get("maritalStatus") || undefined,
     nationalId: formData.get("nationalId") || undefined,
     nationality: formData.get("nationality") || undefined,
     passportNumber: formData.get("passportNumber") || undefined,
+    payrollGroupId: formData.get("payrollGroupId") || undefined,
     phone: formData.get("phone") || undefined,
     positionId: formData.get("positionId") || undefined,
     probationPeriodDays: formData.get("probationPeriodDays") || undefined,
-    salaryPackageRef: formData.get("salaryPackageRef") || undefined,
+    salaryPackageRef: formData.get("salaryPackageRef") || formData.get("salaryPackageVersionId") || undefined,
+    salaryPackageVersionId: formData.get("salaryPackageVersionId") || formData.get("salaryPackageRef") || undefined,
+    shiftApplyWorkingDays: formData.get("shiftApplyWorkingDays") ?? undefined,
+    shiftDayOfWeek: formData.get("shiftDayOfWeek") || undefined,
+    shiftId: formData.get("shiftId") || undefined,
     workLocationId: formData.get("workLocationId") || undefined,
   });
+}
+
+export async function createEmployeeWizardAction(formData: FormData) {
+  const context = await resolveBranchRequestContext("erp");
+  await requirePermission({ context, permission: HR_PERMISSIONS.employeesManage });
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+
+  const parsed = parseEmployeeWizardFormData(formData);
 
   const employeeNumber = parsed.employeeNumber;
+  const attendanceCode = resolveEmployeeAttendanceCode(employeeNumber);
   const uniquenessIssues = await validateEmployeeUniqueness(supabase, context, {
-    attendanceCode: parsed.attendanceCode ?? null,
+    attendanceCode,
     employeeNumber,
     nationalId: parsed.nationalId ?? null,
   });
@@ -147,7 +108,7 @@ export async function createEmployeeWizardAction(formData: FormData) {
   const { data: employee, error: employeeError } = await supabase
     .from("hr_employees")
     .insert({
-      attendance_code: parsed.attendanceCode ?? null,
+      attendance_code: attendanceCode,
       birth_date: parsed.birthDate || null,
       branch_id: parsed.branchId ?? context.branchId,
       company_id: context.companyId,
@@ -192,7 +153,7 @@ export async function createEmployeeWizardAction(formData: FormData) {
       employment_type: parsed.employmentType,
       metadata: { anchor_only: true, org_via_assignments: true },
       position_id: parsed.positionId || null,
-      salary_package_ref: parsed.salaryPackageRef || null,
+      salary_package_ref: parsed.salaryPackageVersionId || null,
       status: "active",
       tenant_id: context.tenantId,
       updated_by: context.userId,
@@ -205,52 +166,18 @@ export async function createEmployeeWizardAction(formData: FormData) {
     throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create employment profile.", cause: profileError });
   }
 
-  await createInitialAssignments(supabase, context, {
-    departmentId: parsed.departmentId,
-    effectiveFrom: parsed.effectiveFrom,
+  const orchestrator = new HrEmployeeHireOrchestrationService(supabase, context);
+  const hireResult = await orchestrator.completeHireSetup({
     employeeId: String(employee.id),
     employmentProfileId: String(profile.id),
-    managerEmployeeId: parsed.managerEmployeeId,
-    positionId: parsed.positionId,
-  });
-
-  if (parsed.contractType && parsed.contractStartsOn) {
-    const contractNumber = parsed.contractNumber?.trim().toUpperCase() || `CON-${employeeNumber}`;
-    const { error: contractError } = await supabase.from("hr_contracts").insert({
-      branch_id: parsed.branchId ?? context.branchId,
-      company_id: context.companyId,
-      contract_number: contractNumber,
-      contract_type: parsed.contractType,
-      created_by: context.userId,
-      employee_id: employee.id,
-      employment_profile_id: profile.id,
-      metadata: { created_via: "hr-employee-wizard" },
-      probation_period_days: parsed.probationPeriodDays ?? null,
-      starts_on: parsed.contractStartsOn,
-      status: "draft",
-      tenant_id: context.tenantId,
-      updated_by: context.userId,
-    });
-    if (contractError) {
-      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create contract.", cause: contractError });
-    }
-  }
-
-  await supabase.from("hr_employee_timeline_events").insert({
-    branch_id: context.branchId,
-    company_id: context.companyId,
-    created_by: context.userId,
-    employee_id: employee.id,
-    event_type: "hired",
-    metadata: { source: "hr-employee-wizard" },
-    source_document_type: "hr_employee_wizard",
-    tenant_id: context.tenantId,
-    updated_by: context.userId,
+    parsed,
   });
 
   revalidatePath("/erp/hr");
   revalidatePath("/erp/hr/employees");
-  return { employeeId: String(employee.id), success: true as const };
+  revalidatePath(`/erp/hr/employees/${hireResult.employeeId}`);
+  revalidatePath("/erp/hr/onboarding");
+  return { employeeId: hireResult.employeeId, success: true as const };
 }
 
 export async function createHrAssignmentAction(formData: FormData) {
@@ -424,7 +351,12 @@ async function insertImportedEmployee(
   index: number,
   departmentId: string,
 ) {
-  const employeeNumber = row.employeeNumber?.trim().toUpperCase() || nextImportEmployeeNumber(index);
+  const employeeNumber =
+    resolveEmployeeIdentityCode({
+      attendanceCode: row.attendanceCode,
+      employeeNumber: row.employeeNumber,
+    }) || nextImportEmployeeNumber(index);
+  const attendanceCode = resolveEmployeeAttendanceCode(employeeNumber);
 
   const { data: party, error: partyError } = await supabase
     .from("parties")
@@ -444,7 +376,7 @@ async function insertImportedEmployee(
   const { data: employee, error: employeeError } = await supabase
     .from("hr_employees")
     .insert({
-      attendance_code: row.attendanceCode ?? null,
+      attendance_code: attendanceCode,
       birth_date: row.birthDate || null,
       branch_id: context.branchId,
       company_id: context.companyId,
@@ -502,18 +434,247 @@ async function insertImportedEmployee(
   return String(employee.id);
 }
 
+async function updateImportedEmployee(
+  supabase: ReturnType<typeof createRequestSupabaseClient>,
+  context: Awaited<ReturnType<typeof resolveBranchRequestContext>>,
+  row: HrEmployeeImportCommitRow,
+) {
+  const employeeId = row.matchedEmployeeId;
+  if (!employeeId) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: `Row ${row.row} is missing matched employee id for update.` });
+  }
+
+  const { data: existing, error: loadError } = await supabase
+    .from("hr_employees")
+    .select("id, party_id, contact_info, employee_number")
+    .eq("tenant_id", context.tenantId)
+    .eq("company_id", context.companyId)
+    .eq("id", employeeId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (loadError || !existing) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: `Matched employee for row ${row.row} was not found.`, cause: loadError });
+  }
+
+  const existingContact =
+    existing.contact_info && typeof existing.contact_info === "object" && !Array.isArray(existing.contact_info)
+      ? (existing.contact_info as Record<string, unknown>)
+      : {};
+
+  const patch: Record<string, unknown> = {
+    full_name: row.fullName,
+    updated_by: context.userId,
+  };
+  const identityCode = resolveEmployeeIdentityCode({
+    attendanceCode: row.attendanceCode,
+    employeeNumber: row.employeeNumber,
+  });
+  if (identityCode) {
+    patch.employee_number = identityCode;
+    patch.attendance_code = resolveEmployeeAttendanceCode(identityCode);
+  }
+  if (row.birthDate) patch.birth_date = row.birthDate;
+  if (row.gender) patch.gender = row.gender;
+  if (row.nationalId) patch.national_id = row.nationalId;
+  if (row.email || row.phone) {
+    patch.contact_info = {
+      ...existingContact,
+      ...(row.email ? { email: row.email } : {}),
+      ...(row.phone ? { phone: row.phone } : {}),
+    };
+  }
+
+  const { error: updateError } = await supabase
+    .from("hr_employees")
+    .update(patch)
+    .eq("id", employeeId)
+    .eq("tenant_id", context.tenantId)
+    .eq("company_id", context.companyId)
+    .is("deleted_at", null);
+  if (updateError) {
+    throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not update employee from import.", cause: updateError });
+  }
+
+  if (existing.party_id) {
+    await supabase
+      .from("parties")
+      .update({
+        display_name: row.fullName,
+        updated_by: context.userId,
+      })
+      .eq("id", existing.party_id)
+      .eq("tenant_id", context.tenantId);
+  }
+
+  await supabase.from("hr_employee_timeline_events").insert({
+    branch_id: context.branchId,
+    company_id: context.companyId,
+    created_by: context.userId,
+    employee_id: employeeId,
+    event_type: "lifecycle_changed",
+    metadata: { action: "updated", import_row: row.row, source: "hr-employee-import" },
+    source_document_type: "hr_employee_import",
+    tenant_id: context.tenantId,
+    updated_by: context.userId,
+  });
+
+  return employeeId;
+}
+
+async function readImportPayloadFromFormData(formData: FormData) {
+  const file = formData.get("file");
+  if (file instanceof File && file.size > 0) {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    return { content: buffer, fileName: file.name };
+  }
+
+  const csv = formData.get("csv");
+  if (typeof csv === "string" && csv.trim()) {
+    return { content: csv, fileName: "import.csv" };
+  }
+
+  return { content: "", fileName: null };
+}
+
+export async function previewEmployeesCsvAction(formData: FormData) {
+  const context = await resolveBranchRequestContext("erp");
+  await requirePermission({ context, permission: HR_PERMISSIONS.importExportManage });
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+
+  const payload = await readImportPayloadFromFormData(formData);
+  const hasContent = typeof payload.content === "string" ? payload.content.trim().length > 0 : payload.content.length > 0;
+  if (!hasContent) {
+    throw new ApplicationError({
+      code: "VALIDATION_ERROR",
+      message: "Excel or CSV file is required.",
+    });
+  }
+
+  const preview = await previewEmployeeImportFile(supabase, context, payload.content, payload.fileName);
+  return {
+    rows: preview.rows,
+    success: true as const,
+    summary: preview.summary,
+  };
+}
+
+export async function commitEmployeesImportAction(input: Readonly<{ rows: readonly HrEmployeeImportCommitRow[] }>) {
+  const context = await resolveBranchRequestContext("erp");
+  await requirePermission({ context, permission: HR_PERMISSIONS.importExportManage });
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+
+  if (!Array.isArray(input.rows) || input.rows.length === 0) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Select at least one preview row to import." });
+  }
+
+  const revalidated = await revalidateCommitRows(supabase, context, input.rows);
+  const rejected: Array<{ errors: string[]; row: number }> = [];
+  const actionable: HrEmployeeImportPreviewRow[] = [];
+
+  for (let index = 0; index < revalidated.rows.length; index += 1) {
+    const previewRow = revalidated.rows[index]!;
+    const requested = input.rows[index];
+    if (previewRow.action === "error") {
+      rejected.push({ errors: [...previewRow.errors], row: previewRow.row });
+      continue;
+    }
+    if (requested && requested.action !== previewRow.action) {
+      rejected.push({
+        errors: [`Row action changed during revalidation (${requested.action} → ${previewRow.action}).`],
+        row: previewRow.row,
+      });
+      continue;
+    }
+    if (previewRow.action === "update" && !previewRow.matchedEmployeeId) {
+      rejected.push({ errors: ["Matched employee is missing for update."], row: previewRow.row });
+      continue;
+    }
+    actionable.push(previewRow);
+  }
+
+  const creates = actionable.filter((row) => row.action === "create");
+  let departmentId: string | null = null;
+  if (creates.length > 0) {
+    departmentId = await resolveDefaultDepartmentId(supabase, context);
+    if (!departmentId) {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: "At least one department must exist before importing employees.",
+      });
+    }
+  }
+
+  const createdEmployeeIds: string[] = [];
+  const updatedEmployeeIds: string[] = [];
+  let createIndex = 0;
+
+  for (const row of actionable) {
+    const commitRow: HrEmployeeImportCommitRow = {
+      action: row.action as "create" | "update",
+      attendanceCode: row.attendanceCode,
+      birthDate: row.birthDate,
+      email: row.email,
+      employeeNumber: row.employeeNumber,
+      fullName: row.fullName,
+      gender: row.gender,
+      matchedEmployeeId: row.matchedEmployeeId,
+      nationalId: row.nationalId,
+      phone: row.phone,
+      row: row.row,
+    };
+
+    try {
+      if (commitRow.action === "create") {
+        const employeeId = await insertImportedEmployee(supabase, context, commitRow, createIndex, departmentId!);
+        createdEmployeeIds.push(employeeId);
+        createIndex += 1;
+      } else {
+        const employeeId = await updateImportedEmployee(supabase, context, commitRow);
+        updatedEmployeeIds.push(employeeId);
+      }
+    } catch (error) {
+      rejected.push({
+        errors: [error instanceof Error ? error.message : "Could not import row."],
+        row: commitRow.row,
+      });
+    }
+  }
+
+  if (createdEmployeeIds.length > 0 || updatedEmployeeIds.length > 0) {
+    revalidatePath("/erp/hr");
+    revalidatePath("/erp/hr/employees");
+    for (const employeeId of [...createdEmployeeIds, ...updatedEmployeeIds]) {
+      revalidatePath(`/erp/hr/employees/${employeeId}`);
+    }
+  }
+
+  return {
+    acceptedCount: createdEmployeeIds.length + updatedEmployeeIds.length,
+    createdCount: createdEmployeeIds.length,
+    createdEmployeeIds,
+    rejected,
+    success: createdEmployeeIds.length + updatedEmployeeIds.length > 0,
+    updatedCount: updatedEmployeeIds.length,
+    updatedEmployeeIds,
+  };
+}
+
+/** @deprecated Prefer preview + commit. Legacy path creates new employees only (skips matched attendance codes). */
 export async function importEmployeesCsvAction(formData: FormData) {
   const context = await resolveBranchRequestContext("erp");
   await requirePermission({ context, permission: HR_PERMISSIONS.importExportManage });
   const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
 
-  const file = formData.get("file");
-  const csvText = file instanceof File ? await file.text() : String(formData.get("csv") ?? "");
-  if (!csvText.trim()) {
-    throw new ApplicationError({ code: "VALIDATION_ERROR", message: "CSV file is required." });
+  const payload = await readImportPayloadFromFormData(formData);
+  const hasContent = typeof payload.content === "string" ? payload.content.trim().length > 0 : payload.content.length > 0;
+  if (!hasContent) {
+    throw new ApplicationError({
+      code: "VALIDATION_ERROR",
+      message: "Excel or CSV file is required.",
+    });
   }
 
-  const validation = await validateEmployeeImportCsv(supabase, context, csvText);
+  const validation = await validateEmployeeImportFile(supabase, context, payload.content, payload.fileName);
   if (validation.accepted.length === 0) {
     return {
       acceptedCount: 0,

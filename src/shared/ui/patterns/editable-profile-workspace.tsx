@@ -174,7 +174,13 @@ export function EditableProfileField({
       canView={canView}
       description={field.description}
       editorType={field.editorType ?? "text"}
-      formatDisplay={field.formatDisplay ? () => field.formatDisplay?.(value) : undefined}
+      formatDisplay={
+        field.formatDisplay
+          ? () => field.formatDisplay?.(value)
+          : field.editorType === "select"
+            ? () => formatProfileFieldValue(value, field)
+            : undefined
+      }
       isRequired={field.isRequired}
       label={field.label}
       lookupOptions={field.lookupOptions}
@@ -182,6 +188,7 @@ export function EditableProfileField({
       name={field.name}
       ownership={ownership}
       permissionMessage={field.permissionMessage}
+      placeholder={field.editorType === "select" ? `Select ${field.label.toLowerCase()}` : undefined}
       selectOptions={field.selectOptions}
       validate={field.validate ? (nextValue) => field.validate?.(nextValue, sourceRecord) ?? null : undefined}
       value={value === null || value === undefined ? "" : value}

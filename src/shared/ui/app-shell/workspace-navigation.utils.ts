@@ -12,6 +12,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import type { SupportedLocale } from "@/platform/localization/public-api";
+
 import type {
   WorkspaceNavigationGroupKey,
   WorkspaceNavigationItem,
@@ -24,6 +26,7 @@ import {
   matchesNavigationQuery,
   navigationItemToWorkspaceNavItem,
   resolveActiveNavigationIndex,
+  resolveWorkspaceNavGroupLabel,
   sortNavigationItems,
   WORKSPACE_NAV_GROUP_LABELS,
   workspaceNavigationStorageKey,
@@ -57,6 +60,7 @@ export {
   matchesNavigationQuery,
   navigationItemToWorkspaceNavItem,
   resolveActiveNavigationIndex,
+  resolveWorkspaceNavGroupLabel,
   sortNavigationItems,
   WORKSPACE_NAV_GROUP_LABELS,
   workspaceNavigationStorageKey,
@@ -67,9 +71,15 @@ export {
 export function buildNavigationSections(
   items: readonly WorkspaceNavigationItem[],
   favoriteKeys: readonly string[] = [],
+  locale: SupportedLocale = "en",
 ): readonly WorkspaceNavigationSection[] {
-  return buildNavigationSectionsCore(items, favoriteKeys, (groupKey) => {
-    const knownKey = groupKey as WorkspaceNavigationGroupKey;
-    return (WORKSPACE_NAV_GROUP_ICONS[knownKey] ?? LayoutDashboard) as unknown as ReactNode;
-  });
+  return buildNavigationSectionsCore(
+    items,
+    favoriteKeys,
+    (groupKey) => {
+      const knownKey = groupKey as WorkspaceNavigationGroupKey;
+      return (WORKSPACE_NAV_GROUP_ICONS[knownKey] ?? LayoutDashboard) as unknown as ReactNode;
+    },
+    locale,
+  );
 }

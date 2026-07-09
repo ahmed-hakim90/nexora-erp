@@ -3,7 +3,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { Button, DatePicker, EntityLookup, Input, nativeSelectClassName } from "@/shared/ui";
+import { translateHrStatus } from "@/features/hr/public-api";
+import { Button, DatePicker, EntityLookup, Input, nativeSelectClassName, useTranslations } from "@/shared/ui";
 
 export function HrWorkforceFilterBar({
   action,
@@ -18,6 +19,7 @@ export function HrWorkforceFilterBar({
   query?: Record<string, string | undefined>;
   resetHref?: string;
 }>) {
+  const t = useTranslations();
   const resolvedAction = action ?? basePath;
   const resolvedReset = resetHref ?? basePath;
 
@@ -27,10 +29,10 @@ export function HrWorkforceFilterBar({
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">{children}</div>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" variant="secondary">
-          Apply filters
+          {t("hr.common.applyFilters")}
         </Button>
         <Link className="text-sm text-muted-foreground underline-offset-4 hover:underline" href={resolvedReset}>
-          Reset filters
+          {t("hr.common.resetFilters")}
         </Link>
       </div>
     </form>
@@ -41,21 +43,24 @@ export function HrWorkforceEmployeeFilter({
   defaultValue,
   name = "employeeId",
 }: Readonly<{ defaultValue?: string; name?: string }>) {
-  return <EntityLookup label="Employee" name={name} providerKey="hr.employees.lookup" value={defaultValue} />;
+  const t = useTranslations();
+  return <EntityLookup label={t("hr.common.employee")} name={name} providerKey="hr.employees.lookup" value={defaultValue} />;
 }
 
 export function HrWorkforceDepartmentFilter({
   defaultValue,
   name = "departmentId",
 }: Readonly<{ defaultValue?: string; name?: string }>) {
-  return <EntityLookup label="Department" name={name} providerKey="hr.org-units.lookup" value={defaultValue} />;
+  const t = useTranslations();
+  return <EntityLookup label={t("hr.common.department")} name={name} providerKey="hr.org-units.lookup" value={defaultValue} />;
 }
 
 export function HrWorkforceBranchFilter({
   defaultValue,
   name = "branchId",
 }: Readonly<{ defaultValue?: string; name?: string }>) {
-  return <EntityLookup label="Branch" name={name} providerKey="hr.branches.lookup" value={defaultValue} />;
+  const t = useTranslations();
+  return <EntityLookup label={t("hr.common.branch")} name={name} providerKey="hr.branches.lookup" value={defaultValue} />;
 }
 
 export function HrWorkforceStatusFilter({
@@ -67,12 +72,13 @@ export function HrWorkforceStatusFilter({
   name?: string;
   options: readonly { label: string; value: string }[];
 }>) {
+  const t = useTranslations();
   return (
     <select className={nativeSelectClassName} defaultValue={defaultValue ?? ""} name={name}>
-      <option value="">All statuses</option>
+      <option value="">{t("hr.common.allStatuses")}</option>
       {options.map((option) => (
         <option key={option.value} value={option.value}>
-          {option.label}
+          {translateHrStatus(t, option.label)}
         </option>
       ))}
     </select>
@@ -90,10 +96,11 @@ export function HrWorkforceDateRangeFilters({
   startName?: string;
   startValue?: string;
 }>) {
+  const t = useTranslations();
   return (
     <>
-      <DatePicker defaultValue={startValue} name={startName} placeholder="From date" />
-      <DatePicker defaultValue={endValue} name={endName} placeholder="To date" />
+      <DatePicker defaultValue={startValue} name={startName} placeholder={t("hr.common.fromDate")} />
+      <DatePicker defaultValue={endValue} name={endName} placeholder={t("hr.common.toDate")} />
     </>
   );
 }
@@ -101,7 +108,8 @@ export function HrWorkforceDateRangeFilters({
 export function HrWorkforceSearchFilter({
   defaultValue,
   name = "search",
-  placeholder = "Search",
+  placeholder,
 }: Readonly<{ defaultValue?: string; name?: string; placeholder?: string }>) {
-  return <Input defaultValue={defaultValue ?? ""} name={name} placeholder={placeholder} />;
+  const t = useTranslations();
+  return <Input defaultValue={defaultValue ?? ""} name={name} placeholder={placeholder ?? t("hr.common.search")} />;
 }

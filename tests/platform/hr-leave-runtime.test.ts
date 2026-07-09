@@ -99,5 +99,16 @@ test("hr leave runtime: foundation flags runtime implemented", async () => {
 test("hr leave runtime: conflict codes defined", async () => {
   const constants = await import("@/features/hr/application/constants/hr-leave-runtime.constants");
   assert.ok(constants.LEAVE_CONFLICT_CODES.includes("insufficient_balance"));
-  assert.ok(constants.DEFAULT_LEAVE_TYPE_SEEDS.length >= 8);
+});
+
+test("hr leave runtime: leave type schema validates create payload", async () => {
+  const { hrLeaveTypeCreateSchema } = await import("@/features/hr/application/schemas/hr-leave.schema");
+  const parsed = hrLeaveTypeCreateSchema.parse({
+    code: "annual",
+    name: "Annual Leave",
+    paid: "on",
+    status: "active",
+  });
+  assert.equal(parsed.code, "ANNUAL");
+  assert.equal(parsed.paid, true);
 });

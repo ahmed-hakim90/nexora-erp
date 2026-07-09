@@ -43,7 +43,12 @@ import {
 import { buildHrDeviceConnectionConfig } from "../utils/hr-attendance-device-connection";
 import { computeDeviceHealthDimensions } from "../utils/hr-attendance-device-health";
 import { formatHrDeviceTypeLabel } from "../utils/hr-attendance-device-display";
+import {
+  parseZktecoAttendanceCsv,
+  readAttendanceImportFileToCsvText,
+} from "../utils/hr-zkteco-csv-import";
 import { HrAttendanceDeviceSyncRunner } from "./hr-attendance-device-sync.runner";
+import type { RawDevicePunch } from "./hr-attendance-device-validation.service";
 
 const SYNC_JOB_DEFINITION = defineJob({
   key: HR_ATTENDANCE_DEVICE_SYNC_JOB_KEY,
@@ -565,6 +570,151 @@ export class HrAttendanceDeviceService {
     return { sessionId: String(session.id) };
   }
 
+  async startFileImportSync(
+    deviceId: string,
+    file: Readonly<{ buffer: ArrayBuffer; fileName: string }>,
+    options?: HrAttendanceDeviceSyncStrategyConfig["options"],
+  ): Promise<{ sessionId: string; warnings: readonly string[] }> {
+    const device = await this.getDeviceRow(deviceId);
+    if (String(device.device_type) !== "excel_import") {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: "This device is configured for live sync. Register an Excel/CSV import source device instead.",
+      });
+    }
+
+    const csvText = readAttendanceImportFileToCsvText(file);
+    const parsed = parseZktecoAttendanceCsv(csvText, String(device.code));
+    if (parsed.punches.length === 0) {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: parsed.errors[0] ?? "No punches were found in the uploaded file.",
+        cause: parsed.errors,
+      });
+    }
+
+    const downloadedPunches: RawDevicePunch[] = parsed.punches.map((punch) => ({
+      attendanceCode: punch.attendanceCode,
+      deviceCode: punch.deviceCode,
+      punchTime: punch.punchTime,
+      punchType: punch.punchType,
+    }));
+    const employeeNamesByCode = Object.fromEntries(
+      parsed.punches
+        .filter((punch) => punch.employeeName)
+        .map((punch) => [punch.attendanceCode, punch.employeeName!]),
+    );
+    const syncOptions = {
+      autoBuildPreview: true,
+      dryRun: false,
+      includeBreakPunches: true,
+      includeCheckIn: true,
+      includeCheckOut: true,
+      includeDeviceEvents: false,
+      includeInvalidPunches: false,
+      includeManualPunches: true,
+      recalculateAttendance: true,
+      skipDuplicates: true,
+      ...options,
+    };
+    const idempotencyKey = `device-file-import:${deviceId}:${file.fileName}:${Date.now()}`;
+    const correlationId = crypto.randomUUID();
+    const previewExpiresAt = new Date(Date.now() + HR_ATTENDANCE_DEVICE_PREVIEW_DRAFT_TTL_HOURS * 60 * 60 * 1000).toISOString();
+
+    const { data: session, error } = await this.supabase
+      .from("hr_attendance_device_sync_sessions")
+      .insert({
+        branch_id: device.branch_id,
+        company_id: this.context.companyId,
+        correlation_id: correlationId,
+        created_by: this.context.userId,
+        device_id: deviceId,
+        idempotency_key: idempotencyKey,
+        metadata: {
+          downloadedPunches,
+          employeeNamesByCode,
+          fileName: file.fileName,
+          importSource: "zkteco_csv",
+          parseWarnings: parsed.warnings,
+          recordsProcessed: downloadedPunches.length,
+          recordsTotal: downloadedPunches.length,
+          syncMode: "punches_only",
+          syncOptions,
+          syncStrategy: "incremental",
+        },
+        phase: "connect",
+        phase_message: `Queued CSV import for ${file.fileName}.`,
+        preview_expires_at: previewExpiresAt,
+        started_at: new Date().toISOString(),
+        status: "queued",
+        sync_strategy: "incremental",
+        tenant_id: this.context.tenantId,
+        updated_by: this.context.userId,
+      })
+      .select("id")
+      .single();
+
+    if (error || !session) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not start file import session.", cause: error });
+    }
+
+    const sessionId = String(session.id);
+
+    await this.updateDeviceHealth(deviceId, "sync_running");
+    await this.appendLog({
+      deviceId,
+      level: "info",
+      message: `CSV import started from ${file.fileName} (${downloadedPunches.length} punches).`,
+      sessionId,
+      source: "sync",
+    });
+    await recordAuditEvent({
+      action: defineAuditAction("hr.attendance.device.sync.started"),
+      category: "data-access",
+      context: this.context,
+      entityId: deviceId,
+      entityType: "hr_attendance_device",
+      metadata: { fileName: file.fileName, importSource: "zkteco_csv", punchCount: downloadedPunches.length, sessionId },
+      module: "hr",
+    });
+
+    return { sessionId, warnings: parsed.warnings };
+  }
+
+  async applyPreviewEdits(
+    sessionId: string,
+    edits: readonly Readonly<{
+      attendanceCode?: string;
+      originalKey: string;
+      punchTime?: string;
+      punchType?: "in" | "out";
+    }>[],
+  ): Promise<HrAttendanceDevicePreviewPayload> {
+    const session = await this.getSessionRow(sessionId);
+    if (String(session.status) !== "preview_ready") {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Preview is not ready for edits." });
+    }
+
+    const metadata = readDeviceMetadata(session.metadata);
+    const punches = [...((metadata.downloadedPunches as RawDevicePunch[] | undefined) ?? [])];
+    for (const edit of edits) {
+      const [attendanceCode, punchTime, punchType] = edit.originalKey.split("::");
+      const index = punches.findIndex(
+        (punch) =>
+          punch.attendanceCode === attendanceCode && punch.punchTime === punchTime && punch.punchType === punchType,
+      );
+      if (index < 0) continue;
+      punches[index] = {
+        ...punches[index]!,
+        attendanceCode: edit.attendanceCode ?? punches[index]!.attendanceCode,
+        punchTime: edit.punchTime ?? punches[index]!.punchTime,
+        punchType: edit.punchType ?? punches[index]!.punchType,
+      };
+    }
+
+    return this.syncRunner.rebuildSessionPreview(sessionId, punches);
+  }
+
   async advanceSync(sessionId: string): Promise<HrAttendanceDeviceSyncProgress> {
     const before = await this.getSessionRow(sessionId);
     if (String(before.status) === "cancelled") return this.mapProgress(before);
@@ -653,7 +803,12 @@ export class HrAttendanceDeviceService {
     return report;
   }
 
-  async saveEmployeeMapping(input: { deviceEmployeeCode: string; deviceId: string; employeeId: string }) {
+  async saveEmployeeMapping(input: {
+    deviceEmployeeCode: string;
+    deviceId: string;
+    employeeId: string;
+    sessionId?: string;
+  }) {
     const { data: existing } = await this.supabase
       .from("hr_attendance_device_employee_mappings")
       .select("id")
@@ -682,6 +837,15 @@ export class HrAttendanceDeviceService {
         });
 
     if (error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not save employee mapping.", cause: error });
+
+    if (input.sessionId) {
+      const session = await this.getSessionRow(input.sessionId);
+      const metadata = readDeviceMetadata(session.metadata);
+      const punches = (metadata.downloadedPunches as RawDevicePunch[] | undefined) ?? [];
+      if (punches.length > 0 && String(session.status) === "preview_ready") {
+        await this.syncRunner.rebuildSessionPreview(input.sessionId, punches);
+      }
+    }
   }
 
   async runDiagnostic(deviceId: string, action: string) {

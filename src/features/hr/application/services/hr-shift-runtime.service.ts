@@ -5,6 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ApplicationError } from "@/core/errors";
 import type { BranchRequestContext } from "@/platform/auth/server";
 
+import { HrShiftResolutionService } from "./hr-shift-resolution.service";
+
 export type ShiftWindow = Readonly<{
   endTime: string;
   shiftCode: string;
@@ -136,48 +138,90 @@ export class HrShiftRuntimeService {
     return { scheduleId: String(schedule.id) };
   }
 
-  async resolveEmployeeShiftWindow(employeeId: string, workDate: string): Promise<ShiftWindow | null> {
-    const { data: schedule } = await this.supabase
-      .from("hr_shift_schedules")
-      .select("id")
-      .eq("tenant_id", this.context.tenantId)
-      .eq("employee_id", employeeId)
-      .eq("status", "active")
-      .lte("effective_from", workDate)
-      .is("deleted_at", null)
-      .order("effective_from", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (!schedule) return null;
+  /** Sunday (0) through Thursday (4) — common working-week pattern in MENA operations. */
+  static readonly DEFAULT_WORKING_WEEK_DAYS = [0, 1, 2, 3, 4] as const;
 
-    const dayOfWeek = new Date(`${workDate}T12:00:00.000Z`).getUTCDay();
-    const { data: line } = await this.supabase
-      .from("hr_shift_schedule_lines")
-      .select("shift_version_id, is_rest_day")
-      .eq("shift_schedule_id", schedule.id)
-      .eq("day_of_week", dayOfWeek)
-      .eq("status", "active")
-      .is("deleted_at", null)
-      .order("week_index", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (!line || line.is_rest_day || !line.shift_version_id) return null;
+  async assignShiftWorkingWeekPattern(input: {
+    dayOfWeek?: number;
+    effectiveFrom: string;
+    employeeId: string;
+    employmentProfileId: string;
+    applyWorkingDays?: boolean;
+    shiftId: string;
+    weekIndex?: number;
+  }): Promise<{ scheduleId: string }> {
+    const { data: schedule, error: scheduleError } = await this.supabase
+      .from("hr_shift_schedules")
+      .insert({
+        branch_id: this.context.branchId,
+        company_id: this.context.companyId,
+        created_by: this.context.userId,
+        effective_from: input.effectiveFrom,
+        employee_id: input.employeeId,
+        employment_profile_id: input.employmentProfileId,
+        metadata: { shift_runtime_implemented: true, working_week_pattern: Boolean(input.applyWorkingDays !== false) },
+        status: "active",
+        tenant_id: this.context.tenantId,
+        updated_by: this.context.userId,
+      })
+      .select("id")
+      .single();
+    if (scheduleError || !schedule) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create shift schedule.", cause: scheduleError });
+    }
 
     const { data: version } = await this.supabase
       .from("hr_shift_versions")
-      .select("id, start_time, end_time, shift_id, hr_shift_definitions!inner(code, name, shift_kind)")
-      .eq("id", line.shift_version_id)
+      .select("id")
+      .eq("shift_id", input.shiftId)
+      .eq("tenant_id", this.context.tenantId)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .order("version_no", { ascending: false })
+      .limit(1)
       .maybeSingle();
-    if (!version) return null;
 
-    const definition = version.hr_shift_definitions as unknown as { code: string; name: string; shift_kind: string };
+    const days =
+      input.applyWorkingDays === false && input.dayOfWeek !== undefined
+        ? [input.dayOfWeek]
+        : [...HrShiftRuntimeService.DEFAULT_WORKING_WEEK_DAYS];
+
+    const lines = days.map((dayOfWeek) => ({
+      branch_id: this.context.branchId,
+      company_id: this.context.companyId,
+      created_by: this.context.userId,
+      day_of_week: dayOfWeek,
+      effective_from: input.effectiveFrom,
+      is_rest_day: false,
+      metadata: { shift_runtime_implemented: true },
+      shift_schedule_id: schedule.id,
+      shift_version_id: version?.id ?? null,
+      status: "active",
+      tenant_id: this.context.tenantId,
+      updated_by: this.context.userId,
+      week_index: input.weekIndex ?? 0,
+    }));
+
+    const { error: lineError } = await this.supabase.from("hr_shift_schedule_lines").insert(lines);
+    if (lineError) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create shift schedule lines.", cause: lineError });
+    }
+
+    return { scheduleId: String(schedule.id) };
+  }
+
+  async resolveEmployeeShiftWindow(employeeId: string, workDate: string): Promise<ShiftWindow | null> {
+    const shiftResolver = new HrShiftResolutionService(this.supabase, this.context);
+    const resolved = await shiftResolver.resolveEmployeeShiftWindow({ employeeId, workDate });
+    if (resolved.source === "policy_default" && !resolved.shiftId) return null;
+
     return {
-      endTime: String(version.end_time).slice(0, 5),
-      shiftCode: String(definition.code),
-      shiftId: String(version.shift_id),
-      shiftKind: String(definition.shift_kind),
-      shiftName: String(definition.name),
-      startTime: String(version.start_time).slice(0, 5),
+      endTime: resolved.shiftEnd.slice(0, 5),
+      shiftCode: resolved.shiftCode ?? "DEFAULT",
+      shiftId: resolved.shiftId ?? "",
+      shiftKind: resolved.isRestDay ? "rest" : "regular",
+      shiftName: resolved.shiftName ?? "Resolved Shift",
+      startTime: resolved.shiftStart.slice(0, 5),
     };
   }
 }

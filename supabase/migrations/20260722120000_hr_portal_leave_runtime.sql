@@ -18,6 +18,7 @@ where r.role_key = 'hr-self-service'
 on conflict do nothing;
 
 -- Portal users can read active leave types for request forms.
+drop policy if exists hr_leave_types_self_select on public.hr_leave_types;
 create policy hr_leave_types_self_select on public.hr_leave_types for select to authenticated
   using (
     is_active = true
@@ -28,6 +29,7 @@ create policy hr_leave_types_self_select on public.hr_leave_types for select to 
   );
 
 -- ESS: create own leave requests (draft/submitted only).
+drop policy if exists hr_leave_requests_self_insert on public.hr_leave_requests;
 create policy hr_leave_requests_self_insert on public.hr_leave_requests for insert to authenticated
   with check (
     is_active = true
@@ -45,6 +47,7 @@ create policy hr_leave_requests_self_insert on public.hr_leave_requests for inse
   );
 
 -- ESS: update own leave requests while pending approval.
+drop policy if exists hr_leave_requests_self_update on public.hr_leave_requests;
 create policy hr_leave_requests_self_update on public.hr_leave_requests for update to authenticated
   using (
     is_active = true
@@ -75,6 +78,7 @@ create policy hr_leave_requests_self_update on public.hr_leave_requests for upda
   );
 
 -- MSS: managers approve or reject direct-report leave requests.
+drop policy if exists hr_leave_requests_manager_update on public.hr_leave_requests;
 create policy hr_leave_requests_manager_update on public.hr_leave_requests for update to authenticated
   using (
     is_active = true

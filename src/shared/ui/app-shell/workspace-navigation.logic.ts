@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 
+import {
+  navGroupMessageKey,
+  translate,
+  type SupportedLocale,
+} from "@/platform/localization/public-api";
+
 import type {
   WorkspaceNavItem,
   WorkspaceNavigationGroupKey,
@@ -26,6 +32,18 @@ export const WORKSPACE_NAV_GROUP_LABELS: Readonly<
   talent: "Talent",
   transactions: "Transactions",
 };
+
+export function resolveWorkspaceNavGroupLabel(
+  groupKey: string,
+  locale: SupportedLocale = "en",
+): string {
+  const messageKey = navGroupMessageKey(groupKey);
+  if (messageKey) {
+    return translate(locale, messageKey);
+  }
+  const known = WORKSPACE_NAV_GROUP_LABELS[groupKey as WorkspaceNavigationGroupKey];
+  return known ?? formatGroupLabel(groupKey);
+}
 
 const GROUP_ORDER: readonly WorkspaceNavigationGroupKey[] = [
   "overview",
@@ -118,6 +136,7 @@ export function buildNavigationSections(
   items: readonly WorkspaceNavigationItem[],
   favoriteKeys: readonly string[] = [],
   resolveGroupIcon?: (groupKey: WorkspaceNavigationGroupKey | string) => ReactNode | undefined,
+  locale: SupportedLocale = "en",
 ): readonly WorkspaceNavigationSection[] {
   const visible = getVisibleNavigationItems(items);
   const grouped = new Map<string, WorkspaceNavigationItem[]>();
@@ -143,7 +162,7 @@ export function buildNavigationSections(
       icon: resolveGroupIcon?.(knownKey),
       items: groupItems,
       key,
-      title: WORKSPACE_NAV_GROUP_LABELS[knownKey] ?? formatGroupLabel(key),
+      title: resolveWorkspaceNavGroupLabel(key, locale),
     };
   });
 }

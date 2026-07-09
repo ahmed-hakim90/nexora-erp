@@ -19,10 +19,12 @@ export function CommandPalette({
   items,
   open,
   onOpenChange,
+  enableShortcut = true,
 }: Readonly<{
   items: readonly CommandPaletteItem[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  enableShortcut?: boolean;
 }>) {
   const groups = useMemo(() => {
     const grouped = new Map<string, CommandPaletteItem[]>();
@@ -36,6 +38,10 @@ export function CommandPalette({
   }, [items]);
 
   useEffect(() => {
+    if (!enableShortcut) {
+      return;
+    }
+
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -45,7 +51,7 @@ export function CommandPalette({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onOpenChange, open]);
+  }, [enableShortcut, onOpenChange, open]);
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open} title="Command palette">

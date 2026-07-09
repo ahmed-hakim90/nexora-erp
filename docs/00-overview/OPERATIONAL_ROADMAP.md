@@ -89,8 +89,8 @@ Reach the first **Production Ready** release that can run a real company, then p
 
 | Sprint | Scope | Status | Exit Criteria |
 | --- | --- | --- | --- |
-| **OP-24** | Payroll operator: calendar, period, run, validation, lock, approve, close, publish | Partial | Full calculation runtime |
-| **OP-25** | Egypt localization: tax, social insurance, EOS, statutory reporting | Not Started | Egypt country pack active |
+| **OP-24** | Payroll operator: calendar, period, run, validation, lock, approve, close, publish | **Completed (runtime)** | Period lifecycle service, snapshot-only calc, lock/close/reopen |
+| **OP-25** | Egypt localization: tax, social insurance, EOS, statutory reporting | **Partial (MVP)** | In-code Egypt calc + WPS export; pack-driven rules deferred |
 | **OP-26** | ESS: profile, leave, attendance, documents, payroll, loans, requests | **Partial** | Leave submit + balances; portal RLS; withdraw/cancel UI deferred |
 | **OP-27** | MSS: team, approvals, attendance, leave, performance dashboards | **Partial** | Team + leave approve/reject; OT/attendance approvals deferred |
 
@@ -127,6 +127,20 @@ Dashboard Builder · BI · AI Copilot · Workflow Automation · Predictive Analy
 ---
 
 ## Final Production Gate
+
+### HCM Enterprise Production Ready (5 gates)
+
+Before declaring **Nexora HCM Enterprise Production Ready**:
+
+1. Snapshot-only payroll calculation (no live fallback in production)
+2. Payroll period lifecycle with post-lock mutation guards
+3. Unified shift resolution across attendance, late/early, and OT
+4. UAT end-to-end cycle on realistic data without manual workarounds
+5. `IMPLEMENTATION_STATUS` and `OPERATIONAL_ROADMAP` reflect current state
+
+See [HCM_UAT_E2E_CHECKLIST.md](../09-history/HCM_UAT_E2E_CHECKLIST.md).
+
+### Platform v1.0 reviews
 
 Before declaring **Nexora ERP v1.0 Production Ready**, all reviews must pass:
 

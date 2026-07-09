@@ -9,6 +9,7 @@ import { requirePermission } from "@/platform/permissions/server";
 
 import { HR_REQUEST_TYPES } from "../../application/constants/hr-operational.constants";
 import { HrFileAttachmentService } from "../../application/services/hr-file-attachment.service";
+import { HrOnboardingDocumentSyncService } from "../../application/services/hr-onboarding-document-sync.service";
 import { HrAssignmentCacheService } from "../../application/services/hr-assignment-cache.service";
 import { runHrExpiryNotificationScan } from "../../application/services/hr-notification-runtime.service";
 import { hrEmployeeQuickEditSchema } from "../../application/schemas/hr-employees.schema";
@@ -16,6 +17,7 @@ import {
   assertNoBlockingEmployeeValidationIssues,
   validateEmployeeUniqueness,
 } from "../../application/services/hr-employee-validation.service";
+import { resolveEmployeeAttendanceCode } from "../../application/utils/hr-employee-identity-code";
 import { HR_PERMISSIONS } from "../../permissions/permission-registry";
 
 async function resolveEmploymentProfileId(
@@ -89,14 +91,32 @@ export async function createHrEmployeeDocumentAction(formData: FormData) {
     throw new ApplicationError({ code: "VALIDATION_ERROR", message: "File or document title is required." });
   }
 
+  await new HrOnboardingDocumentSyncService(supabase, context).syncAfterDocumentChange(employeeId);
+  revalidateDocumentCompliancePaths(employeeId);
+}
+
+function revalidateDocumentCompliancePaths(employeeId?: string) {
   revalidatePath("/erp/hr/documents");
-  revalidatePath(`/erp/hr/employees/${employeeId}`);
+  revalidatePath("/erp/hr/dashboard");
+  revalidatePath("/erp/hr/onboarding");
+  revalidatePath("/erp/hr/payroll-readiness");
+  if (employeeId) revalidatePath(`/erp/hr/employees/${employeeId}`);
 }
 
 export async function archiveHrEmployeeDocumentAction(documentId: string) {
   const context = await resolveBranchRequestContext("erp");
   await requirePermission({ context, permission: HR_PERMISSIONS.employeesManage });
   const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+  const { data: attachment, error: readError } = await supabase
+    .from("file_attachments")
+    .select("entity_id")
+    .eq("tenant_id", context.tenantId)
+    .eq("id", documentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (readError) {
+    throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not load document.", cause: readError });
+  }
   const { error } = await supabase
     .from("file_attachments")
     .update({
@@ -109,7 +129,11 @@ export async function archiveHrEmployeeDocumentAction(documentId: string) {
     .eq("id", documentId)
     .is("deleted_at", null);
   if (error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not archive document.", cause: error });
-  revalidatePath("/erp/hr/documents");
+  const employeeId = attachment?.entity_id ? String(attachment.entity_id) : undefined;
+  if (employeeId) {
+    await new HrOnboardingDocumentSyncService(supabase, context).syncAfterDocumentChange(employeeId);
+  }
+  revalidateDocumentCompliancePaths(employeeId);
 }
 
 export async function updateEmployeeQuickEditAction(formData: FormData) {
@@ -137,10 +161,12 @@ export async function updateEmployeeQuickEditAction(formData: FormData) {
     phone: formData.get("phone") || undefined,
   });
 
+  const employeeNumber = parsed.employeeNumber ?? null;
+  const attendanceCode = resolveEmployeeAttendanceCode(employeeNumber);
   const uniquenessIssues = await validateEmployeeUniqueness(supabase, context, {
-    attendanceCode: parsed.attendanceCode ?? null,
+    attendanceCode,
     employeeId: parsed.employeeId,
-    employeeNumber: parsed.employeeNumber ?? null,
+    employeeNumber,
     nationalId: parsed.nationalId ?? null,
   });
   assertNoBlockingEmployeeValidationIssues(uniquenessIssues);
@@ -161,7 +187,7 @@ export async function updateEmployeeQuickEditAction(formData: FormData) {
   const { error } = await supabase
     .from("hr_employees")
     .update({
-      attendance_code: parsed.attendanceCode ?? null,
+      attendance_code: attendanceCode,
       birth_date: parsed.birthDate || null,
       contact_info: {
         ...(typeof existing.contact_info === "object" && existing.contact_info && !Array.isArray(existing.contact_info) ? existing.contact_info : {}),
@@ -343,32 +369,19 @@ export async function createHrContractAction(formData: FormData) {
   await requirePermission({ context, permission: HR_PERMISSIONS.contractsManage });
   const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
 
-  const { hrContractCreateSchema } = await import("../../application/schemas/hr-compensation.schema");
+  const { hrContractCreateSchema } = await import("../../application/schemas/hr-contracts.schema");
+  const { HrContractTypeService } = await import("../../application/services/hr-contract-type.service");
   const parsed = hrContractCreateSchema.parse({
     contractNumber: formData.get("contractNumber"),
-    contractType: formData.get("contractType"),
+    contractTypeVersionId: formData.get("contractTypeVersionId"),
     employeeId: formData.get("employeeId"),
     endsOn: formData.get("endsOn") || undefined,
     startsOn: formData.get("startsOn"),
   });
 
   const employmentProfileId = await resolveEmploymentProfileId(supabase, context, parsed.employeeId);
-
-  const { error } = await supabase.from("hr_contracts").insert({
-    branch_id: context.branchId,
-    company_id: context.companyId,
-    contract_number: parsed.contractNumber,
-    contract_type: parsed.contractType,
-    created_by: context.userId,
-    employee_id: parsed.employeeId,
-    employment_profile_id: employmentProfileId,
-    ends_on: parsed.endsOn || null,
-    starts_on: parsed.startsOn,
-    status: "active",
-    tenant_id: context.tenantId,
-    updated_by: context.userId,
-  });
-  if (error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create contract.", cause: error });
+  const service = new HrContractTypeService(supabase, context);
+  await service.createContract(parsed, employmentProfileId);
 
   revalidatePath("/erp/hr/contracts");
   revalidatePath(`/erp/hr/employees/${parsed.employeeId}`);
@@ -381,7 +394,7 @@ export async function transitionHrContractAction(contractId: string, action: "re
 
   const { data: contract, error: readError } = await supabase
     .from("hr_contracts")
-    .select("id, employee_id, employment_profile_id, contract_number, contract_type, starts_on, ends_on, status")
+    .select("id, employee_id, employment_profile_id, contract_number, contract_type, contract_type_version_id, legal_terms, starts_on, ends_on, status")
     .eq("tenant_id", context.tenantId)
     .eq("id", contractId)
     .single();
@@ -412,22 +425,61 @@ export async function transitionHrContractAction(contractId: string, action: "re
       .eq("id", contractId);
     if (error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not resume contract.", cause: error });
   } else {
-    const { error } = await supabase.from("hr_contracts").insert({
-      branch_id: context.branchId,
-      company_id: context.companyId,
-      contract_number: `${contract.contract_number}-${action.toUpperCase()}`,
-      contract_type: contract.contract_type,
-      created_by: context.userId,
-      employee_id: contract.employee_id,
-      employment_profile_id: contract.employment_profile_id,
-      ends_on: endsOn,
-      metadata: { previous_contract_id: contractId, action, reason },
-      starts_on: effectiveDate,
-      status: action === "renew" ? "active" : "draft",
-      tenant_id: context.tenantId,
-      updated_by: context.userId,
-    });
-    if (error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not ${action} contract.`, cause: error });
+    const { HrContractTypeService } = await import("../../application/services/hr-contract-type.service");
+    const contractService = new HrContractTypeService(supabase, context);
+    const renewalEvidence =
+      action === "renew"
+        ? await contractService.buildRenewalContractEvidence({
+            contract_type: String(contract.contract_type),
+            contract_type_version_id: contract.contract_type_version_id ? String(contract.contract_type_version_id) : null,
+            legal_terms: contract.legal_terms,
+          })
+        : {
+            contractType: String(contract.contract_type),
+            contractTypeVersionId: contract.contract_type_version_id ? String(contract.contract_type_version_id) : null,
+            legalTerms: (contract.legal_terms as Record<string, never>) ?? {},
+          };
+
+    const { data: insertedContract, error } = await supabase
+      .from("hr_contracts")
+      .insert({
+        branch_id: context.branchId,
+        company_id: context.companyId,
+        contract_number: `${contract.contract_number}-${action.toUpperCase()}`,
+        contract_type: renewalEvidence.contractType,
+        contract_type_version_id: renewalEvidence.contractTypeVersionId,
+        created_by: context.userId,
+        employee_id: contract.employee_id,
+        employment_profile_id: contract.employment_profile_id,
+        ends_on: endsOn,
+        legal_terms: renewalEvidence.legalTerms,
+        metadata: { previous_contract_id: contractId, action, reason },
+        starts_on: effectiveDate,
+        status: action === "renew" ? "active" : "draft",
+        tenant_id: context.tenantId,
+        updated_by: context.userId,
+      })
+      .select("id")
+      .single();
+    if (error || !insertedContract) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not ${action} contract.`, cause: error });
+
+    if (action === "renew" && renewalEvidence.legalTerms && typeof renewalEvidence.legalTerms === "object" && "schema" in renewalEvidence.legalTerms) {
+      const { recordAuditEvent } = await import("@/platform/audit/server");
+      const { HR_CONTRACT_TYPE_AUDIT_ACTIONS } = await import("../../contract-type-foundation");
+      await recordAuditEvent({
+        action: HR_CONTRACT_TYPE_AUDIT_ACTIONS.contractLegalTermsSnapshotted,
+        category: "data-access",
+        context,
+        entityId: String(insertedContract.id),
+        entityType: "hr_contracts",
+        metadata: {
+          action: "renew",
+          contractTypeVersionId: renewalEvidence.contractTypeVersionId,
+          previousContractId: contractId,
+        },
+        module: "hr",
+      });
+    }
   }
 
   await supabase.from("hr_employee_timeline_events").insert({

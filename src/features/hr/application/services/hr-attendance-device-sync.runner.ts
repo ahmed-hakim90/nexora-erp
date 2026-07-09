@@ -92,6 +92,28 @@ function buildEmployeeCodeOrFilter(codes: readonly string[]): string | null {
   return uniqueCodes.flatMap((code) => [`attendance_code.eq.${code}`, `employee_number.eq.${code}`]).join(",");
 }
 
+function isFileImportSession(metadata: Record<string, unknown>) {
+  return metadata.importSource === "zkteco_csv";
+}
+
+function buildEmployeesFromPunches(
+  punches: readonly RawDevicePunch[],
+  namesByCode?: ReadonlyMap<string, string>,
+): HrAttendanceDevicePreviewEmployee[] {
+  const byCode = new Map<string, HrAttendanceDevicePreviewEmployee>();
+  for (const punch of punches) {
+    if (byCode.has(punch.attendanceCode)) continue;
+    byCode.set(punch.attendanceCode, {
+      attendanceCode: punch.attendanceCode,
+      deviceCode: punch.deviceCode,
+      employeeId: null,
+      employeeLabel: namesByCode?.get(punch.attendanceCode) ?? punch.attendanceCode,
+      matchStatus: "unknown",
+    });
+  }
+  return [...byCode.values()];
+}
+
 export class HrAttendanceDeviceSyncRunner {
   private readonly validationService = new HrAttendanceDeviceValidationService();
   private readonly attendanceService: HrAttendanceService;
@@ -116,6 +138,25 @@ export class HrAttendanceDeviceSyncRunner {
     const syncMode = String(sessionMetadata.syncMode ?? syncConfig.strategy);
 
     if (phase === "connect") {
+      if (isFileImportSession(sessionMetadata)) {
+        const downloadedPunches = (sessionMetadata.downloadedPunches as RawDevicePunch[]) ?? [];
+        const namesByCode = new Map(
+          Object.entries((sessionMetadata.employeeNamesByCode as Record<string, string> | undefined) ?? {}),
+        );
+        const downloadedEmployees =
+          (sessionMetadata.downloadedEmployees as HrAttendanceDevicePreviewEmployee[] | undefined) ??
+          buildEmployeesFromPunches(downloadedPunches, namesByCode);
+        return this.transition(session, "validate", `Loaded ${downloadedPunches.length} punches from file.`, {
+          health_status: "online",
+          last_heartbeat_at: new Date().toISOString(),
+        }, {
+          downloadedEmployees,
+          downloadedPunches,
+          recordsProcessed: downloadedPunches.length,
+          recordsTotal: downloadedPunches.length,
+        });
+      }
+
       const nextPhase =
         syncMode === "punches_only" || syncMode === "templates_only" || syncMode === "configuration_only"
           ? "download_punches"
@@ -208,6 +249,37 @@ export class HrAttendanceDeviceSyncRunner {
     return session;
   }
 
+  async rebuildSessionPreview(
+    sessionId: string,
+    punches: readonly RawDevicePunch[],
+  ): Promise<HrAttendanceDevicePreviewPayload> {
+    const session = await this.getSession(sessionId);
+    const device = await this.getDevice(String(session.device_id));
+    const metadata = readDeviceMetadata(session.metadata);
+    const namesByCode = new Map(
+      Object.entries((metadata.employeeNamesByCode as Record<string, string> | undefined) ?? {}),
+    );
+    const downloadedEmployees = buildEmployeesFromPunches(punches, namesByCode);
+    const nextMetadata = {
+      ...metadata,
+      downloadedEmployees,
+      downloadedPunches: punches,
+    };
+    const preview = await this.buildPreviewPayload({ ...session, metadata: nextMetadata }, device);
+    await this.updateSession(sessionId, {
+      metadata: nextMetadata,
+      phase: "ready_to_import",
+      phase_message: "Preview updated after operator edits.",
+      preview_payload: preview,
+      progress: 100,
+      records_processed: punches.length,
+      records_total: punches.length,
+      status: "preview_ready",
+      summary: preview.summary,
+    });
+    return preview;
+  }
+
   async executeImport(
     sessionId: string,
     decision: "all" | "valid_only" | "selected_employees" | "selected_days" | "selected_records",
@@ -227,6 +299,7 @@ export class HrAttendanceDeviceSyncRunner {
     const device = await this.getDevice(String(session.device_id));
     const sessionMetadata = readDeviceMetadata(session.metadata);
     const syncConfig = readSyncStrategyConfig(sessionMetadata);
+    const importSource = sessionMetadata.importSource === "zkteco_csv" ? "file_import" : "biometric_device";
     const punches = preview.punches.filter((punch) => {
       if (decision === "valid_only") return punch.importResult === "ready";
       if (decision === "selected_employees") {
@@ -289,7 +362,7 @@ export class HrAttendanceDeviceSyncRunner {
         metadata: { imported_from_device_sync: true, session_id: sessionId },
         punch_time: punch.punchTime,
         punch_type: punch.punchType,
-        source: "biometric_device",
+        source: importSource,
         status: punch.importResult === "duplicate" ? "duplicate" : "imported",
         tenant_id: this.context.tenantId,
         updated_by: this.context.userId,

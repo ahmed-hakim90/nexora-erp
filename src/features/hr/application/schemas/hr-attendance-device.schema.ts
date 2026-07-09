@@ -24,6 +24,20 @@ export const hrAttendanceDeviceListQuerySchema = z.object({
 });
 
 export const HR_ATTENDANCE_DEVICE_TCP_TYPES = ["zkteco", "suprema", "anviz", "fingertec"] as const;
+export const HR_ATTENDANCE_DEVICE_FILE_IMPORT_TYPES = ["excel_import"] as const;
+export const HR_ATTENDANCE_DEVICE_REST_TYPES = ["api_import", "cloud_attendance"] as const;
+
+export function isHrAttendanceFileImportDeviceType(deviceType: string): boolean {
+  return (HR_ATTENDANCE_DEVICE_FILE_IMPORT_TYPES as readonly string[]).includes(deviceType);
+}
+
+export function isHrAttendanceTcpDeviceType(deviceType: string): boolean {
+  return (HR_ATTENDANCE_DEVICE_TCP_TYPES as readonly string[]).includes(deviceType);
+}
+
+export function isHrAttendanceRestDeviceType(deviceType: string): boolean {
+  return (HR_ATTENDANCE_DEVICE_REST_TYPES as readonly string[]).includes(deviceType);
+}
 
 export const HR_ATTENDANCE_DEVICE_DEFAULT_PORTS: Record<string, number> = {
   anviz: 5010,
@@ -101,6 +115,24 @@ export const hrAttendanceDeviceMappingSchema = z.object({
   deviceId: z.string().uuid(),
   employeeId: z.string().uuid(),
   sessionId: z.string().uuid().optional(),
+});
+
+export const hrAttendanceDevicePreviewEditSchema = z.object({
+  attendanceCode: z.string().trim().min(1).max(50).optional(),
+  originalKey: z.string().trim().min(1),
+  punchTime: z.string().trim().min(1).optional(),
+  punchType: z.enum(["in", "out"]).optional(),
+});
+
+export const hrAttendanceDevicePreviewEditsSchema = z.object({
+  edits: z.array(hrAttendanceDevicePreviewEditSchema).min(1),
+  sessionId: z.string().uuid(),
+});
+
+export const hrAttendanceDeviceFileImportSchema = z.object({
+  deviceId: z.string().uuid(),
+  recalculateAttendance: z.coerce.boolean().default(true),
+  skipDuplicates: z.coerce.boolean().default(true),
 });
 
 export const hrAttendanceDeviceSyncModeSchema = z.object({

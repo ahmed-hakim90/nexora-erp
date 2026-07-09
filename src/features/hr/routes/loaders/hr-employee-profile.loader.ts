@@ -3,10 +3,13 @@ import "server-only";
 import { ApplicationError } from "@/core/errors";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
-import { requirePermission } from "@/platform/permissions/server";
+import { hasServerPermission, requirePermission } from "@/platform/permissions/server";
 
 import { HrAssignmentResolverService } from "../../application/services/hr-assignment-resolver.service";
+import { HrEmployeeCompensationService } from "../../application/services/hr-employee-compensation.service";
+import { HrEmployeeHireReadinessService, type HrEmployeeHireReadiness } from "../../application/services/hr-employee-hire-readiness.service";
 import type { HrEmployeeAssignmentSnapshot, HrTimelineEntry } from "../../application/types/hr-ui.types";
+import type { HrEmployeeDocumentCompliance } from "../../application/utils/hr-document-compliance.evaluate";
 import { formatHrDisplayLabel, formatHrStatusLabel, readContactField } from "../../application/utils/hr-display";
 import { HR_PERMISSIONS } from "../../permissions/permission-registry";
 
@@ -68,11 +71,36 @@ export type HrEmployeeProfileData = Readonly<{
   payrollReadiness: readonly { label: string; status: string }[];
   pendingActions: readonly { id: string; label: string; status: string }[];
   alerts: readonly { id: string; label: string; severity: "info" | "warning" | "error" }[];
+  documentCompliance: HrEmployeeDocumentCompliance;
+  canManageDocumentWaivers: boolean;
   documents: readonly { id: string; fileName: string; documentType: string; expiresOn: string | null; status: string }[];
   custodyItems: readonly { id: string; assetLabel: string; assetType: string; status: string; effectiveDate: string }[];
   skillRecords: readonly { id: string; skillName: string; status: string; effectiveFrom: string }[];
   skillOptions: readonly { id: string; label: string }[];
   financialSummary: Readonly<{ activeAdvances: number; activeLoans: number; pendingBonuses: number }>;
+  compensation: Readonly<{
+    basicSalaryFromPackage: number | null;
+    basicSalaryOverride: number | null;
+    basicSalarySource: "profile" | "package" | null;
+    canEdit: boolean;
+    conflictMessage: string | null;
+    employmentProfileId: string | null;
+    hasConflict: boolean;
+    hourlyRate: number | null;
+    missingCompensation: boolean;
+    packageAllowanceTotal: number;
+    packageLines: readonly {
+      amount: number;
+      categoryKey: string;
+      code: string;
+      name: string;
+      source: "package" | "profile";
+    }[];
+    resolvedBasicSalary: number | null;
+    resolvedMonthlyTotal: number;
+    salaryPackageLabel: string | null;
+  }>;
+  hireReadiness: HrEmployeeHireReadiness;
 }>;
 
 export async function loadHrEmployeeProfile(employeeId: string): Promise<HrEmployeeProfileData> {
@@ -98,6 +126,13 @@ export async function loadHrEmployeeProfile(employeeId: string): Promise<HrEmplo
 
   const resolver = new HrAssignmentResolverService(supabase, context);
   const assignment = await resolver.resolveEmployeeAssignments(employeeId);
+  const compensationService = new HrEmployeeCompensationService(supabase, context);
+  const [compensationResolution, canEditCompensation, canManageDocumentWaivers] = await Promise.all([
+    compensationService.resolveEmployeeCompensation({ employeeId }),
+    hasServerPermission({ context, permission: HR_PERMISSIONS.compensationOverridesManage }),
+    hasServerPermission({ context, permission: HR_PERMISSIONS.employeesManage }),
+  ]);
+  const documentCompliance = await new HrEmployeeDocumentComplianceService(supabase, context).evaluateEmployee(employeeId);
 
   const [contractsResult, timelineResult, leaveResult, leaveRequestsResult, leaveLedgerResult, leaveEncashmentResult, leavePoliciesResult, overtimeRequestsResult, overtimeCandidatesResult, lateEarlyViolationsResult, lateEarlyPoliciesResult, actionsResult, validationResult, documentsResult, custodyResult, skillsResult, advancesResult, loansResult, bonusesResult, allSkillsResult] = await Promise.all([
     supabase
@@ -470,11 +505,44 @@ export async function loadHrEmployeeProfile(employeeId: string): Promise<HrEmplo
       : null,
   ].filter((item): item is NonNullable<typeof item> => item !== null);
 
+  const hireReadiness = await new HrEmployeeHireReadinessService(supabase, context).evaluateEmployee(employeeId);
+  if (!hireReadiness.mandatoryComplete) {
+    alerts.push({
+      id: "hire-readiness",
+      label: `${hireReadiness.mandatoryPendingCount} hire setup items pending`,
+      severity: "warning",
+    });
+  }
+
   return {
     alerts,
     assignment,
+    compensation: {
+      basicSalaryFromPackage: compensationResolution.basicSalaryFromPackage,
+      basicSalaryOverride: compensationResolution.basicSalaryOverride,
+      basicSalarySource: compensationResolution.basicSalarySource,
+      canEdit: canEditCompensation,
+      conflictMessage: compensationResolution.conflictMessage,
+      employmentProfileId: compensationResolution.employmentProfileId,
+      hasConflict: compensationResolution.conflict,
+      hourlyRate: compensationResolution.hourlyRate,
+      missingCompensation: compensationResolution.missingCompensation,
+      packageAllowanceTotal: compensationResolution.packageAllowanceTotal,
+      packageLines: compensationResolution.lines.map((line) => ({
+        amount: line.amount,
+        categoryKey: line.categoryKey,
+        code: line.code,
+        name: line.name,
+        source: line.source,
+      })),
+      resolvedBasicSalary: compensationResolution.basicSalaryAmount,
+      resolvedMonthlyTotal: compensationResolution.resolvedMonthlyTotal,
+      salaryPackageLabel: compensationResolution.salaryPackageLabel,
+    },
+    canManageDocumentWaivers,
     contracts,
     custodyItems,
+    documentCompliance,
     documents,
     employee: {
       birthDate: employee.birth_date ? String(employee.birth_date) : null,
@@ -491,6 +559,7 @@ export async function loadHrEmployeeProfile(employeeId: string): Promise<HrEmplo
       status: formatHrStatusLabel(String(employee.status)),
     },
     financialSummary,
+    hireReadiness,
     leaveBalanceSummary,
     leaveRuntime,
     lateEarlyRuntime,

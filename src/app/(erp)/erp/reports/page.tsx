@@ -28,7 +28,10 @@ export default async function EnterpriseReportsPage() {
   return (
     <AppShell
       {...createErpShellChrome(undefined, runtime)}
-      breadcrumbs={[{ href: "/erp", label: "Apps" }, { label: "Reports" }]}
+      breadcrumbs={[
+        { href: "/erp", label: "Apps", messageKey: "shell.apps.label" },
+        { label: "Reports", messageKey: "nav.group.reports" },
+      ]}
       workspace={{ key: "reports", name: "Reports", icon: <BarChart3 className="size-4" /> }}
       workspaceNav={[
         { key: "reports", label: "Reports", href: "/erp/reports", isActive: true },

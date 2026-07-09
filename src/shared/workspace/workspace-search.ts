@@ -21,6 +21,7 @@ import type { PlatformCapabilityContribution } from "./app-capability-platform";
 import type { WorkspaceAppModel } from "./home-workspace-model";
 
 export type WorkspaceSearchRegistryInput = Readonly<{
+  additionalProviders?: readonly import("@/platform/search/public-api").SearchProvider[];
   apps: readonly WorkspaceAppModel[];
   capabilities?: readonly PlatformCapabilityContribution[];
   commands?: readonly CommandDefinition[];
@@ -35,6 +36,7 @@ export function createWorkspaceSearchRegistry(
     createWorkspaceCapabilitySearchProvider(input.capabilities ?? []),
     createCommandSearchProvider(input.commands ?? []),
     createNavigationSearchProvider(input.navigation ?? []),
+    ...(input.additionalProviders ?? []),
   ]);
 }
 

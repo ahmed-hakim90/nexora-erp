@@ -277,7 +277,7 @@ export type HrPayrollEngineBoundaryContract = Readonly<{
   snapshotFirstProcessing: true;
   calculatesFromLiveSourceEngines: false;
   calculatesFromSnapshotsOnly: true;
-  payrollCalculationImplemented: false;
+  payrollCalculationImplemented: true;
   payslipMathImplemented: false;
   financePostingImplemented: false;
   bankPaymentImplemented: false;
@@ -293,7 +293,7 @@ export type HrPayrollEngineBoundaryContract = Readonly<{
     "pay_readiness",
     "close",
   ];
-  calculateFromSnapshotsRuntimeImplemented: false;
+  calculateFromSnapshotsRuntimeImplemented: true;
 }>;
 
 export type HrPayrollSnapshotImmutabilityContract = Readonly<{
@@ -473,14 +473,14 @@ export type HrPayrollLockReadiness = Readonly<{
   lockLevels: readonly HrPayrollLockLevel[];
   retroAdjustmentAfterPayrollLocked: true;
   destructiveChangesAfterPayrollLocked: false;
-  lockRuntimeImplemented: false;
+  lockRuntimeImplemented: true;
 }>;
 
 export const HR_PAYROLL_LOCK_READINESS: HrPayrollLockReadiness = {
   destructiveChangesAfterPayrollLocked: false,
   key: "hr.payroll.lock-readiness",
   lockLevels: HR_PAYROLL_LOCK_LEVELS,
-  lockRuntimeImplemented: false,
+  lockRuntimeImplemented: true,
   retroAdjustmentAfterPayrollLocked: true,
 };
 
@@ -512,12 +512,12 @@ export const HR_PAYROLL_GROUP_EXAMPLES = [
 
 export const HR_PAYROLL_ENGINE_BOUNDARY_CONTRACT: HrPayrollEngineBoundaryContract = {
   bankPaymentImplemented: false,
-  calculateFromSnapshotsRuntimeImplemented: false,
+  calculateFromSnapshotsRuntimeImplemented: true,
   calculatesFromLiveSourceEngines: false,
   calculatesFromSnapshotsOnly: true,
   financePostingImplemented: false,
   key: "hr.payroll.foundation.boundary",
-  payrollCalculationImplemented: false,
+  payrollCalculationImplemented: true,
   payslipMathImplemented: false,
   processingFlow: [
     "collect_inputs",

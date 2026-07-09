@@ -17,8 +17,9 @@ Before generating or modifying **any UI** (pages, components, forms, tables, mod
 4. [Inline Editing Standard](../../docs/06-guidelines/INLINE_EDITING_STANDARD.md)
 5. [Edit Mode v2 Standard](../../docs/06-guidelines/EDIT_MODE_V2_STANDARD.md)
 6. [ADR-021 Platform UX Constitution](../../docs/03-architecture/adr/ADR-021_PLATFORM_UX_CONSTITUTION.md)
+7. [Easy Operator Forms Standard](../../docs/06-guidelines/EASY_OPERATOR_FORMS_STANDARD.md) — **standing Ahmed UX bar**
 
-Also apply: [ERP Page Modal Pattern](erp-page-modal-patterns.mdc) · [No Native Date Inputs](no-native-date-inputs.mdc)
+Also apply: [ERP Page Modal Pattern](erp-page-modal-patterns.mdc) · [No Native Date Inputs](no-native-date-inputs.mdc) · [Easy Operator Forms](easy-operator-forms.mdc)
 
 ## Pre-Implementation Checklist (UI work)
 
@@ -34,6 +35,7 @@ When creating or changing screens, confirm:
 - [ ] **Cross-engine** — `ownership="cross-engine"` + workflow opener; no silent cross-domain mutation
 - [ ] **States** — loading, empty, error, skeleton where appropriate
 - [ ] **Tokens** — `hsl(var(--surface))`, `--border`, `--foreground`; visible buttons in dark mode
+- [ ] **Easy operator forms** — `FieldGroup` labels; max 3 cols; create before filter; full i18n enums/statuses ([standard](../../docs/06-guidelines/EASY_OPERATOR_FORMS_STANDARD.md))
 - [ ] **Audit / notifications** — on business-critical mutations per module pattern
 
 ## Forbidden Without Exception (ADR-021)
@@ -42,6 +44,10 @@ When creating or changing screens, confirm:
 - Full-page `/new` or `/edit` routes for simple master data (use list + modal)
 - Read-only-only profile pages without inline edit path
 - Direct Sonner/toast imports in apps (use `platform.feedback`)
+- Placeholder-only form fields without persistent labels
+- More than 3 columns for mixed operator create forms (`xl:grid-cols-4+`)
+- English enum/status labels in localized UI
+- Module-local labeled-field wrappers when `FieldGroup` exists
 - Redesigning unrelated pages when task is scoped elsewhere
 
 ## When Shipping UI
@@ -62,6 +68,7 @@ UX governance does **not** permit:
 
 | Need | Use |
 | --- | --- |
+| Labeled field | `FieldGroup` |
 | List | `EnterpriseDataTable` |
 | Relation field | `EntityLookup` |
 | Date | `DatePicker` / `DatePickerField` |

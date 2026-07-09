@@ -4,13 +4,14 @@ import { useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import type { HrFoundationDescriptor, HrFoundationField } from "@/features/hr/public-api";
-import { resolveHrFoundationFieldHelp } from "@/features/hr/public-api";
+import { resolveHrFoundationFieldHelp, translateHrStatus } from "@/features/hr/public-api";
 import {
   archiveHrFoundationRecordAction,
   createHrFoundationRecordAction,
   updateHrFoundationRecordAction,
 } from "@/features/hr/routes/actions/hr-foundation.actions";
 import type { HrFoundationWorkspaceData } from "@/features/hr/routes/loaders/hr-foundation.loader";
+import { pickLocalizedLabel } from "@/platform/localization/public-api";
 import { resolveHrLookupProviderKey } from "@/platform/operator-experience/lookup-registry";
 import {
   Button,
@@ -23,7 +24,9 @@ import {
   nativeTextareaClassName,
   RecordFormDialog,
   RecordFormSection,
+  useEnterpriseUi,
   useRecordFormModal,
+  useTranslations,
 } from "@/shared/ui";
 
 type FoundationRow = Record<string, unknown>;
@@ -36,12 +39,16 @@ function fieldValue(record: FoundationRow | undefined, field: HrFoundationField)
 
 function FieldControl({
   field,
+  fieldLabel,
   lookups,
   record,
+  t,
 }: Readonly<{
   field: HrFoundationField;
+  fieldLabel: string;
   lookups: HrFoundationWorkspaceData["lookups"];
   record?: FoundationRow;
+  t: ReturnType<typeof useTranslations>;
 }>) {
   const value = fieldValue(record, field);
 
@@ -51,7 +58,7 @@ function FieldControl({
     if (providerKey) {
       return (
         <EntityLookup
-          label={`Select ${field.label}`}
+          label={t("hr.common.selectField", { label: fieldLabel })}
           name={field.name}
           providerKey={providerKey}
           required={field.required}
@@ -63,8 +70,8 @@ function FieldControl({
     return (
       <EntityLookup
         disabled={field.required && options.length === 0}
-        emptyMessage="Create related records first."
-        label={`Select ${field.label}`}
+        emptyMessage={t("hr.foundation.emptyRelated")}
+        label={t("hr.common.selectField", { label: fieldLabel })}
         name={field.name}
         options={options}
         required={field.required}
@@ -86,10 +93,10 @@ function FieldControl({
     const defaultValue = String(value) || (field.required && options.length === 1 ? options[0]?.value ?? "" : "");
     return (
       <select className={nativeSelectClassName} defaultValue={defaultValue} name={field.name} required={field.required}>
-        <option value="">{field.required ? "Select..." : "-"}</option>
+        <option value="">{field.required ? t("hr.common.selectPlaceholder") : "-"}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label}
+            {translateHrStatus(t, option.label)}
           </option>
         ))}
       </select>
@@ -107,7 +114,7 @@ function FieldControl({
           type="checkbox"
           value="true"
         />
-        <span className="text-sm text-muted-foreground">Enabled</span>
+        <span className="text-sm text-muted-foreground">{t("hr.common.enabled")}</span>
       </div>
     );
   }
@@ -156,9 +163,14 @@ export function HrFoundationRecordModalLauncher({
   trigger?: ReactNode;
 }>) {
   const router = useRouter();
+  const t = useTranslations();
+  const { locale } = useEnterpriseUi();
   const [isPending, startTransition] = useTransition();
   const { formId, handleOpenChange, isDirty, markDirty, open } = useRecordFormModal({ autoOpen, closeHref });
-  const title = `${record ? "Edit" : "Create"} ${descriptor.singular}`;
+  const resourceSingular = descriptor.singular;
+  const title = record
+    ? t("hr.common.editSingular", { singular: resourceSingular })
+    : t("hr.common.createSingular", { singular: resourceSingular });
   const basicFields = descriptor.fields.filter((field) => !field.advanced);
   const advancedFields = descriptor.fields.filter((field) => field.advanced);
 
@@ -176,7 +188,7 @@ export function HrFoundationRecordModalLauncher({
 
   async function handleArchive() {
     if (!record) return;
-    if (!window.confirm(`Archive this ${descriptor.singular.toLowerCase()}? This action can be reversed by an administrator.`)) return;
+    if (!window.confirm(t("hr.common.archiveSingularConfirm", { singular: resourceSingular.toLowerCase() }))) return;
     startTransition(async () => {
       await archiveHrFoundationRecordAction(descriptor.key, String(record.id));
       if (closeHref) router.push(closeHref);
@@ -190,18 +202,22 @@ export function HrFoundationRecordModalLauncher({
         <div className="flex items-center gap-2">
           {record ? (
             <Button disabled={isPending} onClick={() => void handleArchive()} type="button" variant="secondary">
-              Archive
+              {t("hr.common.archive")}
             </Button>
           ) : null}
           <Button disabled={isPending} form={formId} type="submit" variant="primary">
-            {isPending ? "Saving..." : "Save"}
+            {isPending ? t("hr.common.saving") : t("hr.common.save")}
           </Button>
         </div>
       }
       isDirty={isDirty}
       onOpenChange={handleOpenChange}
       open={open}
-      status={<span className="rounded-full border px-2 py-0.5 text-xs capitalize text-muted-foreground">{String(record?.status ?? "new")}</span>}
+      status={
+        <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+          {translateHrStatus(t, String(record?.status ?? "new"))}
+        </span>
+      }
       subtitle={descriptor.description}
       title={title}
       trigger={autoOpen ? undefined : trigger ?? <Button type="button" variant="secondary">{label ?? title}</Button>}
@@ -209,32 +225,38 @@ export function HrFoundationRecordModalLauncher({
       <RecordFormSection>
         <form action={handleSubmit} className="space-y-4" id={formId} onInput={markDirty}>
           <FormGrid>
-            {basicFields.map((field) => (
-              <FieldGroup
-                help={resolveHrFoundationFieldHelp(field)}
-                isRequired={field.required}
-                key={field.name}
-                label={field.labelAr ? `${field.label} / ${field.labelAr}` : field.label}
-              >
-                <FieldControl field={field} lookups={lookups} record={record} />
-              </FieldGroup>
-            ))}
+            {basicFields.map((field) => {
+              const fieldLabel = pickLocalizedLabel(locale, field.label, field.labelAr);
+              return (
+                <FieldGroup
+                  help={resolveHrFoundationFieldHelp(field)}
+                  isRequired={field.required}
+                  key={field.name}
+                  label={fieldLabel}
+                >
+                  <FieldControl field={field} fieldLabel={fieldLabel} lookups={lookups} record={record} t={t} />
+                </FieldGroup>
+              );
+            })}
           </FormGrid>
           {advancedFields.length > 0 ? (
             <details className="rounded-md border p-4">
-              <summary className="cursor-pointer text-sm font-medium">Advanced fields</summary>
+              <summary className="cursor-pointer text-sm font-medium">{t("hr.common.advancedFields")}</summary>
               <div className="mt-4">
                 <FormGrid>
-                  {advancedFields.map((field) => (
-                    <FieldGroup
-                      help={resolveHrFoundationFieldHelp(field)}
-                      isRequired={field.required}
-                      key={field.name}
-                      label={field.labelAr ? `${field.label} / ${field.labelAr}` : field.label}
-                    >
-                      <FieldControl field={field} lookups={lookups} record={record} />
-                    </FieldGroup>
-                  ))}
+                  {advancedFields.map((field) => {
+                    const fieldLabel = pickLocalizedLabel(locale, field.label, field.labelAr);
+                    return (
+                      <FieldGroup
+                        help={resolveHrFoundationFieldHelp(field)}
+                        isRequired={field.required}
+                        key={field.name}
+                        label={fieldLabel}
+                      >
+                        <FieldControl field={field} fieldLabel={fieldLabel} lookups={lookups} record={record} t={t} />
+                      </FieldGroup>
+                    );
+                  })}
                 </FormGrid>
               </div>
             </details>

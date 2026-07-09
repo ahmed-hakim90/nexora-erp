@@ -36,7 +36,16 @@ export type HrMetricHelpKey =
   | "pendingHrRequests"
   | "pendingApprovals"
   | "openVacancies"
-  | "payrollReadinessIssues";
+  | "payrollReadinessIssues"
+  | "pendingLeaveApprovals"
+  | "employeesOnLeaveToday"
+  | "openAttendanceExceptionsToday"
+  | "pendingOvertimeCandidates"
+  | "pendingLateEarlyViolations"
+  | "openPayrollPeriods"
+  | "temporaryAssignmentsActive"
+  | "workAnniversariesThisMonth"
+  | "upcomingBirthdays";
 
 export type HrTabHelpKey =
   | "overview"
@@ -91,7 +100,8 @@ export type HrFieldHelpKey =
   | "packageName"
   | "bankName"
   | "iban"
-  | "accountNumber";
+  | "accountNumber"
+  | "advanceDeductionMonths";
 
 export const hrPageHelp: Readonly<Record<HrPageHelpKey, BilingualHelp>> = {
   dashboard: {
@@ -233,6 +243,42 @@ export const hrMetricHelp: Readonly<Record<HrMetricHelpKey, BilingualHelp>> = {
     en: "Validation errors or draft payslip issues blocking payroll publish for the current period.",
     ar: "أخطاء تحقق أو مسودات كشوف مرتبات تمنع نشر الرواتب للفترة الحالية.",
   },
+  pendingLeaveApprovals: {
+    en: "Leave requests submitted or under review and waiting for an approval decision.",
+    ar: "طلبات إجازة مقدّمة أو قيد المراجعة بانتظار قرار الاعتماد.",
+  },
+  employeesOnLeaveToday: {
+    en: "Employees with approved leave covering today's work date.",
+    ar: "الموظفون في إجازة معتمدة تغطي تاريخ عمل اليوم.",
+  },
+  openAttendanceExceptionsToday: {
+    en: "Attendance exceptions still open for today's processed attendance days.",
+    ar: "استثناءات حضور مفتوحة لأيام الحضور المعالجة لليوم.",
+  },
+  pendingOvertimeCandidates: {
+    en: "Overtime candidates detected from attendance and waiting for review or conversion.",
+    ar: "مرشحو وقت إضافي مكتشفون من الحضور وبانتظار المراجعة أو التحويل.",
+  },
+  pendingLateEarlyViolations: {
+    en: "Late or early leave violations submitted and awaiting HR action.",
+    ar: "مخالفات تأخير أو انصراف مبكر مقدّمة وبانتظار إجراء الموارد البشرية.",
+  },
+  openPayrollPeriods: {
+    en: "Payroll periods still open for attendance, leave, or payroll input collection.",
+    ar: "فترات رواتب ما زالت مفتوحة لإدخال الحضور أو الإجازات أو بيانات الرواتب.",
+  },
+  temporaryAssignmentsActive: {
+    en: "Employees currently on temporary or acting assignments within the active date window.",
+    ar: "الموظفون في تعيينات مؤقتة أو بالإنابة ضمن نافذة التاريخ النشطة.",
+  },
+  workAnniversariesThisMonth: {
+    en: "Active employees celebrating a work anniversary during the current calendar month.",
+    ar: "الموظفون النشطون الذين يحتفلون بذكرى التعيين خلال الشهر الحالي.",
+  },
+  upcomingBirthdays: {
+    en: "Active employees with a birthday within the next 30 days.",
+    ar: "الموظفون النشطون اللي عيد ميلادهم خلال الـ 30 يوم الجايين.",
+  },
 };
 
 export const hrTabHelp: Readonly<Record<HrTabHelpKey, BilingualHelp>> = {
@@ -300,8 +346,8 @@ export const hrFieldHelp: Readonly<Record<HrFieldHelpKey, BilingualHelp>> = {
     ar: "الاسم الكامل القانوني أو المفضل كما يظهر في الهوية وكشف المرتب.",
   },
   employeeNumber: {
-    en: "Unique internal code used across HR, payroll, and lookups. Usually matches badge or ERP ID.",
-    ar: "رمز داخلي فريد يُستخدم في HR والرواتب والبحث. غالباً يطابق رقم البطاقة أو معرف النظام.",
+    en: "Unique job code you enter manually. The same value is used as the attendance/device code for fingerprint punch matching.",
+    ar: "كود الموظف الوظيفي الذي تدخله يدويًا. نفس القيمة تُستخدم ككود الحضور لمطابقة البصمة على الجهاز.",
   },
   nationalId: {
     en: "Government national ID number for compliance and payroll statutory reporting.",
@@ -340,8 +386,8 @@ export const hrFieldHelp: Readonly<Record<HrFieldHelpKey, BilingualHelp>> = {
     ar: "تاريخ بدء سريان التوظيف أو التعيين. لا يجب أن يتداخل مع سجلات متعارضة.",
   },
   attendanceCode: {
-    en: "Code registered on the fingerprint/face attendance device. Separate from employee number.",
-    ar: "الرمز المسجل على جهاز البصمة/الوجه. منفصل عن رقم الموظف.",
+    en: "Same as the employee job code. Stored for device punch matching; do not enter a separate value.",
+    ar: "نفس كود الموظف الوظيفي. يُحفظ لمطابقة بصمات الحضور؛ لا تُدخل قيمة منفصلة.",
   },
   contractType: {
     en: "Contract classification such as fixed-term, unlimited, or project-based.",
@@ -442,6 +488,10 @@ export const hrFieldHelp: Readonly<Record<HrFieldHelpKey, BilingualHelp>> = {
   accountNumber: {
     en: "Local bank account number if IBAN is not used.",
     ar: "رقم الحساب المحلي إذا لم يُستخدم IBAN.",
+  },
+  advanceDeductionMonths: {
+    en: "Number of payroll months to recover this advance (default: 1).",
+    ar: "عدد شهور الراتب اللي هيتخصم منها السلفة (الافتراضي: 1).",
   },
 };
 

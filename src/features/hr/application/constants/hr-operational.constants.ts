@@ -1,12 +1,9 @@
-export const HR_DOCUMENT_TYPES = [
-  { label: "National ID", value: "national_id" },
-  { label: "Passport", value: "passport" },
-  { label: "Work Permit", value: "work_permit" },
-  { label: "Contract Copy", value: "contract_copy" },
-  { label: "Medical Certificate", value: "medical_certificate" },
-  { label: "Certificate", value: "certificate" },
-  { label: "Other", value: "other" },
-] as const;
+import { listUploadDocumentTypeOptions } from "./hr-document-kind.registry";
+
+export const HR_DOCUMENT_TYPES = listUploadDocumentTypeOptions().map((option) => ({
+  label: option.label,
+  value: option.value,
+}));
 
 export const HR_DOCUMENT_STATUSES = ["active", "expired", "missing", "archived"] as const;
 
@@ -47,11 +44,11 @@ export const HR_REPORT_CARDS = [
 ] as const;
 
 export const HR_ASSIGNMENT_QUICK_ACTIONS = [
-  { assignmentScope: "primary", assignmentType: "department", label: "Change department", referenceEntityType: "hr_org_units" },
-  { assignmentScope: "primary", assignmentType: "position", label: "Change position", referenceEntityType: "hr_positions" },
-  { assignmentScope: "primary", assignmentType: "manager", label: "Change manager", referenceEntityType: "hr_employees" },
-  { assignmentScope: "primary", assignmentType: "shift_schedule", label: "Change shift", referenceEntityType: "hr_shift_schedules" },
-  { assignmentScope: "primary", assignmentType: "payroll_group", label: "Change payroll group", referenceEntityType: "hr_payroll_groups" },
-  { assignmentScope: "temporary", assignmentType: "department", label: "Temporary assignment", referenceEntityType: "hr_org_units" },
-  { assignmentScope: "acting", assignmentType: "position", label: "Acting assignment", referenceEntityType: "hr_positions" },
+  { actionKey: "changeDepartment", assignmentScope: "primary", assignmentType: "department", label: "Change department", referenceEntityType: "hr_org_units" },
+  { actionKey: "changePosition", assignmentScope: "primary", assignmentType: "position", label: "Change position", referenceEntityType: "hr_positions" },
+  { actionKey: "changeManager", assignmentScope: "primary", assignmentType: "manager", label: "Change manager", referenceEntityType: "hr_employees" },
+  { actionKey: "changeShift", assignmentScope: "primary", assignmentType: "shift_schedule", label: "Change shift", referenceEntityType: "hr_shift_schedules" },
+  { actionKey: "changePayrollGroup", assignmentScope: "primary", assignmentType: "payroll_group", label: "Change payroll group", referenceEntityType: "hr_payroll_groups" },
+  { actionKey: "temporaryAssignment", assignmentScope: "temporary", assignmentType: "department", label: "Temporary assignment", referenceEntityType: "hr_org_units" },
+  { actionKey: "actingAssignment", assignmentScope: "acting", assignmentType: "position", label: "Acting assignment", referenceEntityType: "hr_positions" },
 ] as const;

@@ -27,6 +27,7 @@ import { readAttendanceDayMetrics } from "./hr-attendance.service";
 import { HrLateEarlyPayrollInputService, HrLateEarlyRuntimeService } from "./hr-late-early-runtime.service";
 import { HrLeavePayrollInputService } from "./hr-leave-runtime.service";
 import { HrOvertimePayrollInputService } from "./hr-overtime-runtime.service";
+import { HrPayrollPeriodLifecycleService } from "./hr-payroll-period-lifecycle.service";
 
 export type AttendancePayrollInputSnapshot = Readonly<{
   absenceDays: number;
@@ -745,6 +746,9 @@ export class HrAttendancePayrollExportService {
   }
 
   async executeExport(input: HrAttendanceExportExecuteInput): Promise<{ batchId: string }> {
+    const periodLifecycle = new HrPayrollPeriodLifecycleService(this.supabase, this.context);
+    await periodLifecycle.assertPayrollDateRangeAllowsMutation(input.periodStart, input.periodEnd);
+
     const preview = await this.previewExport(input);
     if (preview.issues.length > 0) {
       await recordAuditEvent({

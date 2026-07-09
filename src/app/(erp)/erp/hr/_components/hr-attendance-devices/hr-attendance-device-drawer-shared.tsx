@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState, useTransition, type ReactNode } from 
 import { useRouter } from "next/navigation";
 
 import { platformFeedback } from "@/platform/feedback/public-api";
+import { useTranslations } from "@/shared/ui";
 
 export function useDeviceTabData<T>(deviceId: string | null, path: string, enabled: boolean) {
+  const t = useTranslations();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +26,11 @@ export function useDeviceTabData<T>(deviceId: string | null, path: string, enabl
       setError(null);
       try {
         const response = await fetch(`/api/hr/attendance-devices/${deviceId}/${path}`);
-        if (!response.ok) throw new Error("Could not load tab data.");
+        if (!response.ok) throw new Error(t("hr.attendance.devices.feedback.couldNotLoadTab"));
         const payload = (await response.json()) as T;
         if (!cancelled) setData(payload);
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load tab data.");
+        if (!cancelled) setError(cause instanceof Error ? cause.message : t("hr.attendance.devices.feedback.couldNotLoadTab"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -37,7 +39,7 @@ export function useDeviceTabData<T>(deviceId: string | null, path: string, enabl
     return () => {
       cancelled = true;
     };
-  }, [deviceId, enabled, path, refreshNonce]);
+  }, [deviceId, enabled, path, refreshNonce, t]);
 
   return { data, error, loading, refetch };
 }
@@ -55,6 +57,7 @@ export function DeviceActionForm({
   hiddenFields: Record<string, string>;
   onCompleted?: () => void;
 }>) {
+  const t = useTranslations();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -67,11 +70,11 @@ export function DeviceActionForm({
         startTransition(async () => {
           try {
             await action(formData);
-            platformFeedback.success("Action completed.");
+            platformFeedback.success(t("hr.attendance.devices.feedback.actionCompleted"));
             router.refresh();
             onCompleted?.();
           } catch (cause) {
-            platformFeedback.error(cause instanceof Error ? cause.message : "Action failed.");
+            platformFeedback.error(cause instanceof Error ? cause.message : t("hr.attendance.devices.feedback.actionFailed"));
           }
         });
       }}
@@ -87,7 +90,8 @@ export function DeviceActionForm({
 }
 
 export function TabLoadingState({ error, loading }: Readonly<{ error: string | null; loading: boolean }>) {
-  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const t = useTranslations();
+  if (loading) return <p className="text-sm text-muted-foreground">{t("hr.common.loading")}</p>;
   if (error) return <p className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>;
   return null;
 }

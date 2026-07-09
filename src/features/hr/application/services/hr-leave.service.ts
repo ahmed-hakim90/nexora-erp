@@ -7,7 +7,13 @@ import type { BranchRequestContext } from "@/platform/auth/server";
 import { recordAuditEvent } from "@/platform/audit/server";
 
 import { HR_LEAVE_RUNTIME_AUDIT_ACTIONS, HR_LEAVE_RUNTIME_EVENT_KEYS } from "../constants/hr-leave-runtime.constants";
-import type { HrLeaveCreateInput, HrLeavePolicyCreateInput } from "../schemas/hr-leave.schema";
+import type {
+  HrLeaveCreateInput,
+  HrLeavePolicyCreateInput,
+  HrLeavePolicyUpdateInput,
+  HrLeaveTypeCreateInput,
+  HrLeaveTypeUpdateInput,
+} from "../schemas/hr-leave.schema";
 import { HrLeaveBalanceEngine } from "./hr-leave-balance.engine";
 import { HrLeaveConflictEngine } from "./hr-leave-conflict.engine";
 import { HrLeavePolicyEngine } from "./hr-leave-policy.engine";
@@ -56,7 +62,7 @@ export class HrLeaveService {
   private async getActiveEmploymentProfileId(employeeId: string): Promise<string> {
     const { data, error } = await this.supabase
       .from("hr_employment_profiles")
-      .select("id, hire_date, probation_end_date")
+      .select("id")
       .eq("tenant_id", this.context.tenantId)
       .eq("employee_id", employeeId)
       .eq("status", "active")
@@ -81,17 +87,19 @@ export class HrLeaveService {
 
     const { data: employee } = await this.supabase
       .from("hr_employees")
-      .select("status, hire_date")
+      .select("status")
       .eq("tenant_id", this.context.tenantId)
       .eq("id", input.employeeId)
       .maybeSingle();
 
     this.policyEngine.validateRequestAgainstPolicy({
-      employeeHireDate: employee?.hire_date ? String(employee.hire_date) : null,
+      employeeHireDate: null,
       employeeOnProbation: String(employee?.status) === "probation",
       policy,
       quantity,
     });
+
+    await this.balanceEngine.getOrCreateBalance(input.employeeId, input.leaveTypeId, policy.annualEntitlement);
 
     const conflicts = await this.conflictEngine.detectConflicts({
       employeeId: input.employeeId,
@@ -116,8 +124,6 @@ export class HrLeaveService {
         message: conflicts[0]?.message ?? "Leave request blocked by conflict engine.",
       });
     }
-
-    await this.balanceEngine.getOrCreateBalance(input.employeeId, input.leaveTypeId, policy.annualEntitlement);
 
     const { data, error } = await this.supabase
       .from("hr_leave_requests")
@@ -257,6 +263,94 @@ export class HrLeaveService {
     });
   }
 
+  async createLeaveType(input: HrLeaveTypeCreateInput): Promise<{ id: string }> {
+    const paid = input.paid ?? true;
+    const { data, error } = await this.supabase
+      .from("hr_leave_types")
+      .insert({
+        branch_id: this.context.branchId,
+        code: input.code,
+        company_id: this.context.companyId,
+        created_by: this.context.userId,
+        impacts_payroll: input.impactsPayroll ?? paid,
+        is_active: input.status !== "inactive",
+        metadata: { leave_runtime_implemented: true },
+        name: input.name,
+        paid,
+        requires_approval: input.requiresApproval ?? true,
+        status: input.status,
+        tenant_id: this.context.tenantId,
+        updated_by: this.context.userId,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create leave type.", cause: error });
+    }
+    return { id: String(data.id) };
+  }
+
+  async updateLeaveType(input: HrLeaveTypeUpdateInput): Promise<void> {
+    const paid = input.paid ?? true;
+    const { data: existing, error: readError } = await this.supabase
+      .from("hr_leave_types")
+      .select("id")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("id", input.leaveTypeId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (readError || !existing) {
+      throw new ApplicationError({ code: "NOT_FOUND", message: "Leave type not found." });
+    }
+
+    const { error } = await this.supabase
+      .from("hr_leave_types")
+      .update({
+        code: input.code,
+        impacts_payroll: input.impactsPayroll ?? paid,
+        is_active: input.status !== "inactive",
+        name: input.name,
+        paid,
+        requires_approval: input.requiresApproval ?? true,
+        status: input.status,
+        updated_by: this.context.userId,
+      })
+      .eq("id", input.leaveTypeId)
+      .eq("tenant_id", this.context.tenantId);
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not update leave type.", cause: error });
+    }
+  }
+
+  async archiveLeaveType(leaveTypeId: string): Promise<void> {
+    const deletedAt = new Date().toISOString();
+    const { data: existing, error: readError } = await this.supabase
+      .from("hr_leave_types")
+      .select("id, status")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("id", leaveTypeId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (readError || !existing) {
+      throw new ApplicationError({ code: "NOT_FOUND", message: "Leave type not found." });
+    }
+
+    const { error } = await this.supabase
+      .from("hr_leave_types")
+      .update({
+        deleted_at: deletedAt,
+        deleted_by: this.context.userId,
+        is_active: false,
+        status: "archived",
+        updated_by: this.context.userId,
+      })
+      .eq("id", leaveTypeId)
+      .eq("tenant_id", this.context.tenantId);
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not archive leave type.", cause: error });
+    }
+  }
+
   async createLeavePolicy(input: HrLeavePolicyCreateInput): Promise<{ id: string }> {
     const { data, error } = await this.supabase
       .from("hr_leave_policies")
@@ -280,6 +374,45 @@ export class HrLeaveService {
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not create leave policy.", cause: error });
     }
     return { id: String(data.id) };
+  }
+
+  async updateLeavePolicy(input: HrLeavePolicyUpdateInput): Promise<void> {
+    const { data: policy, error: readError } = await this.supabase
+      .from("hr_leave_policies")
+      .select("id, status")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("id", input.policyId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (readError || !policy) {
+      throw new ApplicationError({ code: "NOT_FOUND", message: "Leave policy not found." });
+    }
+    if (String(policy.status) === "archived") {
+      throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Archived leave policies cannot be edited." });
+    }
+
+    const { error } = await this.supabase
+      .from("hr_leave_policies")
+      .update({
+        annual_entitlement: input.annualEntitlement,
+        carry_forward_allowed: input.carryForwardAllowed ?? false,
+        entitlement_unit: input.entitlementUnit,
+        metadata: { leave_calculation_runtime_implemented: true, policy_admin_runtime_implemented: true },
+        updated_by: this.context.userId,
+      })
+      .eq("id", input.policyId)
+      .eq("tenant_id", this.context.tenantId);
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not update leave policy.", cause: error });
+    }
+
+    await this.notify({
+      body: "A leave policy was updated.",
+      eventKey: HR_LEAVE_RUNTIME_EVENT_KEYS.policyChanged,
+      idempotencyKey: `policy-updated:${input.policyId}:${Date.now()}`,
+      severity: "info",
+      title: "Leave policy changed",
+    });
   }
 
   async activateLeavePolicy(policyId: string): Promise<void> {

@@ -54,7 +54,7 @@ export class HrPayrollWpsService {
           .maybeSingle(),
         this.supabase
           .from("hr_employee_bank_accounts")
-          .select("account_number, bank_code, is_primary")
+          .select("account_number, bank_name, metadata, is_primary")
           .eq("employee_id", employeeId)
           .eq("tenant_id", this.context.tenantId)
           .is("deleted_at", null)
@@ -65,10 +65,16 @@ export class HrPayrollWpsService {
 
       if (!employee || !bankAccount?.account_number) continue;
 
+      const metadata =
+        bankAccount.metadata && typeof bankAccount.metadata === "object" && !Array.isArray(bankAccount.metadata)
+          ? (bankAccount.metadata as Record<string, unknown>)
+          : {};
+      const bankCode = String(metadata.bank_code ?? bankAccount.bank_name ?? "EG");
+
       rows.push({
         accountNumber: String(bankAccount.account_number),
         amount: Number(result.net_pay ?? 0),
-        bankCode: String(bankAccount.bank_code ?? "EG"),
+        bankCode,
         currency: String(result.currency ?? "EGP"),
         employeeName: String(employee.full_name),
         employeeNumber: String(employee.employee_number),

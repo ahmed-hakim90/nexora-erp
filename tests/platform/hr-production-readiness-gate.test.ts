@@ -272,8 +272,12 @@ test("hr production readiness: employee bulk archive requires manage permission"
 
 // ─── Import/Export Columns ────────────────────────────────────────────────────
 
-test("hr production readiness: employee export has 12 columns", () => {
-  assert.equal(HR_EMPLOYEE_EXPORT_COLUMNS.length, 12);
+test("hr production readiness: employee export has 11 columns", () => {
+  assert.equal(HR_EMPLOYEE_EXPORT_COLUMNS.length, 11);
+  assert.equal(
+    HR_EMPLOYEE_EXPORT_COLUMNS.some((column) => column.field === "attendanceCode"),
+    false,
+  );
 });
 
 test("hr production readiness: employee export columns include PII fields", () => {
@@ -308,8 +312,8 @@ test("hr production readiness: employee import has validation rules", () => {
 
 // ─── Search Providers ─────────────────────────────────────────────────────────
 
-test("hr production readiness: 6 search entity providers are defined", () => {
-  assert.equal(HR_SEARCH_ENTITY_PROVIDERS.length, 6);
+test("hr production readiness: 9 search entity providers are defined", () => {
+  assert.equal(HR_SEARCH_ENTITY_PROVIDERS.length, 9);
 });
 
 test("hr production readiness: employee search provider is defined", () => {
@@ -413,6 +417,12 @@ test("hr production readiness: payroll readiness validation covers missing bank 
 test("hr production readiness: payroll readiness validation covers missing compensation", () => {
   const rule = HR_PRODUCTION_VALIDATION_RULES.payrollReadiness.find((r) => r.code === "missing_compensation");
   assert.ok(rule, "Missing compensation validation must be defined.");
+  assert.equal(rule.severity, "error");
+});
+
+test("hr production readiness: payroll readiness validation covers basic salary source conflict", () => {
+  const rule = HR_PRODUCTION_VALIDATION_RULES.payrollReadiness.find((r) => r.code === "basic_salary_source_conflict");
+  assert.ok(rule, "Basic salary source conflict validation must be defined.");
   assert.equal(rule.severity, "error");
 });
 

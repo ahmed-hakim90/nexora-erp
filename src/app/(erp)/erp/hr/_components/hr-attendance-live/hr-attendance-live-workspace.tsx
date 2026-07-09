@@ -20,6 +20,7 @@ import {
   PageHeader,
   nativeSelectClassName,
   secondaryButtonLinkClassName,
+  useTranslations,
 } from "@/shared/ui";
 
 import { HrRelativeTime } from "../hr-relative-time";
@@ -58,6 +59,7 @@ export function HrAttendanceLiveWorkspace({
   initialDrawer?: HrAttendanceLiveEmployeeDrawer | null;
   query: Record<string, string | undefined>;
 }>) {
+  const t = useTranslations();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [snapshot, setSnapshot] = useState(data);
@@ -128,18 +130,18 @@ export function HrAttendanceLiveWorkspace({
   return (
     <PageContainer className="max-w-[120rem]">
       <PageHeader
-        description="Enterprise live attendance monitor with KPIs, exceptions, supervisor actions, and configurable polling refresh."
-        title="Attendance Live Monitor"
+        description={t("hr.attendance.live.description")}
+        title={t("hr.attendance.live.title")}
       >
         <PageActions>
           <span className="text-sm text-muted-foreground">
-            Updated <HrRelativeTime value={snapshot.snapshotAt} />
+            {t("hr.attendance.live.updated")} <HrRelativeTime value={snapshot.snapshotAt} />
           </span>
           <Link className={secondaryButtonLinkClassName} href={exportHref}>
-            Export CSV
+            {t("hr.common.exportCsv")}
           </Link>
           <Button onClick={() => window.print()} type="button" variant="secondary">
-            Print snapshot
+            {t("hr.attendance.live.printSnapshot")}
           </Button>
         </PageActions>
       </PageHeader>
@@ -149,7 +151,7 @@ export function HrAttendanceLiveWorkspace({
 
         <PageFilters>
           <form action="/erp/hr/attendance-live" className="grid gap-3 md:grid-cols-2 xl:grid-cols-8">
-            <Input defaultValue={query.search ?? ""} name="search" placeholder="Employee, code" />
+            <Input defaultValue={query.search ?? ""} name="search" placeholder={t("hr.attendance.live.searchPlaceholder")} />
             <select className={nativeSelectClassName} defaultValue={query.departmentId ?? ""} name="departmentId">
               <option value="">All departments</option>
               {snapshot.departmentOptions.map((option) => (

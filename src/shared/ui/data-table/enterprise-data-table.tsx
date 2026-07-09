@@ -1,11 +1,22 @@
 "use client";
 
+import { Columns3, Rows3 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { nativeSelectClassName } from "../tokens";
+import { Popover } from "../layout";
+import { Button, DropdownMenu } from "../primitives";
 import { cn } from "../utils";
 
 export type DataTableDensity = "compact" | "default" | "comfortable";
+
+const DENSITY_LABELS: Record<DataTableDensity, string> = {
+  comfortable: "Comfortable",
+  default: "Default",
+  compact: "Compact",
+};
+
+const toolbarIconButtonClassName =
+  "size-9 shrink-0 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-0 text-muted-foreground shadow-none hover:bg-[hsl(var(--muted))] hover:text-foreground";
 
 export type DataTableColumn<TRecord> = Readonly<{
   key: string;
@@ -109,7 +120,7 @@ const DENSITY_CELL: Record<DataTableDensity, string> = {
 function renderActions(actions: readonly DataTableAction[] | undefined) {
   return actions?.map((action) => {
     const className =
-      "rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-sm hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-50";
+      "inline-flex h-9 items-center rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-2.5 text-xs font-medium hover:bg-[hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-50";
 
     if (action.href && !action.isDisabled) {
       return (
@@ -278,40 +289,81 @@ export function EnterpriseDataTable<TRecord>({
     );
   }
 
+  const hasSavedViews = Boolean(savedViews && savedViews.length > 0);
+  const hasSecondaryToolbar = hasSavedViews || Boolean(filters);
+  const densityLabel = DENSITY_LABELS[density];
+  const hiddenCount = hiddenColumnKeys.length;
+
   return (
-    <section aria-busy={isLoading} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-sm">
-      <div className="flex flex-wrap items-center gap-2 border-b border-[hsl(var(--border))] p-3">
-        <div className="min-w-52 flex-1">{searchSlot ?? (
-          <div className="rounded-md border border-[hsl(var(--border))] px-3 py-2 text-sm text-muted-foreground">
-            {state?.globalSearch ? `Search: ${state.globalSearch}` : "Search records"}
-          </div>
-        )}</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor="data-table-density">Table density</label>
-          <select
-            className={nativeSelectClassName}
-            id="data-table-density"
-            onChange={(event) => handleDensityChange(event.target.value as DataTableDensity)}
-            value={density}
-          >
-            <option value="comfortable">Comfortable</option>
-            <option value="default">Default</option>
-            <option value="compact">Compact</option>
-          </select>
+    <section
+      aria-busy={isLoading}
+      className="overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--surface))] shadow-sm"
+    >
+      <div className="flex items-center gap-2 border-b border-[hsl(var(--border))] px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          {searchSlot ?? (
+            <div className="h-9 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 text-sm leading-9 text-muted-foreground">
+              {state?.globalSearch ? `Search: ${state.globalSearch}` : "Search records"}
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
           {renderActions(bulkActions)}
           {renderActions(permissionAwareActions)}
+          <DropdownMenu
+            align="end"
+            items={(["comfortable", "default", "compact"] as const).map((option) => ({
+              key: option,
+              label: (
+                <span className="flex w-full items-center justify-between gap-6">
+                  <span>{DENSITY_LABELS[option]}</span>
+                  {density === option ? <span className="text-xs text-[hsl(var(--accent))]">Active</span> : null}
+                </span>
+              ),
+              onSelect: () => handleDensityChange(option),
+            }))}
+            trigger={
+              <Button
+                aria-label={`Table density: ${densityLabel}`}
+                className={toolbarIconButtonClassName}
+                size="sm"
+                title={`Density · ${densityLabel}`}
+                type="button"
+                variant="secondary"
+              >
+                <Rows3 aria-hidden className="size-4" />
+              </Button>
+            }
+          />
           {columnVisibilityControls ?? (
-            <details className="relative">
-              <summary className="cursor-pointer list-none rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] px-3 py-2 text-sm hover:bg-[hsl(var(--muted))]">
-                Columns
-              </summary>
-              <div className="absolute end-0 z-10 mt-2 min-w-[12rem] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--surface))] p-2 shadow-md">
+            <Popover
+              align="end"
+              contentClassName="min-w-[14rem] p-2"
+              trigger={
+                <Button
+                  aria-label={hiddenCount > 0 ? `Columns, ${hiddenCount} hidden` : "Toggle columns"}
+                  className={cn(toolbarIconButtonClassName, hiddenCount > 0 && "text-[hsl(var(--accent))]")}
+                  size="sm"
+                  title={hiddenCount > 0 ? `Columns · ${hiddenCount} hidden` : "Columns"}
+                  type="button"
+                  variant="secondary"
+                >
+                  <Columns3 aria-hidden className="size-4" />
+                </Button>
+              }
+            >
+              <div className="mb-1.5 px-2 text-xs font-medium text-muted-foreground">Columns</div>
+              <div className="flex max-h-64 flex-col gap-0.5 overflow-auto">
                 {columns.map((column) => {
                   const hidden = hiddenColumnKeys.includes(column.key);
                   return (
-                    <label className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-[hsl(var(--muted))]" key={column.key}>
+                    <label
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-[hsl(var(--muted))]"
+                      key={column.key}
+                    >
                       <input
                         checked={!hidden}
+                        className="size-3.5 accent-[hsl(var(--accent))]"
                         onChange={() =>
                           setHiddenColumnKeys((current) =>
                             hidden ? current.filter((key) => key !== column.key) : [...current, column.key],
@@ -319,57 +371,65 @@ export function EnterpriseDataTable<TRecord>({
                         }
                         type="checkbox"
                       />
-                      {column.header}
+                      <span className="truncate">{column.header}</span>
                     </label>
                   );
                 })}
               </div>
-            </details>
+            </Popover>
           )}
           {exportAction}
           {printAction}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-[hsl(var(--border))] p-3 text-sm">
-        {savedViews && savedViews.length > 0 ? (
-          savedViews.map((view) => {
-            const active = view.isActive || view.key === state?.activeSavedViewKey;
-            const className = cn(
-              "rounded-md border px-3 py-1.5 transition-colors",
-              active
-                ? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))]/10 font-medium text-[hsl(var(--accent))]"
-                : "border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]",
-            );
-            if (view.href) {
-              return (
-                <a aria-current={active ? "true" : undefined} className={className} href={view.href} key={view.key}>
-                  {view.label}
-                </a>
-              );
-            }
-            return (
-              <button
-                aria-pressed={active}
-                className={className}
-                key={view.key}
-                onClick={view.onSelect}
-                type="button"
-              >
-                {view.label}
-              </button>
-            );
-          })
-        ) : null}
-        <div className="ms-auto">{filters}</div>
-      </div>
+      {hasSecondaryToolbar ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-[hsl(var(--border))] px-3 py-2 text-sm">
+          {hasSavedViews
+            ? savedViews!.map((view) => {
+                const active = view.isActive || view.key === state?.activeSavedViewKey;
+                const className = cn(
+                  "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                  active
+                    ? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))]/10 font-medium text-[hsl(var(--accent))]"
+                    : "border-[hsl(var(--border))] text-muted-foreground hover:bg-[hsl(var(--muted))] hover:text-foreground",
+                );
+                if (view.href) {
+                  return (
+                    <a aria-current={active ? "true" : undefined} className={className} href={view.href} key={view.key}>
+                      {view.label}
+                    </a>
+                  );
+                }
+                return (
+                  <button
+                    aria-pressed={active}
+                    className={className}
+                    key={view.key}
+                    onClick={view.onSelect}
+                    type="button"
+                  >
+                    {view.label}
+                  </button>
+                );
+              })
+            : null}
+          <div className="ms-auto">{filters}</div>
+        </div>
+      ) : null}
 
       <div className="overflow-auto">
         <table className="w-full min-w-[48rem] border-separate border-spacing-0 text-sm">
-          <thead className={cn("bg-[hsl(var(--muted))]/80 text-start", stickyHeader && "sticky top-0 z-[1]")}>
+          <thead className={cn("bg-[hsl(var(--muted))]/60 text-start", stickyHeader && "sticky top-0 z-[1]")}>
             <tr>
               {selectionEnabled ? (
-                <th className={cn("w-10 bg-[hsl(var(--muted))]/80", cellClassName, stickyFirstColumn && "sticky start-0 z-[2]")}>
+                <th
+                  className={cn(
+                    "w-10 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]/60",
+                    cellClassName,
+                    stickyFirstColumn && "sticky start-0 z-[2]",
+                  )}
+                >
                   <input
                     aria-label={`Select all rows${selectedCount > 0 ? `, ${selectedCount} selected` : ""}`}
                     checked={allPageRowsSelected}
@@ -385,7 +445,7 @@ export function EnterpriseDataTable<TRecord>({
               {orderedColumns.map((column, index) => (
                 <th
                   className={cn(
-                    "bg-[hsl(var(--muted))]/80 text-start",
+                    "border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]/60 text-start text-xs font-semibold tracking-wide text-muted-foreground",
                     cellClassName,
                     stickyFirstColumn && index === 0 && !selectionEnabled && "sticky start-0 z-[2]",
                     stickyFirstColumn && selectionEnabled && index === 0 && "sticky start-10 z-[2]",
@@ -396,7 +456,16 @@ export function EnterpriseDataTable<TRecord>({
                   {column.header}
                 </th>
               ))}
-              {hasRowActions ? <th className={cn("bg-[hsl(var(--muted))]/80 text-start", cellClassName)}>Actions</th> : null}
+              {hasRowActions ? (
+                <th
+                  className={cn(
+                    "border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]/60 text-start text-xs font-semibold tracking-wide text-muted-foreground",
+                    cellClassName,
+                  )}
+                >
+                  Actions
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -409,13 +478,19 @@ export function EnterpriseDataTable<TRecord>({
                 const rowId = getRowId(record);
                 return (
                   <tr
-                    className="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/35 focus-within:bg-[hsl(var(--muted))]/35"
+                    className="group/row transition-colors hover:bg-[hsl(var(--muted))]/40 focus-within:bg-[hsl(var(--muted))]/40"
                     key={rowId}
                     onDoubleClick={onRowOpen ? () => onRowOpen(record) : undefined}
                     tabIndex={onRowOpen ? 0 : undefined}
                   >
                     {selectionEnabled ? (
-                      <td className={cn("bg-[hsl(var(--surface))]", cellClassName, stickyFirstColumn && "sticky start-0 z-[1]")}>
+                      <td
+                        className={cn(
+                          "border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] group-hover/row:bg-[hsl(var(--muted))]/40",
+                          cellClassName,
+                          stickyFirstColumn && "sticky start-0 z-[1]",
+                        )}
+                      >
                         <input
                           aria-label={`Select row ${rowId}`}
                           checked={activeSelectedRowIds.includes(rowId)}
@@ -427,7 +502,7 @@ export function EnterpriseDataTable<TRecord>({
                     {orderedColumns.map((column, index) => (
                       <td
                         className={cn(
-                          "bg-[hsl(var(--surface))]",
+                          "border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] group-hover/row:bg-[hsl(var(--muted))]/40",
                           cellClassName,
                           stickyFirstColumn && index === 0 && !selectionEnabled && "sticky start-0 z-[1]",
                           stickyFirstColumn && selectionEnabled && index === 0 && "sticky start-10 z-[1]",
@@ -438,8 +513,13 @@ export function EnterpriseDataTable<TRecord>({
                       </td>
                     ))}
                     {hasRowActions ? (
-                      <td className={cellClassName}>
-                        <div className="flex flex-wrap gap-2">{renderActions(rowActions?.(record))}</div>
+                      <td
+                        className={cn(
+                          "border-b border-[hsl(var(--border))]/70 bg-[hsl(var(--surface))] group-hover/row:bg-[hsl(var(--muted))]/40",
+                          cellClassName,
+                        )}
+                      >
+                        <div className="flex flex-wrap gap-1.5">{renderActions(rowActions?.(record))}</div>
                       </td>
                     ) : null}
                   </tr>
@@ -450,7 +530,7 @@ export function EnterpriseDataTable<TRecord>({
         </table>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[hsl(var(--border))] p-3 text-sm text-muted-foreground">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[hsl(var(--border))] px-3 py-2.5 text-xs text-muted-foreground">
         {pagination.mode === "page" ? (
           <span>
             Page {pagination.page} · {pagination.totalRows} rows · {pagination.pageSize} per page

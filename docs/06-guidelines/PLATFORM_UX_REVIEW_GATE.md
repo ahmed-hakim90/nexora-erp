@@ -109,7 +109,38 @@ No screen merges without passing this gate (or a documented exception per ADR-02
 
 ---
 
-### EditableField
+### Easy Operator Forms
+
+| | |
+| --- | --- |
+| **Purpose** | Operators understand every field without guessing; Arabic/English parity; no cramped layouts. |
+| **Pass criteria** | Complies with [Easy Operator Forms Standard](EASY_OPERATOR_FORMS_STANDARD.md): `FieldGroup` or labeled `EntityLookup` on every control; max 3 desktop columns; create section with title + description before filter; translated enums/statuses; hints on ambiguous defaults; primary CTA `w-full sm:w-auto` on mobile. |
+| **Common mistakes** | Placeholder-only labels; `xl:grid-cols-6` create row; English status in Arabic UI; create + filter in one form; module-local `*FormField` wrappers. |
+| **Examples** | ✅ `EditableSectionCard` + `FieldGroup` + `translateHrStatus` in table. ❌ Six fields in one row with only placeholders. |
+
+---
+
+### Field Labels
+
+| | |
+| --- | --- |
+| **Purpose** | Field meaning remains visible after the user types. |
+| **Pass criteria** | Persistent label above every input/select; placeholder is example only; `htmlFor` + `id` or `FieldGroup`; optional fields marked in label. |
+| **Common mistakes** | `<Input placeholder="Amount (SAR)" />` with no label; numeric default `1` with no description. |
+| **Examples** | ✅ `FieldGroup label={t("…")} description={t("…hint")}`. ❌ Placeholder as sole label. |
+
+---
+
+### Localization (Forms & Tables)
+
+| | |
+| --- | --- |
+| **Purpose** | Localized UI shows localized catalog values. |
+| **Pass criteria** | All user-visible strings via `t()`; enum options and status columns use `translateCatalogKey` helpers; keys in `hr-en.ts` and `hr-ar.ts`. |
+| **Common mistakes** | `HR_ADVANCE_TYPES.map(t => t.label)` English labels; raw `submitted` in status column. |
+| **Examples** | ✅ `translateHrAdvanceType(t, value)`. ❌ Hardcoded `"Salary Advance"`. |
+
+---
 
 | | |
 | --- | --- |
