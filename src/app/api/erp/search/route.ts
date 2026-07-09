@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ records, success: true });
   } catch (error) {
     if (error instanceof ApplicationError) {
-      return createJsonError(error.message, error.code === "FORBIDDEN" ? 403 : 500);
+      return createJsonError(error.message, error.code === "AUTHORIZATION_ERROR" ? 403 : 500);
     }
     const message = error instanceof Error ? error.message : "Search request failed.";
     return createJsonError(message, 500);

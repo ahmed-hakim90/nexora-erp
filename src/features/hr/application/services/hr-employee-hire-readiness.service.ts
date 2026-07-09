@@ -110,7 +110,7 @@ export class HrEmployeeHireReadinessService {
       profileResult,
     ] = await Promise.all([
       new HrAssignmentResolverService(this.supabase, this.context).resolveEmployeeAssignments(employeeId),
-      new HrEmployeeCompensationService(this.supabase, this.context).resolveEmployeeCompensation(employeeId),
+      new HrEmployeeCompensationService(this.supabase, this.context).resolveEmployeeCompensation({ employeeId }),
       this.supabase
         .from("hr_contracts")
         .select("id, status")

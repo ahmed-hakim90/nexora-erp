@@ -95,7 +95,6 @@ export const hrArMessages: Record<keyof typeof hrEnMessages, string> = {
   "hr.common.status.draft": "مسودة",
   "hr.common.status.active": "نشط",
   "hr.common.status.inactive": "غير نشط",
-  "hr.common.paid": "مدفوع",
   "hr.common.requiresApproval": "يحتاج موافقة",
   "hr.common.impactsPayroll": "يؤثر على الرواتب",
   "hr.common.selectCalendar": "اختر التقويم",
@@ -1140,6 +1139,7 @@ export const hrArMessages: Record<keyof typeof hrEnMessages, string> = {
   "hr.settings.confirm.archiveLeaveType":
     "أرشفة نوع الإجازة ده؟ الطلبات الحالية تفضل ظاهرة؛ الطلبات الجديدة مش هتقدر تستخدمه.",
   "hr.settings.confirm.archiveCalendar": "أرشفة تقويم الرواتب ده؟",
+  "hr.settings.confirm.archivePeriod": "أرشفة فترة الرواتب دي؟",
   "hr.settings.confirm.archiveGroup": "أرشفة مجموعة الرواتب دي؟",
   "hr.settings.confirm.archiveDocumentSet": "أرشفة مجموعة الأوراق دي؟",
   "hr.settings.freq.monthly": "شهري",
@@ -1497,7 +1497,6 @@ export const hrArMessages: Record<keyof typeof hrEnMessages, string> = {
   "hr.common.programId": "معرّف البرنامج",
   "hr.common.payrollGroup": "مجموعة الرواتب",
   "hr.common.employmentStatus": "حالة التوظيف",
-  "hr.common.end": "إنهاء",
 
   "hr.dashboard.title": "لوحة الموارد البشرية",
   "hr.dashboard.description":
@@ -1923,7 +1922,6 @@ export const hrArMessages: Record<keyof typeof hrEnMessages, string> = {
   "hr.common.checkOut": "خروج",
   "hr.common.worked": "العمل",
   "hr.common.location": "الموقع",
-  "hr.common.device": "الجهاز",
   "hr.common.openAction": "فتح",
   "hr.common.shift": "الوردية",
   "hr.common.employees": "الموظفون",

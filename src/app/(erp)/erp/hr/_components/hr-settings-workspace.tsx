@@ -24,7 +24,7 @@ import {
   updatePayrollGroupAction,
   updatePayrollPeriodAction,
 } from "@/features/hr/routes/actions/hr-payroll.actions";
-import { resolveHrPageHelp } from "@/features/hr/public-api";
+import { resolveHrPageHelp, translateHrMessageKey } from "@/features/hr/public-api";
 import { runHrExpiryNotificationScanAndRedirectAction } from "@/features/hr/routes/actions/hr-operational.actions";
 import {
   Button,
@@ -506,7 +506,7 @@ function PayrollPeriodFormDialog({
 
   async function handleArchive() {
     if (!record) return;
-    if (!window.confirm(t("hr.settings.confirm.archivePeriod"))) return;
+    if (!window.confirm(translateHrMessageKey(t, "hr.settings.confirm.archivePeriod"))) return;
     startTransition(async () => {
       await archivePayrollPeriodAction(record.id);
       router.push(closeHref);

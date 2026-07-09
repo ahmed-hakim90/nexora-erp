@@ -164,7 +164,7 @@ export class HrEmployeeCompensationService {
     }
 
     const preferred = (data ?? []).find((row) => {
-      const version = readJoinedComponentVersion(row as ComponentVersionJoin);
+      const version = readJoinedComponentVersion(row as unknown as ComponentVersionJoin);
       return version.categoryKey === "basic_salary";
     });
 
@@ -175,7 +175,7 @@ export class HrEmployeeCompensationService {
       });
     }
 
-    return readJoinedComponentVersion(preferred as ComponentVersionJoin);
+    return readJoinedComponentVersion(preferred as unknown as ComponentVersionJoin);
   }
 
   async loadPackageLines(salaryPackageRef: string | null): Promise<readonly HrResolvedCompensationPackageLine[]> {
@@ -196,7 +196,7 @@ export class HrEmployeeCompensationService {
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not load salary package lines.", cause: error });
     }
 
-    return (data ?? []).map((row) => mapPackageLineRow(row as DbPackageLineRow));
+    return (data ?? []).map((row) => mapPackageLineRow(row as unknown as DbPackageLineRow));
   }
 
   async packageVersionHasBasicSalaryLine(salaryPackageVersionId: string): Promise<boolean> {

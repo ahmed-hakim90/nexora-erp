@@ -114,7 +114,7 @@ export const hrAppManifest = defineAppManifest({
     {
       actionType: "open-page",
       appKey: "hr",
-      category: "operations",
+      category: "navigation",
       href: "/erp/hr/leave",
       key: "hr.leave.open",
       label: "Open Leave Management",
@@ -126,7 +126,7 @@ export const hrAppManifest = defineAppManifest({
     {
       actionType: "open-page",
       appKey: "hr",
-      category: "operations",
+      category: "navigation",
       href: "/erp/hr/payroll-readiness",
       key: "hr.payroll-readiness.open",
       label: "Open Payroll Readiness",

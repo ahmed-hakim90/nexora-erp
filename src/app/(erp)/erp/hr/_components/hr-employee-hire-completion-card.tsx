@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import type { HrEmployeeHireReadiness } from "@/features/hr/application/services/hr-employee-hire-readiness.service";
+import { translateHrMessageKey } from "@/features/hr/public-api";
 import { cn, secondaryButtonLinkClassName, useTranslations } from "@/shared/ui";
 import { CheckCircle2, Circle, CircleAlert } from "lucide-react";
 
@@ -42,7 +43,7 @@ export function HrEmployeeHireCompletionCard({
           <li className="flex items-center justify-between gap-3 rounded-md border border-[hsl(var(--border))]/70 px-3 py-2 text-sm" key={item.key}>
             <span className="flex items-center gap-2">
               <CircleAlert className="h-4 w-4 text-amber-500" />
-              {t(item.titleKey)}
+              {translateHrMessageKey(t, item.titleKey)}
             </span>
             {item.href ? (
               <Link className={cn("text-sm", secondaryButtonLinkClassName)} href={item.href}>
@@ -67,7 +68,7 @@ export function HrEmployeeHireCompletionCard({
               <li className="flex items-center justify-between gap-3 text-sm text-muted-foreground" key={item.key}>
                 <span className="flex items-center gap-2">
                   <Circle className="h-3.5 w-3.5" />
-                  {t(item.titleKey)}
+                  {translateHrMessageKey(t, item.titleKey)}
                 </span>
                 {item.href ? (
                   <Link className="text-[hsl(var(--accent))] hover:underline" href={item.href}>

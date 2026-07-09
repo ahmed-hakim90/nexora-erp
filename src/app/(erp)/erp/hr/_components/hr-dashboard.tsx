@@ -16,10 +16,10 @@ import {
 } from "lucide-react";
 
 import type { HrDashboardData } from "@/features/hr/routes/loaders/hr-dashboard.loader";
-import { resolveHrPageHelp, translateHrStatus, translateHrTimelineEvent } from "@/features/hr/public-api";
+import { resolveHrPageHelp, translateHrActionType, translateHrStatus, translateHrTimelineEvent } from "@/features/hr/public-api";
 import { EmptyState, KpiCard, PageContainer, PageHeader, useTranslations } from "@/shared/ui";
 
-import { resolveHrDashboardActionQueueLabel } from "./hr-dashboard-labels";
+import { resolveHrDashboardActionQueueLabel, resolveHrDashboardAlertLabel } from "./hr-dashboard-labels";
 
 type DashboardKpi = Readonly<{
   helperText: string;
@@ -275,7 +275,7 @@ export function HrDashboardWorkspace({ data }: Readonly<{ data: HrDashboardData 
                     href={alert.href}
                     key={alert.id}
                   >
-                    {t(alert.labelKey, alert.labelParams)}
+                    {resolveHrDashboardAlertLabel(t, alert)}
                   </Link>
                 ))
               )}

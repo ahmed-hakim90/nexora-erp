@@ -521,14 +521,14 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
   const workAnniversaries = buildWorkAnniversarySamples(employees, hireDateByEmployeeId);
   const upcomingBirthdays = buildUpcomingBirthdaySamples(employees, referenceDate);
 
-  const alerts: HrDashboardAlert[] = [
+  const alerts = [
     metrics.pendingLeaveApprovals > 0
       ? {
           href: "/erp/hr/leave",
           id: "leave-pending",
           labelKey: "hr.dashboard.alert.leavePending",
           labelParams: { count: metrics.pendingLeaveApprovals },
-          severity: "warning",
+          severity: "warning" as const,
         }
       : null,
     metrics.openAttendanceExceptionsToday > 0
@@ -537,7 +537,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "attendance-exceptions",
           labelKey: "hr.dashboard.alert.attendanceExceptions",
           labelParams: { count: metrics.openAttendanceExceptionsToday },
-          severity: "warning",
+          severity: "warning" as const,
         }
       : null,
     metrics.pendingOvertimeCandidates > 0
@@ -546,7 +546,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "overtime-pending",
           labelKey: "hr.dashboard.alert.overtimePending",
           labelParams: { count: metrics.pendingOvertimeCandidates },
-          severity: "info",
+          severity: "info" as const,
         }
       : null,
     metrics.pendingLateEarlyViolations > 0
@@ -555,7 +555,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "late-early-pending",
           labelKey: "hr.dashboard.alert.lateEarlyPending",
           labelParams: { count: metrics.pendingLateEarlyViolations },
-          severity: "warning",
+          severity: "warning" as const,
         }
       : null,
     metrics.contractsExpiringSoon > 0
@@ -564,7 +564,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "contracts-expiring",
           labelKey: "hr.dashboard.alert.contractsExpiring",
           labelParams: { count: metrics.contractsExpiringSoon },
-          severity: "warning",
+          severity: "warning" as const,
         }
       : null,
     metrics.documentsExpiringSoon > 0
@@ -573,7 +573,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "documents-expiring",
           labelKey: "hr.dashboard.alert.documentsExpiring",
           labelParams: { count: metrics.documentsExpiringSoon },
-          severity: "warning",
+          severity: "warning" as const,
         }
       : null,
     metrics.employeesWithMissingDocuments > 0
@@ -582,7 +582,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "documents-missing",
           labelKey: "hr.dashboard.alert.documentsMissing",
           labelParams: { count: metrics.employeesWithMissingDocuments },
-          severity: "warning",
+          severity: "warning" as const,
         }
       : null,
     metrics.payrollReadinessIssues > 0
@@ -591,7 +591,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "payroll-readiness",
           labelKey: "hr.dashboard.alert.payrollReadiness",
           labelParams: { count: metrics.payrollReadinessIssues },
-          severity: "error",
+          severity: "error" as const,
         }
       : null,
     metrics.openPayrollPeriods > 0
@@ -600,7 +600,7 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "open-payroll-periods",
           labelKey: "hr.dashboard.alert.openPayrollPeriods",
           labelParams: { count: metrics.openPayrollPeriods },
-          severity: "info",
+          severity: "info" as const,
         }
       : null,
     metrics.openVacancies > 0
@@ -609,10 +609,10 @@ export async function loadHrDashboardWorkspace(): Promise<HrDashboardData> {
           id: "open-vacancies",
           labelKey: "hr.dashboard.alert.openVacancies",
           labelParams: { count: metrics.openVacancies },
-          severity: "info",
+          severity: "info" as const,
         }
       : null,
-  ].filter((item): item is HrDashboardAlert => item !== null);
+  ].filter((item) => item !== null) as HrDashboardAlert[];
 
   return { actionQueue, alerts, metrics, pendingApprovals, recentChanges, upcomingBirthdays, workAnniversaries };
 }

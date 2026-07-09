@@ -1,7 +1,7 @@
-import type { HrDashboardActionQueueItem } from "@/features/hr/application/types/hr-ui.types";
+import type { HrDashboardActionQueueItem, HrDashboardAlert } from "@/features/hr/application/types/hr-ui.types";
 import { translateHrActionType, translateHrViolationKind } from "@/features/hr/public-api";
-
-type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+import type { MessageKey } from "@/platform/localization/messages/en";
+import type { TranslateFn } from "@/platform/localization/translate";
 
 export function resolveHrDashboardActionQueueLabel(t: TranslateFn, item: HrDashboardActionQueueItem): string {
   const params = { ...item.labelParams };
@@ -11,5 +11,9 @@ export function resolveHrDashboardActionQueueLabel(t: TranslateFn, item: HrDashb
   if (item.kind === "hr_request" && params.requestType) {
     params.requestType = translateHrActionType(t, String(params.requestType));
   }
-  return t(item.labelKey, params);
+  return t(item.labelKey as MessageKey, params);
+}
+
+export function resolveHrDashboardAlertLabel(t: TranslateFn, alert: HrDashboardAlert): string {
+  return t(alert.labelKey as MessageKey, alert.labelParams);
 }

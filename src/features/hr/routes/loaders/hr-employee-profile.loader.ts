@@ -7,6 +7,7 @@ import { hasServerPermission, requirePermission } from "@/platform/permissions/s
 
 import { HrAssignmentResolverService } from "../../application/services/hr-assignment-resolver.service";
 import { HrEmployeeCompensationService } from "../../application/services/hr-employee-compensation.service";
+import { HrEmployeeDocumentComplianceService } from "../../application/services/hr-employee-document-compliance.service";
 import { HrEmployeeHireReadinessService, type HrEmployeeHireReadiness } from "../../application/services/hr-employee-hire-readiness.service";
 import type { HrEmployeeAssignmentSnapshot, HrTimelineEntry } from "../../application/types/hr-ui.types";
 import type { HrEmployeeDocumentCompliance } from "../../application/utils/hr-document-compliance.evaluate";

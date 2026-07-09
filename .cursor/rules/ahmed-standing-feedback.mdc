@@ -1,0 +1,88 @@
+---
+description: Ahmed's recurring feedback — platform defaults, do not repeat mistakes
+alwaysApply: true
+---
+
+# Ahmed Standing Feedback — Nexora
+
+Ahmed's corrections from live sessions are **platform law**. Apply without being reminded.
+
+Canonical docs: [Easy Operator Forms](../../docs/06-guidelines/EASY_OPERATOR_FORMS_STANDARD.md) · [UX Constitution](../../docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md) · [ERP Modal Pattern](erp-page-modal-patterns.mdc)
+
+---
+
+## Before You Code
+
+1. **Inspect repo first** — search existing patterns, engines, loaders, actions. Extend; do not reinvent.
+2. **Business workflow before UI** — ask what the operator actually does end-to-end (checklist, bulk, wizard, preview).
+3. **Complete the job** — when Ahmed says "اعمل خطه كامله" / "ابدا و نفذ" / "كمل", finish the full scope; do not stop at foundation-only.
+4. **DB migrations are mandatory** — after adding migrations, run `supabase db push` (or apply via Supabase MCP) and confirm success before saying "ready".
+5. **No demo/fake data in production pages** — empty states yes; hardcoded sample rows, fake KPIs, or seeded UI data no.
+
+---
+
+## List Workspaces — One Rule for All Pages
+
+**Stop random placement** (create above table, below table, inline under row).
+
+| Surface | Pattern |
+| --- | --- |
+| **Create / edit master record** | `RecordFormDialog` modal + `?create=1` / `?edit=id` — never inline form under the table |
+| **Quick create on list page** | Narrow **sidebar (~20–24rem) on the right**; table + filter = wide main area |
+| **Mobile** | Stack: create panel first, then filter + table |
+
+RTL sidebar grid (swap **widths**, not only column start):
+
+```tsx
+<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)] rtl:lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]">
+```
+
+Never give the create form the `1fr` wide column in RTL.
+
+---
+
+## Forms & Modals
+
+- **Labels on every field** — `FieldGroup` or `EntityLookup` with label; placeholder is example only.
+- **Organized layout** — `FormSection` + `FormGrid` (max 3 cols); full-width notes below grid; submit in `border-t` footer.
+- **Conditional forms** — when type/mode changes (e.g. file import vs network device), **hide irrelevant sections** and change title/subtitle/help.
+- **Modal actions inside frame** — use `RecordFormDialog` `actions` prop; buttons must not render outside the dialog shell.
+- **Selects must work** — controlled `value` + `onChange` for dynamic forms; verify selection actually updates UI.
+- **Dark mode** — buttons/inputs need visible background, border, hover, focus; no border-only ghost CTAs.
+
+---
+
+## Page Structure
+
+- **Multiple tables on one page** → **tabs** (`NavTabBar`), not KPIs then tables stacked at the bottom.
+- **Table header filters** → compact **icon triggers**, not always-visible dropdowns in headers.
+- **Import flows** → upload → parse → **preview table** → inline edit/remove rows → confirm save. Never silent import.
+- **Bulk operations** → wizard with recipient selection, amount rules, **preview**, then submit/approve.
+- **Employee onboarding** → single wizard/hub with checklist ("what's missing?"); do not force hopping across unrelated pages for contract, package, shift, documents.
+
+---
+
+## Architecture (Do Not Break)
+
+- Assignment changes → **Assignment Engine** only; no direct `UPDATE` on `employee.department` / `job`.
+- Cross-engine fields → workflow dialog; no silent cross-domain mutation.
+- Contract types → versioned clauses JSON structure; snapshots keep placeholders; print replaces at render time.
+- Payroll / attendance engines → extend via foundation; do not bypass runtime.
+
+---
+
+## Localization
+
+- Arabic UI = **Egyptian Arabic** via `t()` keys in `hr-ar.ts` / `hr-en.ts`.
+- Enums and statuses in tables/forms → `translateCatalogKey` helpers — **never** raw English foundation labels in Arabic UI.
+
+---
+
+## Self-Check Before Saying "Done"
+
+- [ ] Matches list/modal/sidebar pattern above?
+- [ ] Form organized, labeled, RTL-safe?
+- [ ] Conditional UI adapts to user selection?
+- [ ] Migration applied if schema changed?
+- [ ] No demo data; real empty/loading/error states?
+- [ ] Full scope delivered, not partial MVP unless scoped?

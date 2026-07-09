@@ -27,14 +27,17 @@ Ahmed's recurring UX requirements are **platform defaults**. Do not wait to be r
 - Primary submit: `w-full sm:w-auto`, aligned end on its own row when the form is wide.
 - Long text fields span 2 columns on `md+`. Use `gap-4` between fields.
 
-### List workspace order
+### List workspace layout
 
 ```text
-KPIs → Primary create section → Filter → Table
+PageHeader → KPIs → [ Filter + Table (wide) | Create sidebar (narrow ~20–24rem, right in RTL) ]
 ```
 
-- Create block: `EditableSectionCard` or `FormSection` with **title + description**.
-- Filter block: **separate** form — never merged with create.
+- **Create/edit master records** → `RecordFormDialog` modal (`?create=` / `?edit=`), not inline under table.
+- **Quick create on list** → `FormSection` in sticky right sidebar; fields stacked in one column.
+- RTL: swap grid **column widths** with `rtl:lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]`.
+- Filter block: **separate** from create — never merged into one form.
+- Mobile: create panel `order-1`, table `order-2`.
 
 ### Localization
 

@@ -4,15 +4,12 @@ import Link from "next/link";
 
 import type { HrEmployeeDocumentCompliance } from "@/features/hr/application/utils/hr-document-compliance.evaluate";
 import { translateHrRequiredDocumentKind } from "@/features/hr/application/constants/hr-document-kind.registry";
+import { translateHrDocumentComplianceStatus } from "@/features/hr/public-api";
 import {
   grantHrDocumentComplianceWaiverAction,
   revokeHrDocumentComplianceWaiverAction,
 } from "@/features/hr/routes/actions/hr-document-compliance-waiver.actions";
 import { Button, DatePicker, Input, secondaryButtonLinkClassName, useTranslations } from "@/shared/ui";
-
-function complianceStatusKey(status: string) {
-  return `hr.documentCompliance.status.${status}` as const;
-}
 
 function resolutionMessageKey(resolution: HrEmployeeDocumentCompliance["resolution"]) {
   if (resolution === "no_active_contract") return "hr.documentCompliance.resolution.noActiveContract" as const;
@@ -70,7 +67,7 @@ export function HrEmployeeDocumentChecklist({
       <ul className="space-y-2">
         {compliance.items.map((item) => {
           const isSelected = selectedUploadType === item.uploadType;
-          const statusLabel = t(complianceStatusKey(item.status));
+          const statusLabel = translateHrDocumentComplianceStatus(t, item.status);
           const needsAction = item.status === "missing" || item.status === "expired" || item.status === "registered_only";
           return (
             <li

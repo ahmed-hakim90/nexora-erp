@@ -706,6 +706,12 @@ You are working inside the existing repository.
 
 ---
 
+# Ahmed Standing Feedback
+
+Recurring corrections from live sessions are codified in `.cursor/rules/ahmed-standing-feedback.mdc`. Read it before UI, migrations, bulk/import flows, or list-page work. Do not wait to be reminded.
+
+---
+
 # Final Response Format After Coding
 
 When implementation is done, answer Ahmed like this:

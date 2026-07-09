@@ -12,7 +12,7 @@ import {
   createHrRequestAction,
   updateEmployeePhotoAction,
 } from "@/features/hr/routes/actions/hr-operational.actions";
-import { HR_CUSTODY_ASSET_TYPES, HR_DOCUMENT_TYPES, HR_PRINT_TEMPLATE_KEYS, HR_REQUEST_TYPES, resolveHrTabHelp, translateHrAssetType, translateHrDocumentType, translateHrRequestTypeLabel, translateHrStatus, translateHrTimelineEvent } from "@/features/hr/public-api";
+import { HR_CUSTODY_ASSET_TYPES, HR_DOCUMENT_TYPES, HR_PRINT_TEMPLATE_KEYS, HR_REQUEST_TYPES, resolveHrTabHelp, translateHrAssetType, translateHrDocumentType, translateHrMessageKey, translateHrRequestTypeLabel, translateHrStatus, translateHrTimelineEvent } from "@/features/hr/public-api";
 import type { TranslateFn } from "@/platform/localization/public-api";
 import {
   AdaptiveWorkspaceNav,
@@ -234,7 +234,7 @@ export function HrEmployeeProfileWorkspace({
           key,
           label: (
             <span className="inline-flex items-center gap-1">
-              {t(PROFILE_TAB_LABEL_KEYS[key])}
+              {translateHrMessageKey(t, PROFILE_TAB_LABEL_KEYS[key])}
               {tabHelp ? <HelpHint help={tabHelp} side="bottom" /> : null}
             </span>
           ),

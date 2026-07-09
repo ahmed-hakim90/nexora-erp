@@ -232,7 +232,7 @@ export function createHrRuntimeRecordSearchProvider(): SearchProvider {
         resultType: "record",
       },
     ],
-    source: "repository",
+    source: "app",
     supportedExperiences: ["erp"],
     search: async (query) => {
       if (query.normalizedTerm.length < 2 || typeof window === "undefined") {

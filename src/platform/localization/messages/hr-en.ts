@@ -93,7 +93,6 @@ export const hrEnMessages = {
   "hr.common.status.draft": "Draft",
   "hr.common.status.active": "Active",
   "hr.common.status.inactive": "Inactive",
-  "hr.common.paid": "Paid",
   "hr.common.requiresApproval": "Requires approval",
   "hr.common.impactsPayroll": "Impacts payroll",
   "hr.common.selectCalendar": "Select calendar",
@@ -1138,6 +1137,7 @@ export const hrEnMessages = {
   "hr.settings.confirm.archiveLeaveType":
     "Archive this leave type? Existing requests stay visible; new requests cannot use it.",
   "hr.settings.confirm.archiveCalendar": "Archive this payroll calendar?",
+  "hr.settings.confirm.archivePeriod": "Archive this payroll period?",
   "hr.settings.confirm.archiveGroup": "Archive this payroll group?",
   "hr.settings.confirm.archiveDocumentSet": "Archive this document set?",
   "hr.settings.freq.monthly": "Monthly",
@@ -1495,7 +1495,6 @@ export const hrEnMessages = {
   "hr.common.programId": "Program ID",
   "hr.common.payrollGroup": "Payroll group",
   "hr.common.employmentStatus": "Employment status",
-  "hr.common.end": "End",
 
   "hr.dashboard.title": "HR Dashboard",
   "hr.dashboard.description":
@@ -1923,7 +1922,6 @@ export const hrEnMessages = {
   "hr.common.checkOut": "Check out",
   "hr.common.worked": "Worked",
   "hr.common.location": "Location",
-  "hr.common.device": "Device",
   "hr.common.openAction": "Open",
   "hr.common.shift": "Shift",
   "hr.common.employees": "Employees",

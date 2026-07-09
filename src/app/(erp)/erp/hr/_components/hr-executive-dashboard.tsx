@@ -17,7 +17,7 @@ import type { HrExecutiveDashboardData } from "@/features/hr/routes/loaders/hr-d
 import { translateHrStatus } from "@/features/hr/public-api";
 import { EmptyState, KpiCard, PageContainer, PageHeader, useTranslations } from "@/shared/ui";
 
-import { resolveHrDashboardActionQueueLabel } from "./hr-dashboard-labels";
+import { resolveHrDashboardActionQueueLabel, resolveHrDashboardAlertLabel } from "./hr-dashboard-labels";
 
 type ExecutiveKpi = Readonly<{
   helperText: string;
@@ -158,7 +158,7 @@ export function HrExecutiveDashboardWorkspace({ data }: Readonly<{ data: HrExecu
                     href={alert.href}
                     key={alert.id}
                   >
-                    {t(alert.labelKey, alert.labelParams)}
+                    {resolveHrDashboardAlertLabel(t, alert)}
                   </Link>
                 ))
               )}

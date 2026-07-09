@@ -99,7 +99,7 @@ export function HrDepartmentDashboardWorkspace({ data }: Readonly<{ data: HrDepa
           </div>
           {sortedDepartments.length === 0 ? (
             <div className="p-6">
-              <EmptyState description={t("hr.dashboard.department.empty.departments")} title={t("hr.dashboard.department.empty.departmentsTitle")} />
+              <EmptyState message={t("hr.dashboard.department.empty.departments")} />
             </div>
           ) : (
             <ul className="divide-y divide-[hsl(var(--border))]">

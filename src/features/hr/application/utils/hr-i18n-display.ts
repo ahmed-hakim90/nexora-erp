@@ -78,6 +78,18 @@ export function translateHrExportScope(t: TranslateFn, scope: string): string {
   return translateCatalogKey(t, "hr.attendance.export.scope", scope, formatHrStatusLabel(scope));
 }
 
+export function translateHrDocumentComplianceStatus(t: TranslateFn, status: string): string {
+  return translateCatalogKey(t, "hr.documentCompliance.status", status, formatHrStatusLabel(status));
+}
+
+export function translateHrMessageKey(
+  t: TranslateFn,
+  key: string,
+  params?: Readonly<Record<string, string | number>>,
+): string {
+  return t(key as MessageKey, params);
+}
+
 export function translateHrDisplayValue(t: TranslateFn, value: unknown, fallback = "—"): string {
   const label = formatHrDisplayLabel(value, fallback);
   if (label === fallback) return label;
