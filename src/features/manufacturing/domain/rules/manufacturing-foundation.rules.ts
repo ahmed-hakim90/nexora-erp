@@ -34,6 +34,28 @@ export function assertFoundationOnlyInput(input: ManufacturingMutationInput) {
   }
 }
 
+/** MFG-01: active manufacturing products must link to inventory identity. */
+export function assertManufacturingProductRules(input: ManufacturingMutationInput) {
+  assertFoundationOnlyInput(input);
+
+  const status = input.status == null || String(input.status).trim() === ""
+    ? "active"
+    : String(input.status).trim().toLowerCase();
+  const inventoryProductId = input.inventoryProductId == null ? "" : String(input.inventoryProductId).trim();
+  const deferredLinkStatuses = new Set(["draft", "inactive", "cancelled", "archived", "locked"]);
+
+  if (!deferredLinkStatuses.has(status) && !inventoryProductId) {
+    throw new ApplicationError({
+      code: "VALIDATION_ERROR",
+      message: "Active manufacturing products must link to an inventory product. Create the product in Inventory first, then link it here.",
+    });
+  }
+
+  if (input.status && !manufacturingStatuses.includes(String(input.status))) {
+    throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Manufacturing product status is not supported." });
+  }
+}
+
 export function assertBomFoundationRules(input: ManufacturingMutationInput) {
   assertFoundationOnlyInput(input);
 

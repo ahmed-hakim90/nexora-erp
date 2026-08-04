@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isInventoryManufacturingItemRole } from "../../domain/manufacturing-item-roles";
+
 const optionalText = z.preprocess((value) => value === "" ? null : value, z.string().trim().min(1).nullable());
 const requiredText = z.string().trim().min(1, "This field is required.");
 const optionalNumber = z.preprocess((value) => value === "" || value === null || typeof value === "undefined" ? null : value, z.coerce.number().min(0, "Use zero or a positive number.").nullable());
@@ -202,5 +204,20 @@ export const inventoryProductMutationSchema = z.object({
   }
   if (value.warrantyEligible && (!value.warrantyDurationDays || !value.warrantyStartsFrom)) {
     context.addIssue({ code: "custom", message: "Warranty duration and start basis are required for warranty-eligible products.", path: ["warrantyDurationDays"] });
+  }
+  if (value.isManufacturable) {
+    if (!value.productTypeKey) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose a manufacturing role for manufacturable products (raw material, semi-finished, finished good, or packaging).",
+        path: ["productTypeKey"],
+      });
+    } else if (!isInventoryManufacturingItemRole(value.productTypeKey)) {
+      context.addIssue({
+        code: "custom",
+        message: "Manufacturing role must be raw_material, semi_finished, finished_good, or packaging.",
+        path: ["productTypeKey"],
+      });
+    }
   }
 });

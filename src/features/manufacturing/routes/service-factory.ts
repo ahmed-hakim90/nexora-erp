@@ -4,6 +4,7 @@ import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { OutboxService } from "@/platform/integration/server";
 
+import { ManufacturingEngineeringService } from "../application/services/manufacturing-engineering.service";
 import {
   ManufacturingBomService,
   ManufacturingFoundationService,
@@ -95,6 +96,12 @@ export async function createProductionStandardService() {
 export async function createManufacturingBomService() {
   const { context, repository, outbox } = await createManufacturingParts();
   return new ManufacturingBomService(context, repository, outbox, getManufacturingResourceDefinition("boms"));
+}
+
+export async function createManufacturingEngineeringService() {
+  const context = await resolveBranchRequestContext("erp");
+  const supabase = createRequestSupabaseClient({ accessToken: context.accessToken });
+  return new ManufacturingEngineeringService(context, supabase);
 }
 
 export async function createManufacturingRoutingService() {

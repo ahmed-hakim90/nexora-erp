@@ -11,6 +11,7 @@ import type { ManufacturingListQuery, ManufacturingMutationInput, ManufacturingR
 import {
   assertBomFoundationRules,
   assertFoundationOnlyInput,
+  assertManufacturingProductRules,
   assertProductionStandardFoundationRules,
   assertRoutingFoundationRules,
 } from "../../domain/rules/manufacturing-foundation.rules";
@@ -81,6 +82,11 @@ export class ManufacturingFoundationService {
 
     if (this.definition.key === "production-standards") {
       assertProductionStandardFoundationRules(input);
+      return;
+    }
+
+    if (this.definition.key === "manufacturing-products") {
+      assertManufacturingProductRules(input);
       return;
     }
 

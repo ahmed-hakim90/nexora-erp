@@ -221,6 +221,8 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
   }
 
   async create(definition: ManufacturingResourceDefinition, input: ManufacturingMutationInput): Promise<ManufacturingRecord> {
+    await this.assertInventoryProductLink(definition, input);
+
     const { data, error } = await this.supabase
       .from(definition.tableName)
       .insert({ ...normalizePayload(definition, input, this.context), created_by: this.context.userId })
@@ -235,6 +237,8 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
   }
 
   async update(definition: ManufacturingResourceDefinition, id: string, input: ManufacturingMutationInput): Promise<ManufacturingRecord> {
+    await this.assertInventoryProductLink(definition, input);
+
     let request = this.supabase
       .from(definition.tableName)
       .update(normalizePayload(definition, input, this.context))
@@ -279,6 +283,38 @@ export class SupabaseManufacturingRepository implements ManufacturingRepository 
 
     if (error) {
       throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: `Could not delete ${definition.singularTitle}.`, cause: error });
+    }
+  }
+
+  private async assertInventoryProductLink(definition: ManufacturingResourceDefinition, input: ManufacturingMutationInput) {
+    if (definition.key !== "manufacturing-products") return;
+
+    const inventoryProductId = input.inventoryProductId == null ? "" : String(input.inventoryProductId).trim();
+    if (!inventoryProductId) return;
+
+    const { data, error } = await this.supabase
+      .from("inventory_products")
+      .select("id, is_manufacturable")
+      .eq("tenant_id", this.context.tenantId)
+      .eq("company_id", this.context.companyId)
+      .eq("id", inventoryProductId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (error) {
+      throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not validate inventory product link.", cause: error });
+    }
+    if (!data) {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: "Inventory product was not found in this company. Create it under Inventory products first.",
+      });
+    }
+    if (data.is_manufacturable !== true) {
+      throw new ApplicationError({
+        code: "VALIDATION_ERROR",
+        message: "Linked inventory product must be marked Manufacturable and have a manufacturing role.",
+      });
     }
   }
 }

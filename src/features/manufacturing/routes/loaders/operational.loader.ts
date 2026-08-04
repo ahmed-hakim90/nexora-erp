@@ -6,6 +6,8 @@ import { createRequestSupabaseClient } from "@/platform/database/server";
 import { requirePermission } from "@/platform/permissions/server";
 
 import { MANUFACTURING_PERMISSIONS } from "../../permissions/permission-registry";
+import { explodeBomLines, isApprovedBomStatus } from "../../domain/bom-explosion";
+import { assessRoutingReadiness } from "../../domain/routing-readiness";
 
 export type OperationalLookup = Readonly<{ id: string; label: string }>;
 export type BomLineRecord = Readonly<{
@@ -100,29 +102,60 @@ async function loadLookups() {
 export async function loadBomOperationalDetails(bomId: string) {
   const { context, lookups, supabase } = await loadLookups();
   await requirePermission({ context, permission: MANUFACTURING_PERMISSIONS.bomView });
-  const { data, error } = await supabase
-    .from("manufacturing_bom_lines")
-    .select("id, line_number, component_product_id, quantity, uom_id, scrap_percent, operation_id, notes, status")
-    .eq("tenant_id", context.tenantId)
-    .eq("company_id", context.companyId)
-    .eq("bom_id", bomId)
-    .is("deleted_at", null)
-    .order("line_number", { ascending: true });
 
+  const [{ data: bom, error: bomError }, { data, error }] = await Promise.all([
+    supabase
+      .from("manufacturing_boms")
+      .select("id, status, manufacturing_product_id, bom_key, version_key")
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("id", bomId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    supabase
+      .from("manufacturing_bom_lines")
+      .select("id, line_number, component_product_id, quantity, uom_id, scrap_percent, operation_id, notes, status")
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("bom_id", bomId)
+      .is("deleted_at", null)
+      .order("line_number", { ascending: true }),
+  ]);
+
+  if (bomError) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not load BOM header.", cause: bomError });
   if (error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not load BOM lines.", cause: error });
+  if (!bom) throw new ApplicationError({ code: "NOT_FOUND", message: "BOM was not found." });
+
+  const lines = (data ?? []).map((row) => ({
+    componentProductId: row.component_product_id as string,
+    id: row.id as string,
+    lineNumber: row.line_number as number,
+    notes: row.notes as string | null,
+    operationId: row.operation_id as string | null,
+    quantity: numberValue(row.quantity),
+    scrapPercent: numberValue(row.scrap_percent),
+    status: row.status as string,
+    uomId: row.uom_id as string,
+  })) satisfies BomLineRecord[];
+
+  const explosionPreview = explodeBomLines(
+    1,
+    lines.map((line) => ({
+      componentProductId: line.componentProductId,
+      lineId: line.id,
+      lineNumber: line.lineNumber,
+      quantity: line.quantity,
+      scrapPercent: line.scrapPercent,
+      status: line.status,
+      uomId: line.uomId,
+    })),
+  );
 
   return {
-    lines: (data ?? []).map((row) => ({
-      componentProductId: row.component_product_id as string,
-      id: row.id as string,
-      lineNumber: row.line_number as number,
-      notes: row.notes as string | null,
-      operationId: row.operation_id as string | null,
-      quantity: numberValue(row.quantity),
-      scrapPercent: numberValue(row.scrap_percent),
-      status: row.status as string,
-      uomId: row.uom_id as string,
-    })) satisfies BomLineRecord[],
+    approved: isApprovedBomStatus(String(bom.status ?? "")),
+    bomStatus: String(bom.status ?? ""),
+    explosionPreview,
+    lines,
     lookups,
   };
 }
@@ -130,31 +163,58 @@ export async function loadBomOperationalDetails(bomId: string) {
 export async function loadRoutingOperationalDetails(routingId: string) {
   const { context, lookups, supabase } = await loadLookups();
   await requirePermission({ context, permission: MANUFACTURING_PERMISSIONS.routingView });
-  const { data, error } = await supabase
-    .from("manufacturing_routing_steps")
-    .select("id, step_sequence, operation_id, work_center_id, workstation_id, estimated_time_minutes, setup_time_minutes, run_time_minutes, notes, status")
-    .eq("tenant_id", context.tenantId)
-    .eq("company_id", context.companyId)
-    .eq("routing_id", routingId)
-    .is("deleted_at", null)
-    .order("step_sequence", { ascending: true });
 
+  const [{ data: routing, error: routingError }, { data, error }] = await Promise.all([
+    supabase
+      .from("manufacturing_routings")
+      .select("id, status")
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("id", routingId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    supabase
+      .from("manufacturing_routing_steps")
+      .select("id, step_sequence, operation_id, work_center_id, workstation_id, estimated_time_minutes, setup_time_minutes, run_time_minutes, notes, status")
+      .eq("tenant_id", context.tenantId)
+      .eq("company_id", context.companyId)
+      .eq("routing_id", routingId)
+      .is("deleted_at", null)
+      .order("step_sequence", { ascending: true }),
+  ]);
+
+  if (routingError) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not load routing header.", cause: routingError });
   if (error) throw new ApplicationError({ code: "OPERATIONAL_ERROR", message: "Could not load routing steps.", cause: error });
+  if (!routing) throw new ApplicationError({ code: "NOT_FOUND", message: "Routing was not found." });
+
+  const steps = (data ?? []).map((row) => ({
+    estimatedTimeMinutes: numberValue(row.estimated_time_minutes),
+    id: row.id as string,
+    notes: row.notes as string | null,
+    operationId: row.operation_id as string,
+    runTimeMinutes: numberValue(row.run_time_minutes),
+    setupTimeMinutes: numberValue(row.setup_time_minutes),
+    status: row.status as string,
+    stepSequence: row.step_sequence as number,
+    workCenterId: row.work_center_id as string,
+    workstationId: row.workstation_id as string | null,
+  })) satisfies RoutingStepRecord[];
+
+  const readiness = assessRoutingReadiness({
+    status: String(routing.status ?? ""),
+    steps: steps.map((step) => ({
+      operationId: step.operationId,
+      status: step.status,
+      stepSequence: step.stepSequence,
+      workCenterId: step.workCenterId,
+    })),
+  });
 
   return {
     lookups,
-    steps: (data ?? []).map((row) => ({
-      estimatedTimeMinutes: numberValue(row.estimated_time_minutes),
-      id: row.id as string,
-      notes: row.notes as string | null,
-      operationId: row.operation_id as string,
-      runTimeMinutes: numberValue(row.run_time_minutes),
-      setupTimeMinutes: numberValue(row.setup_time_minutes),
-      status: row.status as string,
-      stepSequence: row.step_sequence as number,
-      workCenterId: row.work_center_id as string,
-      workstationId: row.workstation_id as string | null,
-    })) satisfies RoutingStepRecord[],
+    readiness,
+    routingStatus: String(routing.status ?? ""),
+    steps,
   };
 }
 

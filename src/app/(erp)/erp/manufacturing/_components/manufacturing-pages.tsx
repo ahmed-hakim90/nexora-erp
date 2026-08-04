@@ -411,9 +411,35 @@ async function BomOperationalSection({ bomId }: Readonly<{ bomId: string }>) {
   const data = await loadBomOperationalDetails(bomId);
   return (
     <section className="space-y-4 rounded-md border bg-[hsl(var(--surface))] p-4">
-      <div>
-        <h2 className="font-medium">BOM Lines</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Component lines only. No costing, reservations, or material consumption is posted.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-medium">BOM Lines</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Component lines only. No costing, reservations, or material consumption is posted.</p>
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 text-xs ${data.approved ? "border-emerald-600/40 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>
+          {data.approved ? "Approved (active)" : `Draft / ${data.bomStatus || "unknown"}`}
+        </span>
+      </div>
+      <div className="space-y-2 rounded-md border border-dashed p-3">
+        <h3 className="text-sm font-medium">Explosion preview (1 finished unit)</h3>
+        <p className="text-xs text-muted-foreground">Theoretical requirements including scrap. Inventory is not posted.</p>
+        {data.explosionPreview.lineCount < 1 ? (
+          <p className="text-sm text-muted-foreground">Add draft/active component lines to preview requirements.</p>
+        ) : (
+          <EnterpriseDataTable<{ lineNumber: number; componentProductId: string; scrapPercent: number; requiredQuantity: number; uomId: string }>
+            columns={[
+              { key: "line", header: "Line", render: (row) => row.lineNumber },
+              { key: "component", header: "Component", render: (row) => labelFor(data.lookups.products, row.componentProductId) },
+              { key: "scrap", header: "Scrap %", render: (row) => row.scrapPercent },
+              { key: "required", header: "Required qty", render: (row) => row.requiredQuantity },
+              { key: "uom", header: "UOM", render: (row) => labelFor(data.lookups.uoms, row.uomId) },
+            ]}
+            emptyMessage="No explosion rows."
+            getRowId={(row) => `${row.lineNumber}-${row.componentProductId}`}
+            pagination={{ mode: "cursor", pageSize: data.explosionPreview.requirements.length || 1, nextCursor: null }}
+            records={[...data.explosionPreview.requirements]}
+          />
+        )}
       </div>
       <EnterpriseDataTable<BomLineRecord>
         columns={[
@@ -469,10 +495,22 @@ async function RoutingOperationalSection({ routingId }: Readonly<{ routingId: st
   const data = await loadRoutingOperationalDetails(routingId);
   return (
     <section className="space-y-4 rounded-md border bg-[hsl(var(--surface))] p-4">
-      <div>
-        <h2 className="font-medium">Routing Steps</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Operational routing steps only. No scheduling engine is implemented.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-medium">Routing Steps</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Operational routing steps only. No scheduling engine is implemented.</p>
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 text-xs ${data.readiness.ready ? "border-emerald-600/40 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground"}`}>
+          {data.readiness.ready ? "Release ready" : "Not ready"}
+        </span>
       </div>
+      {!data.readiness.ready ? (
+        <ul className="list-disc space-y-1 ps-5 text-sm text-muted-foreground">
+          {data.readiness.reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      ) : null}
       <EnterpriseDataTable<RoutingStepRecord>
         columns={[
           { key: "sequence", header: "Sequence", render: (row) => row.stepSequence },
