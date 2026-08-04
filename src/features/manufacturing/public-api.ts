@@ -6,6 +6,7 @@ export { manufacturingModuleManifest } from "./module.manifest";
 export { MANUFACTURING_PERMISSIONS, MANUFACTURING_PERMISSION_LIST } from "./permissions/permission-registry";
 export {
   createManufacturingBomService,
+  createManufacturingEngineeringService,
   createManufacturingFoundationService,
   createManufacturingLineAssignmentService,
   createManufacturingOrderService,
@@ -25,7 +26,28 @@ export {
   getManufacturingResourceDefinition,
   parseManufacturingResourceKey,
 } from "./presentation/view-models/page-config";
-export { FUTURE_WORKER_ACHIEVEMENT_FORMULA, PRODUCTION_STANDARD_RESOLUTION_PRIORITY } from "./domain/rules/manufacturing-foundation.rules";
+export { FUTURE_WORKER_ACHIEVEMENT_FORMULA, PRODUCTION_STANDARD_RESOLUTION_PRIORITY, assertManufacturingProductRules } from "./domain/rules/manufacturing-foundation.rules";
+export {
+  MANUFACTURING_ITEM_ROLE_OPTIONS,
+  MANUFACTURING_ITEM_ROLE_VALUES,
+  MANUFACTURING_WAREHOUSE_ROLE_MAP,
+  MANUFACTURING_WAREHOUSE_TYPE_OPTIONS,
+  isManufacturingItemRole,
+} from "./domain/manufacturing-catalog-roles";
+export type { ManufacturingItemRole } from "./domain/manufacturing-catalog-roles";
+export {
+  explodeBomLines,
+  isApprovedBomStatus,
+  isExplodableBomLineStatus,
+} from "./domain/bom-explosion";
+export type { BomExplosionLineInput, BomExplosionRequirement, BomExplosionResult } from "./domain/bom-explosion";
+export { assessRoutingReadiness } from "./domain/routing-readiness";
+export type { RoutingReadinessResult, RoutingReadinessStepInput } from "./domain/routing-readiness";
+export { resolveProductionStandard } from "./domain/production-standard-resolver";
+export type {
+  ProductionStandardCandidate,
+  ProductionStandardResolveQuery,
+} from "./domain/production-standard-resolver";
 export type {
   ManufacturingListQuery,
   ManufacturingMutationInput,

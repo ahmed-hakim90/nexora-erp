@@ -82,7 +82,7 @@ const lookupConfigs: Record<string, LookupConfig | readonly LookupConfig[]> = {
       metaColumn: "sku",
       permission: INVENTORY_PERMISSIONS.productsView,
       scope: "company",
-      select: "id, sku, name",
+      select: "id, sku, name, is_manufacturable, product_type_key",
       table: "inventory_products",
     },
     {
@@ -296,6 +296,10 @@ export async function loadManufacturingFormLookups(definition: ManufacturingReso
 
         if (config.scope === "branch") {
           request = request.eq("branch_id", context.branchId);
+        }
+
+        if (fieldName === "inventoryProductId" && config.table === "inventory_products") {
+          request = request.eq("is_manufacturable", true);
         }
 
         const { data, error } = await request;
