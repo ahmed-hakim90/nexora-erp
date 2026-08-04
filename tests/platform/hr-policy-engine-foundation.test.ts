@@ -21,7 +21,7 @@ import {
   HR_RULE_SIMULATOR_READINESS_CONTRACT,
   policyVersionAppliesOn,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260630154500_hr_policy_engine_foundation.sql");

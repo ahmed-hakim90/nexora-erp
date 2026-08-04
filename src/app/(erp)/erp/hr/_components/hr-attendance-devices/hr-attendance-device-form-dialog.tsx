@@ -9,7 +9,7 @@ import {
   isHrAttendanceFileImportDeviceType,
   isHrAttendanceRestDeviceType,
   isHrAttendanceTcpDeviceType,
-} from "@/features/hr/application/schemas/hr-attendance-device.schema";
+} from "@/features/hr/public-api";
 import {
   createHrAttendanceDeviceAction,
   updateHrAttendanceDeviceAction,

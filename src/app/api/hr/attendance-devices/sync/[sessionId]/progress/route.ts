@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { formatDeviceDriverError } from "@/features/hr/application/device-drivers/device-driver-error";
+import { formatDeviceDriverError } from "@/features/hr/server-api";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { requirePermission } from "@/platform/permissions/server";
-import { HR_PERMISSIONS } from "@/features/hr/permissions/permission-registry";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 import { advanceHrAttendanceDeviceSyncAction } from "@/features/hr/routes/actions/hr-attendance-device.actions";
 
 export async function GET(

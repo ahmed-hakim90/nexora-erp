@@ -7,7 +7,6 @@ import {
 } from "@/shared/workspace/public-api";
 
 import {
-  createErpShellContext,
   createErpShellSnapshot,
   type ErpRuntimeContext,
 } from "../../erp-shell-model";
@@ -21,7 +20,6 @@ export function ErpGlobalSearchSlot({
   runtime: ErpRuntimeContext;
 }>) {
   const snapshot = createErpShellSnapshot(runtime);
-  const context = createErpShellContext(activePath, runtime);
   const commands = snapshot.manifests.flatMap((manifest) => manifest.commands);
   const navigation = snapshot.manifests.flatMap((manifest) => manifest.navigation);
   const registryContext = {

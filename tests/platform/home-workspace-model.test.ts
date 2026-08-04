@@ -16,7 +16,7 @@ import {
 import {
   HR_PERMISSION_LIST,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 import type { AppRegistrySnapshot } from "@/platform/app-registry/public-api";
 import type { PermissionKey } from "@/platform/permissions/public-api";
 import { buildAppCapabilityPlatformModel } from "@/shared/workspace/app-capability-platform";

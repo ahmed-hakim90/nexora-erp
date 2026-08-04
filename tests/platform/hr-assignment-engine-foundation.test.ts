@@ -40,7 +40,7 @@ import {
   HR_PERMISSION_LIST,
   HR_REPORTING_STRUCTURE_KINDS,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260630185000_hr_assignment_engine_foundation.sql");

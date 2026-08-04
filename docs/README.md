@@ -64,6 +64,14 @@ Official knowledge base for the Nexora Enterprise Business Platform.
 6. [Form Guidelines](06-guidelines/FORM_GUIDELINES.md)
 7. Relevant business app doc under [02-business-apps/](02-business-apps/)
 
+### Implementing code
+
+1. [Developer Implementation Guide](07-development/DEVELOPER_IMPLEMENTATION_GUIDE.md)
+2. [Module Structure](07-development/MODULE_STRUCTURE.md)
+3. [Coding Standards](07-development/CODING_STANDARDS.md)
+4. [Testing](07-development/TESTING.md)
+5. [Security Checklist](07-development/SECURITY_CHECKLIST.md)
+
 ## Legacy Paths
 
 Files at the old `docs/` root and `docs/platform/` paths remain as **redirect stubs** pointing to canonical locations. Update bookmarks to the new paths.

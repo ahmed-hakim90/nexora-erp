@@ -115,7 +115,7 @@ export function HrAttendanceLiveVirtualGrid({
   records,
 }: Readonly<{
   onOpenEmployee: (employeeId: string) => void;
-  records: readonly import("@/features/hr/application/types/hr-attendance-live.types").HrAttendanceLiveGridRow[];
+  records: readonly import("@/features/hr/public-api").HrAttendanceLiveGridRow[];
 }>) {
   const t = useTranslations();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -209,7 +209,7 @@ export function HrAttendanceLiveVirtualGrid({
   );
 }
 
-function StatusInline({ status }: Readonly<{ status: import("@/features/hr/application/types/hr-attendance-live.types").HrAttendanceLiveStatus }>) {
+function StatusInline({ status }: Readonly<{ status: import("@/features/hr/public-api").HrAttendanceLiveStatus }>) {
   const t = useTranslations();
   return <span>{translateHrLiveStatus(t, status)}</span>;
 }
@@ -217,7 +217,7 @@ function StatusInline({ status }: Readonly<{ status: import("@/features/hr/appli
 export function HrAttendanceLiveMapPanel({
   location,
 }: Readonly<{
-  location: HrAttendanceLiveEmployeeDrawer extends never ? never : import("@/features/hr/application/types/hr-attendance-live.types").HrAttendanceLiveGpsLocation | null;
+  location: HrAttendanceLiveEmployeeDrawer extends never ? never : import("@/features/hr/public-api").HrAttendanceLiveGpsLocation | null;
 }>) {
   const t = useTranslations();
   if (!location?.latitude || !location.longitude) return null;

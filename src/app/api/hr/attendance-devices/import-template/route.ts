@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { buildZktecoCsvImportTemplate } from "@/features/hr/application/utils/hr-zkteco-csv-import";
+import { buildZktecoCsvImportTemplate } from "@/features/hr/server-api";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { requirePermission } from "@/platform/permissions/server";
-import { HR_PERMISSIONS } from "@/features/hr/permissions/permission-registry";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 
 export async function GET() {
   const context = await resolveBranchRequestContext("erp");

@@ -28,7 +28,7 @@ import {
   HR_OPERATIONAL_BOUNDARY_CONTRACT,
   HR_PERMISSION_LIST,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260630175000_hr_action_engine_foundation.sql");

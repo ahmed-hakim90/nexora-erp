@@ -6,8 +6,8 @@ import {
   formatDeviceDriverError,
   isCommKeyRejectionError,
   isRetryableZkDeviceError,
-} from "@/features/hr/application/device-drivers/device-driver-error";
-import { makeZkCommKey } from "@/features/hr/application/device-drivers/zkteco-comm-key";
+} from "@/features/hr/server-api";
+import { makeZkCommKey } from "@/features/hr/server-api";
 
 describe("ZKTeco device driver helpers", () => {
   test("makeZkCommKey matches pyzk reference output", () => {

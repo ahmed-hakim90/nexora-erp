@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 
-import { Button } from "../primitives";
 import { Dialog } from "../layout";
 import { cn } from "../utils";
 import { EditablePageProvider } from "./editable-page-context";

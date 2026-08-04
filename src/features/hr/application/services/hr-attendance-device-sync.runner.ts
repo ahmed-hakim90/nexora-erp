@@ -624,7 +624,7 @@ export class HrAttendanceDeviceSyncRunner {
         lastSuccessfulSyncAt: device.last_successful_sync_at ? String(device.last_successful_sync_at) : device.last_sync_at ? String(device.last_sync_at) : null,
         missingDates: (readDeviceMetadata(session.metadata).missingDates as string[] | undefined) ?? [],
       });
-      const employeeCodes = await this.resolveEmployeeAttendanceCodes(syncConfig, employees);
+      const employeeCodes = await this.resolveEmployeeAttendanceCodes(syncConfig);
       const devicePunches = await driver.downloadPunches(window.sinceIso ?? `${window.dateFrom}T00:00:00.000Z`);
       let punches: RawDevicePunch[] = devicePunches.map((punch) => ({
         attendanceCode: punch.attendanceCode,
@@ -675,10 +675,7 @@ export class HrAttendanceDeviceSyncRunner {
     }
   }
 
-  private async resolveEmployeeAttendanceCodes(
-    syncConfig: HrAttendanceDeviceSyncStrategyConfig,
-    employees: readonly HrAttendanceDevicePreviewEmployee[],
-  ): Promise<ReadonlySet<string> | undefined> {
+  private async resolveEmployeeAttendanceCodes(syncConfig: HrAttendanceDeviceSyncStrategyConfig): Promise<ReadonlySet<string> | undefined> {
     if (syncConfig.strategy === "employees" && syncConfig.params.employeeIds?.length) {
       const { data } = await this.supabase
         .from("hr_employees")

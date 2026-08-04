@@ -39,14 +39,13 @@ export default async function HrLoansPage({ searchParams }: { searchParams: Prom
   }
 
   const records = rows.map((r) => mapLoanRow(r as Record<string, unknown>, employeeMap.get(String(r.employee_id))));
-  const firstInstallmentDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   return (
     <HrShell activeKey="loans">
       <HrLoansWorkspace
         activeCount={records.filter((r) => r.status === "active").length}
         defaultStatus={statusFilter}
-        firstInstallmentDate={firstInstallmentDate}
+        firstInstallmentDate=""
         pendingCount={records.filter((r) => r.status === "submitted").length}
         records={records}
         totalOutstanding={records.reduce((sum, r) => sum + r.outstandingBalance, 0)}

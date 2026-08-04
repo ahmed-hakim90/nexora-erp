@@ -54,6 +54,10 @@ export function translateHrAdvanceType(t: TranslateFn, advanceType: string): str
   return translateCatalogKey(t, "hr.advanceType", advanceType, formatHrStatusLabel(advanceType));
 }
 
+export function translateHrLoanType(t: TranslateFn, loanType: string): string {
+  return translateCatalogKey(t, "hr.loanType", loanType, formatHrStatusLabel(loanType));
+}
+
 export function translateHrTimelineEvent(t: TranslateFn, eventType: string): string {
   return translateCatalogKey(t, "hr.timelineEvent", eventType, formatHrStatusLabel(eventType));
 }

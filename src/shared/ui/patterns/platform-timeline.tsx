@@ -14,7 +14,6 @@ import {
 
 import { Input } from "../primitives";
 import { nativeSelectClassName } from "../tokens";
-import { cn } from "../utils";
 import { type RecordActivityEvent } from "./floating-record-panel";
 
 export type PlatformTimelineCategory =

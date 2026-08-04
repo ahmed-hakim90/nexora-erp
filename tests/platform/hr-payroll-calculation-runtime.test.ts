@@ -5,7 +5,7 @@ import {
   calculateEgyptEndOfService,
   calculateEgyptPayrollBreakdown,
   generateWpsBankFileContent,
-} from "@/features/hr/application/services/hr-payroll-egypt.service";
+} from "@/features/hr/server-api";
 
 describe("HR payroll calculation runtime", () => {
   test("calculateEgyptPayrollBreakdown uses insurable salary separately from gross", () => {

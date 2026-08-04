@@ -51,20 +51,6 @@ function monthStart(date: string): string {
   return `${date.slice(0, 7)}-01`;
 }
 
-function normalizeTime(value: string): string {
-  const parts = value.split(":");
-  if (parts.length === 2) return `${parts[0]}:${parts[1]}:00`;
-  return value;
-}
-
-function minutesBetweenTimes(start: string, end: string): number {
-  const [sh, sm] = normalizeTime(start).split(":").map(Number);
-  const [eh, em] = normalizeTime(end).split(":").map(Number);
-  let minutes = eh * 60 + (em ?? 0) - (sh * 60 + (sm ?? 0));
-  if (minutes < 0) minutes += 24 * 60;
-  return minutes;
-}
-
 export type ResolvedLateEarlyPolicy = Readonly<{
   dailyLimitMinutes: number | null;
   earlyLeaveThresholdMinutes: number;

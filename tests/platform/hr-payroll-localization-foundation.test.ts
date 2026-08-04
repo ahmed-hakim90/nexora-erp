@@ -23,7 +23,7 @@ import {
   HR_PERMISSIONS,
   localizationPackAllowsCalculationInjection,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260710120000_hr_payroll_localization_foundation.sql");

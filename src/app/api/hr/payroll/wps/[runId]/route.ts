@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { requirePermission } from "@/platform/permissions/server";
-import { HrPayrollWpsService } from "@/features/hr/application/services/hr-payroll-wps.service";
-import { HR_PERMISSIONS } from "@/features/hr/public-api";
+import { HrPayrollWpsService } from "@/features/hr/server-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 
 export async function GET(
   _request: Request,

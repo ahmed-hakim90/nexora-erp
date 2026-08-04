@@ -5,7 +5,7 @@ import {
   HR_BASIC_SALARY_CONFLICT_MESSAGE,
   resolveEmployeeCompensation,
   type HrResolvedCompensationPackageLine,
-} from "@/features/hr/application/services/hr-employee-compensation-resolve";
+} from "@/features/hr/server-api";
 
 const basicComponent = {
   amount: 6500,
@@ -100,7 +100,7 @@ test("resolveEmployeeCompensation marks missing compensation when no sources exi
 });
 
 test("hr employee basic salary override schema accepts nullable clear payload", async () => {
-  const { hrEmployeeBasicSalaryOverrideSchema } = await import("@/features/hr/application/schemas/hr-compensation.schema");
+  const { hrEmployeeBasicSalaryOverrideSchema } = await import("@/features/hr/server-api");
   const parsed = hrEmployeeBasicSalaryOverrideSchema.parse({
     basicSalary: "",
     employeeId: "11111111-1111-4111-8111-111111111111",

@@ -139,10 +139,6 @@ function mapStatusToPunchType(value: string | undefined): "in" | "out" | undefin
   return undefined;
 }
 
-function pad2(value: number) {
-  return String(value).padStart(2, "0");
-}
-
 function toIsoFromParts(year: number, month: number, day: number, hour: number, minute: number, second: number) {
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
   const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));

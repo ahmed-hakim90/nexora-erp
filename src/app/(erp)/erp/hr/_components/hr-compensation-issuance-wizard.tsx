@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 
-import type { HrCompensationIssuanceDocumentKind } from "@/features/hr/application/constants/hr-compensation-issuance.constants";
+import type { HrCompensationIssuanceDocumentKind } from "@/features/hr/public-api";
 import type { MessageKey } from "@/platform/localization/messages/en";
-import type { HrCompensationIssuanceBatchPreview } from "@/features/hr/application/schemas/hr-compensation-issuance-batch.schema";
-import { buildCompensationIssuanceCloseHref } from "@/features/hr/application/utils/hr-compensation-issuance-paths";
+import type { HrCompensationIssuanceBatchPreview } from "@/features/hr/public-api";
+import { buildCompensationIssuanceCloseHref } from "@/features/hr/public-api";
 import {
   createCompensationIssuanceDraftAction,
   createCompensationIssuanceImportBatchAction,

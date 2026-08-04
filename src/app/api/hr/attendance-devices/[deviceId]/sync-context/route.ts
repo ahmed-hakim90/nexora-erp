@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { requirePermission } from "@/platform/permissions/server";
-import { HrAttendanceDeviceService } from "@/features/hr/application/services/hr-attendance-device.service";
-import { HR_ATTENDANCE_DEVICE_DEFAULT_SYNC_OPTIONS } from "@/features/hr/application/utils/hr-attendance-device-sync-strategy";
-import { HR_PERMISSIONS } from "@/features/hr/permissions/permission-registry";
-import type { HrAttendanceDeviceSyncStrategy } from "@/features/hr/application/types/hr-attendance-device.types";
+import { HrAttendanceDeviceService } from "@/features/hr/server-api";
+import { HR_ATTENDANCE_DEVICE_DEFAULT_SYNC_OPTIONS } from "@/features/hr/server-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
+import type { HrAttendanceDeviceSyncStrategy } from "@/features/hr/server-api";
 
 export async function GET(
   request: Request,

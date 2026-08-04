@@ -3,9 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import { calculateEgyptPayrollBreakdown } from "@/features/hr/application/services/hr-payroll-egypt.service";
+import { calculateEgyptPayrollBreakdown } from "@/features/hr/server-api";
 import { HR_NAV_ITEMS } from "@/features/hr/navigation/hr-navigation";
-import { HR_PERMISSIONS } from "@/features/hr/permissions/permission-registry";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 
 describe("HR operational runtime", () => {
   test("Egypt payroll breakdown applies social insurance and tax", () => {

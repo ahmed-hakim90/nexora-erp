@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { ApplicationError } from "@/core/errors";
-import { searchHrWorkspaceRecords } from "@/features/hr/application/services/hr-workspace-search.service";
+import { searchHrWorkspaceRecords } from "@/features/hr/server-api";
 
 function createJsonError(message: string, status = 400) {
   return NextResponse.json({ message, records: [], success: false }, { status });

@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import {
   matchCompensationIssuanceImportRows,
   parseCompensationIssuanceImportContent,
-} from "@/features/hr/application/utils/hr-compensation-issuance-import";
-import { HR_PERMISSIONS } from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { requirePermission } from "@/platform/permissions/server";

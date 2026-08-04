@@ -28,6 +28,7 @@ export default async function HrBankAccountsPage({
         defaultEmployeeId={query.employeeId}
         defaultSearch={query.search}
         editRecord={editRecord}
+        query={query}
         records={records}
       />
     </HrShell>

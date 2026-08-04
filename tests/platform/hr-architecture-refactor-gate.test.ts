@@ -29,7 +29,7 @@ import {
   isHrPayrollTypedSourceKind,
   resolveHrPayrollLifecycleOwner,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const refactorMigrationPath = path.join(root, "supabase/migrations/20260709120000_hr_architecture_refactor_gate_foundation.sql");

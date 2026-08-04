@@ -5,7 +5,7 @@ import test from "node:test";
 
 test("hr overtime runtime: schemas validate", async () => {
   const { hrOvertimeCreateSchema, hrOvertimeCandidateActionSchema } = await import(
-    "@/features/hr/application/schemas/hr-overtime-runtime.schema"
+    "@/features/hr/server-api"
   );
   assert.equal(
     hrOvertimeCreateSchema.safeParse({
@@ -59,7 +59,7 @@ test("hr overtime runtime: actions and loader exist", () => {
 });
 
 test("hr overtime runtime: permissions registered", async () => {
-  const { HR_PERMISSIONS } = await import("@/features/hr/public-api");
+  const { HR_PERMISSIONS } = await import("@/features/hr/server-api");
   assert.equal(HR_PERMISSIONS.overtimeView, "hr.overtime.view");
   assert.equal(HR_PERMISSIONS.overtimeManage, "hr.overtime.manage");
   assert.equal(HR_PERMISSIONS.overtimeRequest, "hr.overtime.request");
@@ -111,7 +111,7 @@ test("hr overtime runtime: foundation flags runtime implemented", async () => {
 });
 
 test("hr overtime runtime: conflict codes defined", async () => {
-  const constants = await import("@/features/hr/application/constants/hr-overtime-runtime.constants");
+  const constants = await import("@/features/hr/server-api");
   assert.ok(constants.OVERTIME_CONFLICT_CODES.includes("leave_conflict"));
   assert.ok(constants.HR_OVERTIME_TYPES.length >= 8);
 });

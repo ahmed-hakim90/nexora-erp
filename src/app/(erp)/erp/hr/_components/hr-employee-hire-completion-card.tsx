@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import type { HrEmployeeHireReadiness } from "@/features/hr/application/services/hr-employee-hire-readiness.service";
+import type { HrEmployeeHireReadiness } from "@/features/hr/public-api";
 import { translateHrMessageKey } from "@/features/hr/public-api";
 import { cn, secondaryButtonLinkClassName, useTranslations } from "@/shared/ui";
 import { CheckCircle2, Circle, CircleAlert } from "lucide-react";

@@ -141,7 +141,6 @@ export function useEditablePage({
   onSaved,
   record,
   saveStrategy = "all-editable",
-  sourceScreen,
   successMessage = "Changes saved",
 }: UseEditablePageOptions): UseEditablePageResult {
   const [pageMode, setPageMode] = useState<EditablePageMode>("view");
@@ -152,6 +151,7 @@ export function useEditablePage({
 
   useEffect(() => {
     if (pageMode === "view") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft({ ...record });
       setErrors({});
     }
@@ -259,7 +259,6 @@ export function useEditablePage({
     pageMode,
     record,
     saveStrategy,
-    sourceScreen,
     successMessage,
   ]);
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { buildCompensationIssuanceImportTemplateCsv } from "@/features/hr/application/utils/hr-compensation-issuance-import";
-import { HR_PERMISSIONS } from "@/features/hr/public-api";
+import { buildCompensationIssuanceImportTemplateCsv } from "@/features/hr/server-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { requirePermission } from "@/platform/permissions/server";
 

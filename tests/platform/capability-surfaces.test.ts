@@ -28,7 +28,7 @@ import {
   HR_PRINT_READINESS_CONTRACT,
   HR_REPORT_READINESS_CONTRACT,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 import type { AppManifest } from "@/platform/app-registry/public-api";
 import { buildAppCapabilityPlatformModel } from "@/shared/workspace/app-capability-platform";
 

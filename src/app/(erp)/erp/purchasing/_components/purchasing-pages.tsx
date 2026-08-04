@@ -386,15 +386,6 @@ function LifecycleActions({ detail }: Readonly<{ detail: PurchaseDocumentDetail 
   );
 }
 
-function DetailItem({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
-  return (
-    <div className="rounded-md border p-3">
-      <dt className="font-medium">{label}</dt>
-      <dd className="mt-1 text-muted-foreground">{value}</dd>
-    </div>
-  );
-}
-
 function nextActions(kind: PurchaseDocumentKind, status: PurchaseStatus): PurchaseStatus[] {
   if (kind === "request" && status === "draft") return ["submitted", "cancelled"];
   if (kind === "request" && status === "submitted") return ["approved", "rejected", "cancelled"];

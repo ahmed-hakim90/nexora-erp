@@ -4,9 +4,9 @@ import { resolveCompanyRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { requirePermission } from "@/platform/permissions/server";
 import { processQueuedBackgroundJobs } from "@/platform/background-jobs/worker-runtime";
-import { HR_PERMISSIONS } from "@/features/hr/public-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 
-import { registerHrBackgroundJobHandlers } from "@/features/hr/application/workers/hr-background-job-handlers";
+import { registerHrBackgroundJobHandlers } from "@/features/hr/server-api";
 
 export async function POST() {
   const context = await resolveCompanyRequestContext("erp");

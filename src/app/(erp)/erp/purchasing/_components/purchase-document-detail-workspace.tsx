@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 
-import type { PurchaseDocumentDetail } from "@/features/purchasing/application/types/purchasing";
+import type { PurchaseDocumentDetail } from "@/features/purchasing/public-api";
 import { patchPurchaseDocumentFieldAction } from "@/features/purchasing/routes/actions/purchasing.actions";
 import {
   CrossEngineLookupWorkflow,

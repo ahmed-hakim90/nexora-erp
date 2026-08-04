@@ -113,6 +113,7 @@ export function HrAttendanceDeviceSyncWizard({
   );
   const hasBlockingRecommendation = recommendations.some((item) => item.severity === "blocking");
   const hasLockedPeriod = recommendations.some((item) => item.code === "payroll_locked");
+  const progressStatus = progress?.status;
 
   useEffect(() => {
     void (async () => {
@@ -137,7 +138,7 @@ export function HrAttendanceDeviceSyncWizard({
 
   useEffect(() => {
     if (!sessionId) return undefined;
-    if (progress && ["failed", "completed", "cancelled", "preview_ready"].includes(progress.status)) {
+    if (progressStatus && ["failed", "completed", "cancelled", "preview_ready"].includes(progressStatus)) {
       return undefined;
     }
     let cancelled = false;
@@ -154,10 +155,11 @@ export function HrAttendanceDeviceSyncWizard({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [pollProgress, progress?.status, sessionId]);
+  }, [pollProgress, progressStatus, sessionId]);
 
   useEffect(() => {
     if (!sessionId || !progress?.previewReady) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep("preview");
     void (async () => {
       const response = await fetch(`/api/hr/attendance-devices/sync/${sessionId}/preview`);

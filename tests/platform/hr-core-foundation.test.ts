@@ -24,7 +24,7 @@ import {
   hrAppManifest,
   hrModuleManifest,
   resolveHrManagerSource,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 import {
   defineAppManifest,
   validateAppManifest,

@@ -77,7 +77,11 @@ import {
   formatHrStatusLabel,
   getHrFoundationEntity,
   isRawUuid,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
+
+function hasColumnField(columns: readonly { field: string }[], field: string): boolean {
+  return columns.some((column) => column.field === field);
+}
 
 // ─── Print Templates ──────────────────────────────────────────────────────────
 
@@ -275,7 +279,7 @@ test("hr production readiness: employee bulk archive requires manage permission"
 test("hr production readiness: employee export has 11 columns", () => {
   assert.equal(HR_EMPLOYEE_EXPORT_COLUMNS.length, 11);
   assert.equal(
-    HR_EMPLOYEE_EXPORT_COLUMNS.some((column) => column.field === "attendanceCode"),
+    hasColumnField(HR_EMPLOYEE_EXPORT_COLUMNS, "attendanceCode"),
     false,
   );
 });
@@ -842,7 +846,7 @@ test("hr production readiness: foundation loader is available", async () => {
 // ─── Schema Validation ────────────────────────────────────────────────────────
 
 test("hr production readiness: employee quick edit schema strips assignment-owned fields", async () => {
-  const { hrEmployeeQuickEditSchema } = await import("@/features/hr/application/schemas/hr-employees.schema");
+  const { hrEmployeeQuickEditSchema } = await import("@/features/hr/server-api");
   const result = hrEmployeeQuickEditSchema.safeParse({
     employeeId: "550e8400-e29b-41d4-a716-446655440000",
     employeeNumber: "E-001",
@@ -856,7 +860,7 @@ test("hr production readiness: employee quick edit schema strips assignment-owne
 });
 
 test("hr production readiness: employee wizard schema requires fullName and assignment fields", async () => {
-  const { hrEmployeeWizardSchema } = await import("@/features/hr/application/schemas/hr-employees.schema");
+  const { hrEmployeeWizardSchema } = await import("@/features/hr/server-api");
   const invalid = hrEmployeeWizardSchema.safeParse({ fullName: "" });
   assert.equal(invalid.success, false, "Empty fullName must fail wizard schema.");
   const missingDept = hrEmployeeWizardSchema.safeParse({ fullName: "Jane Smith", effectiveFrom: "2026-01-01" });
@@ -872,7 +876,7 @@ test("hr production readiness: employee wizard schema requires fullName and assi
 });
 
 test("hr production readiness: assignment schema validates effective date", async () => {
-  const { hrAssignmentCreateSchema } = await import("@/features/hr/application/schemas/hr-assignments.schema");
+  const { hrAssignmentCreateSchema } = await import("@/features/hr/server-api");
   const invalid = hrAssignmentCreateSchema.safeParse({
     employeeId: "550e8400-e29b-41d4-a716-446655440000",
     assignmentType: "position",
@@ -881,8 +885,8 @@ test("hr production readiness: assignment schema validates effective date", asyn
 });
 
 test("hr production readiness: foundation schema builder creates validation for required name", async () => {
-  const { buildHrFoundationMutationSchema } = await import("@/features/hr/application/schemas/hr-foundation.schema");
-  const { getHrFoundationEntity } = await import("@/features/hr/application/foundation-entities");
+  const { buildHrFoundationMutationSchema } = await import("@/features/hr/server-api");
+  const { getHrFoundationEntity } = await import("@/features/hr/server-api");
   const descriptor = getHrFoundationEntity("departments");
   const schema = buildHrFoundationMutationSchema(descriptor);
   const invalid = schema.safeParse({ name: "" });
@@ -892,23 +896,23 @@ test("hr production readiness: foundation schema builder creates validation for 
 // ─── Services ─────────────────────────────────────────────────────────────────
 
 test("hr production readiness: assignment conflict service is available", async () => {
-  const service = await import("@/features/hr/application/services/hr-assignment-conflicts.service");
+  const service = await import("@/features/hr/server-api");
   assert.equal(typeof service.HrAssignmentConflictService, "function");
 });
 
 test("hr production readiness: assignment resolver service is available", async () => {
-  const service = await import("@/features/hr/application/services/hr-assignment-resolver.service");
+  const service = await import("@/features/hr/server-api");
   assert.equal(typeof service.HrAssignmentResolverService, "function");
 });
 
 test("hr production readiness: employee validation service is available", async () => {
-  const service = await import("@/features/hr/application/services/hr-employee-validation.service");
+  const service = await import("@/features/hr/server-api");
   assert.equal(typeof service.validateEmployeeUniqueness, "function");
   assert.equal(typeof service.assertNoBlockingEmployeeValidationIssues, "function");
 });
 
 test("hr production readiness: entity lookup service is available", async () => {
-  const service = await import("@/features/hr/application/services/hr-entity-lookup.service");
+  const service = await import("@/features/hr/server-api");
   assert.equal(typeof service.HrEntityLookupService, "function");
 });
 

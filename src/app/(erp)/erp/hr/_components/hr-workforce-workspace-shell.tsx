@@ -80,15 +80,11 @@ export function HrWorkforceWorkspaceShell({
   title: string;
   workspaceKey: string;
 }>) {
-  const [favoriteTabKeys, setFavoriteTabKeys] = useState<string[]>([]);
-  const [recentTabKeys, setRecentTabKeys] = useState<string[]>([]);
+  const [favoriteTabKeys, setFavoriteTabKeys] = useState<string[]>(() => readStoredKeys(workforceFavoritesKey(workspaceKey)));
+  const [recentTabKeys, setRecentTabKeys] = useState<string[]>(() => readStoredKeys(workforceRecentKey(workspaceKey)));
 
   useEffect(() => {
-    setFavoriteTabKeys(readStoredKeys(workforceFavoritesKey(workspaceKey)));
-    setRecentTabKeys(readStoredKeys(workforceRecentKey(workspaceKey)));
-  }, [workspaceKey]);
-
-  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRecentTabKeys((current) => {
       const nextRecent = [activeTab, ...current.filter((key) => key !== activeTab)].slice(0, 6);
       writeStoredKeys(workforceRecentKey(workspaceKey), nextRecent);

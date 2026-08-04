@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 
-import type { HrEmployeeDocumentCompliance } from "@/features/hr/application/utils/hr-document-compliance.evaluate";
-import { translateHrRequiredDocumentKind } from "@/features/hr/application/constants/hr-document-kind.registry";
+import type { HrEmployeeDocumentCompliance } from "@/features/hr/public-api";
+import { translateHrRequiredDocumentKind } from "@/features/hr/public-api";
 import { translateHrDocumentComplianceStatus } from "@/features/hr/public-api";
 import {
   grantHrDocumentComplianceWaiverAction,

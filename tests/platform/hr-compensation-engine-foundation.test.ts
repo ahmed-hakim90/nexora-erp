@@ -31,7 +31,7 @@ import {
   HR_PRODUCTION_INCENTIVE_COMPENSATION_READINESS,
   salaryPackageVersionAppliesOn,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260630165000_hr_compensation_engine_foundation.sql");

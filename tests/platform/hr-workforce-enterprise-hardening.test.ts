@@ -5,14 +5,14 @@ import {
   HR_DEVICE_COMMAND_KEYS,
   HR_WORKFORCE_ENTERPRISE_EVENT_KEYS,
   HR_WORKFORCE_ENTERPRISE_JOB_KEYS,
-} from "@/features/hr/application/constants/hr-workforce-enterprise.constants";
+} from "@/features/hr/server-api";
 import {
   createAttendanceDeviceDriver,
   createAttendanceDeviceDriverForDevice,
   listDeviceDriverDescriptors,
   resolveDriverKey,
-} from "@/features/hr/application/device-drivers/registry";
-import { HR_PERMISSIONS } from "@/features/hr/permissions/permission-registry";
+} from "@/features/hr/server-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 import { HR_WORKFORCE_ENTERPRISE_READINESS } from "@/features/hr/workforce-enterprise-foundation";
 
 describe("HR Workforce Enterprise Hardening", () => {

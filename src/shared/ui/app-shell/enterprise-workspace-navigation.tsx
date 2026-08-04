@@ -288,11 +288,15 @@ function QuickAccessPanel({
     [isFavorite, items],
   );
 
-  useEffect(() => {
-    if (!open) {
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (!nextOpen) {
       setQuery("");
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (!open) return undefined;
     const timer = window.setTimeout(() => searchRef.current?.focus(), 0);
     return () => window.clearTimeout(timer);
   }, [open]);
@@ -309,7 +313,7 @@ function QuickAccessPanel({
   }, []);
 
   return (
-    <Popover onOpenChange={setOpen} open={open}>
+    <Popover onOpenChange={handleOpenChange} open={open}>
       <PopoverTrigger asChild>
         <button
           aria-expanded={open}
@@ -330,7 +334,7 @@ function QuickAccessPanel({
       <PopoverContent
         align="end"
         className="flex max-h-[min(32rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden p-0"
-        onEscapeKeyDown={() => setOpen(false)}
+        onEscapeKeyDown={() => handleOpenChange(false)}
       >
         <div className="sticky top-0 z-[1] space-y-2 border-b bg-[hsl(var(--surface))] p-3">
           <div className="relative">
@@ -358,7 +362,7 @@ function QuickAccessPanel({
                     isActive={items.some((item) => item.id === recent.id && item.isActive)}
                     key={recent.id}
                     label={recent.title}
-                    onNavigate={() => setOpen(false)}
+                    onNavigate={() => handleOpenChange(false)}
                   />
                 ))}
               </ul>
@@ -373,7 +377,7 @@ function QuickAccessPanel({
                     isFavorite
                     item={item}
                     key={item.id}
-                    onNavigate={() => setOpen(false)}
+                    onNavigate={() => handleOpenChange(false)}
                     onToggleFavorite={onToggleFavorite}
                   />
                 ))}
@@ -388,7 +392,7 @@ function QuickAccessPanel({
               key={section.key}
               onToggleExpanded={() => onToggleGroupExpanded(section.key)}
               onToggleFavorite={onToggleFavorite}
-              onNavigate={() => setOpen(false)}
+              onNavigate={() => handleOpenChange(false)}
               section={section}
             />
           ))}
@@ -440,11 +444,7 @@ function CollapsibleSection({
   onToggleFavorite: (itemId: string) => void;
   enableFavorites: boolean;
 }>) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-
-  useEffect(() => {
-    setExpanded(defaultExpanded);
-  }, [defaultExpanded]);
+  const expanded = defaultExpanded;
 
   return (
     <section className="mb-1">
@@ -452,7 +452,6 @@ function CollapsibleSection({
         aria-expanded={expanded}
         className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 text-start text-sm font-medium transition hover:bg-[hsl(var(--muted))]/70"
         onClick={() => {
-          setExpanded((current) => !current);
           onToggleExpanded();
         }}
         type="button"
@@ -653,11 +652,7 @@ function MobileSection({
   onToggleExpanded: () => void;
   onNavigate: () => void;
 }>) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-
-  useEffect(() => {
-    setExpanded(defaultExpanded);
-  }, [defaultExpanded]);
+  const expanded = defaultExpanded;
 
   return (
     <section className="mb-2 rounded-xl border">
@@ -665,7 +660,6 @@ function MobileSection({
         aria-expanded={expanded}
         className="flex min-h-11 w-full items-center gap-2 px-3 py-3 text-start text-sm font-medium"
         onClick={() => {
-          setExpanded((current) => !current);
           onToggleExpanded();
         }}
         type="button"

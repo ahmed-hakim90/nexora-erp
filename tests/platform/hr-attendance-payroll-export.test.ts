@@ -8,7 +8,7 @@ test("hr attendance payroll export: schemas validate", async () => {
     hrAttendanceClosingCreateSchema,
     hrAttendanceExportExecuteSchema,
     hrAttendanceReopenSchema,
-  } = await import("@/features/hr/application/schemas/hr-attendance-payroll-export.schema");
+  } = await import("@/features/hr/server-api");
 
   const closing = hrAttendanceClosingCreateSchema.safeParse({
     periodEnd: "2026-07-31",
@@ -38,7 +38,7 @@ test("hr attendance payroll export: schemas validate", async () => {
 });
 
 test("hr attendance payroll export: service and actions exported", async () => {
-  const service = await import("@/features/hr/application/services/hr-attendance-payroll-export.service");
+  const service = await import("@/features/hr/server-api");
   const actions = await import("@/features/hr/routes/actions/hr-attendance-payroll-export.actions");
   const loader = await import("@/features/hr/routes/loaders/hr-attendance-export.loader");
 
@@ -49,7 +49,7 @@ test("hr attendance payroll export: service and actions exported", async () => {
 });
 
 test("hr attendance payroll export: permissions registered", async () => {
-  const { HR_PERMISSIONS } = await import("@/features/hr/permissions/permission-registry");
+  const { HR_PERMISSIONS } = await import("@/features/hr/server-api");
   assert.equal(HR_PERMISSIONS.attendanceExport, "hr.attendance.export");
   assert.equal(HR_PERMISSIONS.attendanceReopen, "hr.attendance.reopen");
   assert.equal(HR_PERMISSIONS.attendanceSnapshotView, "hr.attendance.snapshot.view");
@@ -76,7 +76,7 @@ test("hr attendance payroll export: UI workspace and page exist", () => {
 });
 
 test("hr attendance payroll export: constants define jobs and validation codes", async () => {
-  const constants = await import("@/features/hr/application/constants/hr-attendance-payroll.constants");
+  const constants = await import("@/features/hr/server-api");
   assert.equal(constants.ATTENDANCE_EXPORT_JOB.key, "hr.attendance.payroll-export");
   assert.ok(constants.PAYROLL_EXPORT_VALIDATION_CODES.includes("missing_punches"));
   assert.ok(constants.HR_ATTENDANCE_PAYROLL_EVENT_KEYS.attendanceExported);

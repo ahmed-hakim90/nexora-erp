@@ -70,6 +70,7 @@ export default async function HrAssignmentsPage({
         employeeId={params.employeeId}
         employmentProfileId={employmentProfileId}
         preset={params.preset}
+        query={params}
         records={records}
         showCreate={params.create === "1"}
         today={today}

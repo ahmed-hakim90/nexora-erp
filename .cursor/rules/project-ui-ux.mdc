@@ -1,0 +1,50 @@
+---
+description: Nexora-specific UI/UX review rules for operational ERP and portal screens
+globs:
+  - "src/**/*.{tsx,css}"
+  - "docs/06-guidelines/**/*.md"
+alwaysApply: true
+---
+
+# Nexora Project UI/UX Rule
+
+Nexora screens must feel like production operational software: fast, scannable, consistent, and safe for repeated daily work.
+
+## Required References
+
+- `docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md`
+- `docs/06-guidelines/PLATFORM_UX_REVIEW_GATE.md`
+- `docs/06-guidelines/UI_GUIDELINES.md`
+- `docs/06-guidelines/FORM_GUIDELINES.md`
+- `docs/06-guidelines/LOOKUP_GUIDELINES.md`
+- `docs/06-guidelines/PLATFORM_COMPONENT_POLICY.md`
+
+## Screen Standard
+
+- Use shared UI primitives and established page composition.
+- Keep ERP pages dense but readable.
+- Do not build marketing-style hero layouts for operational screens.
+- Provide loading, empty, error, permission-denied, pending, success, and dirty-form states where relevant.
+- Ensure responsive behavior for desktop and mobile without overlap, clipping, or text escaping containers.
+- Use searchable selects/lookups for large reference data.
+- Keep table actions predictable, permission-aware, and visually stable.
+- Use server-side pagination/filtering for large tables.
+
+## Form Standard
+
+- Validate on the server and use client validation only for immediate feedback.
+- Preserve dirty state and warn before losing unsaved work.
+- Make required fields, disabled fields, errors, helper text, and save state clear.
+- Avoid native date inputs when the project rule forbids them.
+- Keep keyboard flow and operator speed in mind.
+
+## Review Gate
+
+Before finishing UI work, check:
+
+- Does it match existing Nexora components and spacing?
+- Does text fit in Arabic and English?
+- Are all states implemented?
+- Are permissions represented in UX but enforced by backend?
+- Does the screen avoid layout shift during loading or data changes?
+- Is data fetching bounded and responsive?

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import type { HrFoundationDescriptor } from "@/features/hr/public-api";
 import { hrFoundationPageHelp, resolveHrFoundationResourceHelp, translateHrStatus } from "@/features/hr/public-api";
-import { formatHrFoundationListValue } from "@/features/hr/application/utils/hr-foundation-display";
+import { formatHrFoundationListValue } from "@/features/hr/public-api";
 import type { HrFoundationWorkspaceData } from "@/features/hr/routes/loaders/hr-foundation.loader";
 import { pickLocalizedLabel } from "@/platform/localization/public-api";
 import {

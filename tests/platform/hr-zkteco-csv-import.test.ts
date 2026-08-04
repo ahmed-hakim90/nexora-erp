@@ -5,7 +5,7 @@ import {
   buildZktecoCsvImportTemplate,
   parseZktecoAttendanceCsv,
   readAttendanceImportFileToCsvText,
-} from "@/features/hr/application/utils/hr-zkteco-csv-import";
+} from "@/features/hr/server-api";
 
 describe("ZKTeco CSV attendance import", () => {
   it("parses standard ZKT export columns with separate date and time", () => {

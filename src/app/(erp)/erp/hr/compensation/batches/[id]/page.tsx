@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { compensationIssuanceListPath } from "@/features/hr/application/utils/hr-compensation-issuance-paths";
+import { compensationIssuanceListPath } from "@/features/hr/public-api";
 import {
   approveCompensationIssuanceBatchAction,
   rejectCompensationIssuanceBatchAction,

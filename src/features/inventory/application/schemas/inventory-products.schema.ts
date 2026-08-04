@@ -8,8 +8,14 @@ const requiredNumber = z.coerce.number().min(0, "Use zero or a positive number."
 const optionalBoolean = z.preprocess((value) => value === "on" || value === "true" || value === true, z.boolean());
 const slugText = z.preprocess((value) => value === "" ? null : value, z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase words separated by dashes.").nullable());
 
+import {
+  INVENTORY_MANUFACTURING_ITEM_ROLE_VALUES,
+  isInventoryManufacturingItemRole,
+} from "../../domain/manufacturing-item-roles";
+
 export const inventoryProductStatusValues = ["draft", "active", "inactive", "locked", "archived"] as const;
 export const inventoryProductKindValues = ["stockable", "consumable", "service", "asset", "rental", "kit"] as const;
+export const inventoryManufacturingItemRoleValues = INVENTORY_MANUFACTURING_ITEM_ROLE_VALUES;
 export const inventoryTrackingModeValues = ["none", "quantity_only", "lot", "serial", "lot_serial"] as const;
 export const inventoryReservationPolicyValues = ["none", "soft", "hard"] as const;
 export const inventoryOnlineStatusValues = ["draft", "ready", "published", "hidden", "archived"] as const;
@@ -202,5 +208,22 @@ export const inventoryProductMutationSchema = z.object({
   }
   if (value.warrantyEligible && (!value.warrantyDurationDays || !value.warrantyStartsFrom)) {
     context.addIssue({ code: "custom", message: "Warranty duration and start basis are required for warranty-eligible products.", path: ["warrantyDurationDays"] });
+  }
+  if (value.isManufacturable) {
+    if (!value.productTypeKey) {
+      context.addIssue({
+        code: "custom",
+        message: "Choose a manufacturing role for manufacturable products (raw material, semi-finished, finished good, or packaging).",
+        path: ["productTypeKey"],
+      });
+    } else if (!isInventoryManufacturingItemRole(value.productTypeKey)) {
+      context.addIssue({
+        code: "custom",
+        message: "Manufacturing role must be raw_material, semi_finished, finished_good, or packaging.",
+        path: ["productTypeKey"],
+      });
+    }
+  } else if (value.productTypeKey && isInventoryManufacturingItemRole(value.productTypeKey)) {
+    // Allow clearing manufacturable while keeping historical role key; no issue.
   }
 });

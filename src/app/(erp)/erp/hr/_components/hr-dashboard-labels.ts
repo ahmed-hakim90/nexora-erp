@@ -1,4 +1,4 @@
-import type { HrDashboardActionQueueItem, HrDashboardAlert } from "@/features/hr/application/types/hr-ui.types";
+import type { HrDashboardActionQueueItem, HrDashboardAlert } from "@/features/hr/public-api";
 import { translateHrActionType, translateHrViolationKind } from "@/features/hr/public-api";
 import type { MessageKey } from "@/platform/localization/messages/en";
 import type { TranslateFn } from "@/platform/localization/translate";

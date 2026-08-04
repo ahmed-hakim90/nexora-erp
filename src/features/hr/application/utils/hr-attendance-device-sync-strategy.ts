@@ -68,12 +68,6 @@ function toDateOnly(value: string): string {
   return value.slice(0, 10);
 }
 
-function addDays(dateOnly: string, days: number): string {
-  const date = new Date(`${dateOnly}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
 function monthBounds(year: number, month: number): { dateFrom: string; dateTo: string } {
   const dateFrom = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();

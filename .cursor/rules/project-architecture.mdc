@@ -1,0 +1,48 @@
+---
+description: Nexora-specific architecture, algorithm, and module-boundary rules
+globs:
+  - "src/**/*.{ts,tsx}"
+  - "docs/**/*.md"
+  - "supabase/**/*"
+alwaysApply: true
+---
+
+# Nexora Project Architecture Rule
+
+Follow the documented Nexora architecture before introducing new patterns.
+
+## Required References
+
+- `docs/04-architecture/MODULAR_MONOLITH.md`
+- `docs/04-architecture/BACKEND_FRONTEND_SEPARATION.md`
+- `docs/04-architecture/API_GUIDELINES.md`
+- `docs/04-architecture/PERFORMANCE_STRATEGY.md`
+- `docs/07-development/MODULE_STRUCTURE.md`
+- `docs/07-development/SECURITY_CHECKLIST.md`
+
+## Architecture Defaults
+
+- Use modular monolith and clean architecture inside feature modules.
+- Use platform engines before duplicating workflow, approvals, audit, notifications, search, reporting, printing, files, localization, permissions, background jobs, integrations, or costing logic.
+- Keep Next.js route handlers, loaders, and server actions thin.
+- Keep React as presentation code only.
+- Keep business invariants server-side and testable.
+
+## Algorithm Defaults
+
+- Approval and document lifecycle: explicit server-side transitions with guards and audit.
+- Numbering: server-side scoped sequence; never client-generated final numbers.
+- Inventory, stock, accounting, wallet, and balances: immutable movements or ledger-style records plus derived balances/read models.
+- Pricing, costing, tax, commission, payroll: versioned calculation pipeline with snapshots where values must be auditable.
+- Search: server-side indexed search; avoid unindexed wildcard search on high-volume tables.
+- Reports and dashboards: read models, optimized SQL, summary tables, materialized views, or async jobs when needed.
+- Integrations: idempotency keys, retries, signature checks, replay protection, and correlation IDs.
+- Concurrent business updates: transactions, uniqueness constraints, version checks, or locks according to risk.
+
+## Do Not
+
+- Do not create global dumping-ground folders.
+- Do not bypass feature public APIs for cross-module access.
+- Do not put Supabase queries in client components.
+- Do not create a new framework or engine without an ADR.
+- Do not weaken RLS, permissions, audit, tenancy, or backend/frontend separation.

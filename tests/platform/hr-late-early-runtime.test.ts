@@ -9,7 +9,7 @@ test("hr late early runtime: schemas validate", async () => {
     hrLateEarlyPolicyCreateSchema,
     hrLateEarlyViolationApproveSchema,
     hrLateEarlyViolationOverrideSchema,
-  } = await import("@/features/hr/application/schemas/hr-late-early-runtime.schema");
+  } = await import("@/features/hr/server-api");
   assert.equal(
     hrLateEarlyPolicyCreateSchema.safeParse({
       code: "STD-LATE",
@@ -123,7 +123,7 @@ test("hr late early runtime: actions and loader exist", () => {
 });
 
 test("hr late early runtime: permissions registered", async () => {
-  const { HR_PERMISSIONS } = await import("@/features/hr/public-api");
+  const { HR_PERMISSIONS } = await import("@/features/hr/server-api");
   assert.equal(HR_PERMISSIONS.lateView, "hr.late.view");
   assert.equal(HR_PERMISSIONS.lateApprove, "hr.late.approve");
   assert.equal(HR_PERMISSIONS.latePolicyManage, "hr.late.policy.manage");
@@ -168,7 +168,7 @@ test("hr late early runtime: payroll export uses payroll input service and expor
 
 test("hr late early runtime: foundation wired in public api", async () => {
   const foundation = await import("@/features/hr/late-early-foundation");
-  const { HR_FOUNDATION_CONTRACTS } = await import("@/features/hr/public-api");
+  const { HR_FOUNDATION_CONTRACTS } = await import("@/features/hr/server-api");
   assert.equal(foundation.HR_LATE_EARLY_ENGINE_BOUNDARY_CONTRACT.runtimeLateEarlyCalculationImplemented, true);
   assert.equal(HR_FOUNDATION_CONTRACTS.lateEarlyBoundary.runtimeLateEarlyCalculationImplemented, true);
   assert.equal(HR_FOUNDATION_CONTRACTS.lateEarlyTables.includes("hr_late_early_violations"), true);
@@ -184,7 +184,7 @@ test("hr late early runtime: attendance triggers evaluation only", () => {
 });
 
 test("hr late early runtime: conflict codes defined", async () => {
-  const constants = await import("@/features/hr/application/constants/hr-late-early-runtime.constants");
+  const constants = await import("@/features/hr/server-api");
   assert.ok(constants.LATE_EARLY_CONFLICT_CODES.includes("payroll_locked"));
   assert.ok(constants.LATE_EARLY_CONFLICT_CODES.includes("attendance_exported"));
 });

@@ -4,8 +4,8 @@ import {
   buildEmployeeImportTemplateCsv,
   buildEmployeeImportTemplateXls,
   type EmployeeImportTemplateLocale,
-} from "@/features/hr/application/services/hr-import.service";
-import { HR_PERMISSIONS } from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { requirePermission } from "@/platform/permissions/server";
 

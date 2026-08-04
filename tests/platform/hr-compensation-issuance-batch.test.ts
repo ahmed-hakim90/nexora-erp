@@ -8,11 +8,11 @@ import {
   nextCompensationIssuanceBatchCode,
   resolveIssuanceLineAmount,
   roundIssuanceAmount,
-} from "@/features/hr/application/services/hr-compensation-issuance-batch.engine";
+} from "@/features/hr/server-api";
 import {
   matchCompensationIssuanceImportRows,
   parseCompensationIssuanceImportContent,
-} from "@/features/hr/application/utils/hr-compensation-issuance-import";
+} from "@/features/hr/server-api";
 
 const recipients = [
   {
@@ -111,7 +111,7 @@ test("compensation issuance engine: incentive accepts percentage override", () =
 
 test("compensation issuance schemas: create draft validation", async () => {
   const { hrCompensationIssuanceCreateDraftSchema } = await import(
-    "@/features/hr/application/schemas/hr-compensation-issuance-batch.schema"
+    "@/features/hr/server-api"
   );
 
   const valid = hrCompensationIssuanceCreateDraftSchema.safeParse({
@@ -176,7 +176,7 @@ test("compensation issuance: migration defines runtime tables", () => {
 });
 
 test("compensation issuance: constants define job and audit actions", async () => {
-  const constants = await import("@/features/hr/application/constants/hr-compensation-issuance.constants");
+  const constants = await import("@/features/hr/server-api");
   assert.equal(constants.HR_COMPENSATION_ISSUANCE_MATERIALIZE_JOB.key, "hr.compensation-issuance-materialize");
   assert.equal(constants.HR_COMPENSATION_ISSUANCE_MAX_LINES, 2000);
   assert.equal(constants.HR_COMPENSATION_ISSUANCE_BATCH_CODE_PREFIX.bonus, "BON-BATCH");

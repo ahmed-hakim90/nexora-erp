@@ -27,7 +27,7 @@ import {
   HR_PERMISSIONS,
   postingReadinessV2AllowsFinanceHandoff,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260711120000_hr_payroll_finance_bank_readiness_foundation.sql");

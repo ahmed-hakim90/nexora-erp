@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { hrEmployeeListQuerySchema } from "@/features/hr/application/schemas/hr-employees.schema";
+import { hrEmployeeListQuerySchema } from "@/features/hr/server-api";
 
 test("employee list query accepts department and unassigned filters", () => {
   const departmentId = "11111111-1111-4111-8111-111111111111";

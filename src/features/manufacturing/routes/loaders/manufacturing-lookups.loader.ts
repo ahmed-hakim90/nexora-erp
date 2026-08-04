@@ -82,7 +82,7 @@ const lookupConfigs: Record<string, LookupConfig | readonly LookupConfig[]> = {
       metaColumn: "sku",
       permission: INVENTORY_PERMISSIONS.productsView,
       scope: "company",
-      select: "id, sku, name",
+      select: "id, sku, name, is_manufacturable, product_type_key",
       table: "inventory_products",
     },
     {
@@ -240,6 +240,7 @@ const relationLabelByTable: Record<string, keyof typeof MANUFACTURING_RELATION_L
 function formatOption(row: Record<string, unknown>, config: LookupConfig): ManufacturingLookupOption {
   const relationKey = relationLabelByTable[config.table];
   if (relationKey) {
+    const role = row.product_type_key == null ? "" : String(row.product_type_key);
     const label = formatManufacturingRelationLabel(MANUFACTURING_RELATION_LABEL_CONTRACTS[relationKey], {
       ...row,
       code: row.code ?? row[`${config.metaColumn}`] ?? row[`${config.labelColumn}`],
@@ -256,7 +257,16 @@ function formatOption(row: Record<string, unknown>, config: LookupConfig): Manuf
       operation_name: row.operation_name ?? row.name,
       uom_key: row.uom_key,
     });
-    return { id: String(row.id), label };
+    const metaParts = [
+      row.sku == null ? null : String(row.sku),
+      role || null,
+      row.is_manufacturable === true ? "manufacturable" : null,
+    ].filter(Boolean);
+    return {
+      id: String(row.id),
+      label,
+      meta: metaParts.length > 0 ? metaParts.join(" · ") : undefined,
+    };
   }
 
   const label = String(row[config.labelColumn] ?? row.id);
@@ -296,6 +306,11 @@ export async function loadManufacturingFormLookups(definition: ManufacturingReso
 
         if (config.scope === "branch") {
           request = request.eq("branch_id", context.branchId);
+        }
+
+        // MFG-01: manufacturing product link prefers inventory products marked manufacturable.
+        if (fieldName === "inventoryProductId" && config.table === "inventory_products") {
+          request = request.eq("is_manufacturable", true);
         }
 
         const { data, error } = await request;

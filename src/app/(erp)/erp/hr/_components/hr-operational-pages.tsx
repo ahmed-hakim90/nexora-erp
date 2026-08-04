@@ -13,8 +13,8 @@ import {
   transitionHrRequestAction,
 } from "@/features/hr/routes/actions/hr-operational.actions";
 import type { HrCustodyRecord, HrDocumentsWorkspaceData, HrRequestRecord } from "@/features/hr/routes/loaders/hr-operational.loader";
-import { HR_DOCUMENT_TYPES } from "@/features/hr/application/constants/hr-operational.constants";
-import type { HrCompanyDocumentComplianceSummary } from "@/features/hr/application/services/hr-employee-document-compliance.service";
+import { HR_DOCUMENT_TYPES } from "@/features/hr/public-api";
+import type { HrCompanyDocumentComplianceSummary } from "@/features/hr/public-api";
 import type { MessageKey } from "@/platform/localization/messages/en";
 import { Button, DatePicker, EnterpriseDataTable, EntityLookup, Input, nativeSelectClassName, PageContainer, PageHeader, secondaryButtonLinkClassName, useTranslations } from "@/shared/ui";
 

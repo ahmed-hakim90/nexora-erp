@@ -86,10 +86,10 @@ test("enterprise workspace navigation component implements adaptive behavior", (
   assert.match(component, /EnterpriseWorkspaceNavigation/);
   assert.match(component, /GroupNavigationControl/);
   assert.match(component, /DropdownMenu/);
-  assert.match(component, /Quick Access/);
-  assert.match(component, /Search sections/);
-  assert.match(component, /Recently Opened/);
-  assert.match(component, /Favorites/);
+  assert.match(component, /workspace\.nav\.quickAccess/);
+  assert.match(component, /workspace\.nav\.searchSections/);
+  assert.match(component, /workspace\.nav\.recent/);
+  assert.match(component, /workspace\.nav\.favorites/);
   assert.match(component, /NavigationBadge/);
   assert.match(component, /lg:hidden/);
   assert.doesNotMatch(component, /MoreHorizontal/);

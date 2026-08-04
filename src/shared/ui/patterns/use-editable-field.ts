@@ -103,6 +103,7 @@ export function useEditableField<TValue>({
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftValue(value);
   }, [value]);
 
@@ -110,6 +111,7 @@ export function useEditableField<TValue>({
     if (mode === "editing" || mode === "saving" || mode === "success" || mode === "validation-error") {
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMode(isHovering ? "hover" : resolveBaseMode(canView, canEdit, ownership));
   }, [canEdit, canView, isHovering, mode, ownership]);
 

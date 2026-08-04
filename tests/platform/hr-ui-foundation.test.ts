@@ -7,7 +7,7 @@ import {
   HR_NAV_ITEMS,
   HR_PERMISSIONS,
   isRawUuid,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 import { HR_FIELD_LOOKUP_PROVIDER_KEYS } from "@/platform/operator-experience/lookup-registry";
 
 test("hr ui foundation renders labels not raw UUIDs", () => {

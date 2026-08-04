@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { requirePermission } from "@/platform/permissions/server";
-import { HR_PERMISSIONS } from "@/features/hr/permissions/permission-registry";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 import { loadHrAttendanceDevicePreview } from "@/features/hr/routes/loaders/hr-attendance-devices.loader";
 
 export async function GET(

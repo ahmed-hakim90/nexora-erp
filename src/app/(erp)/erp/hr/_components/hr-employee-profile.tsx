@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { HrEmployeeProfileData } from "@/features/hr/routes/loaders/hr-employee-profile.loader";
 import { archiveEmployeeSkillRecordAction, createEmployeeSkillRecordAction } from "@/features/hr/routes/actions/hr-employee-skills.actions";
 import {
-  archiveHrEmployeeDocumentAction,
   createHrCustodyAssignmentAction,
   createHrEmployeeDocumentAction,
   createHrRequestAction,
@@ -199,8 +198,8 @@ export function HrEmployeeProfileWorkspace({
 }: Readonly<{ data: HrEmployeeProfileData; tab?: string; uploadKind?: string }>) {
   const t = useTranslations();
   const activeTab = PROFILE_TABS.find((item) => item === tab) ?? "overview";
-  const [favoriteTabKeys, setFavoriteTabKeys] = useState<string[]>([]);
-  const [recentTabKeys, setRecentTabKeys] = useState<string[]>([]);
+  const [favoriteTabKeys, setFavoriteTabKeys] = useState<string[]>(() => readStoredKeys(PROFILE_FAVORITES_KEY));
+  const [recentTabKeys, setRecentTabKeys] = useState<string[]>(() => readStoredKeys(PROFILE_RECENT_KEY));
   const [selectedUploadType, setSelectedUploadType] = useState(uploadKind ?? "");
   const timelineEvents = useMemo(
     () => mapTimelineEvents(data, t("hr.employees.profile.timelineActor"), t),
@@ -208,15 +207,12 @@ export function HrEmployeeProfileWorkspace({
   );
 
   useEffect(() => {
-    setFavoriteTabKeys(readStoredKeys(PROFILE_FAVORITES_KEY));
-    setRecentTabKeys(readStoredKeys(PROFILE_RECENT_KEY));
-  }, []);
-
-  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (uploadKind) setSelectedUploadType(uploadKind);
   }, [uploadKind]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRecentTabKeys((current) => {
       const nextRecent = [activeTab, ...current.filter((key) => key !== activeTab)].slice(0, 6);
       writeStoredKeys(PROFILE_RECENT_KEY, nextRecent);

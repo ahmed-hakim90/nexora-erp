@@ -10,7 +10,15 @@ import {
   HR_PRODUCTION_VALIDATION_RULES,
   HR_SEARCH_ENTITY_PROVIDERS,
 } from "@/features/hr/hr-production-readiness-foundation";
-import { HR_EMPLOYEE_IMPORT_CONTRACT, defineHrEmployee } from "@/features/hr/public-api";
+import { HR_EMPLOYEE_IMPORT_CONTRACT, defineHrEmployee } from "@/features/hr/server-api";
+
+function hasColumnField(columns: readonly { field: string }[], field: string): boolean {
+  return columns.some((column) => column.field === field);
+}
+
+function hasColumnAlias(columns: readonly { aliases?: readonly string[] }[], alias: string): boolean {
+  return columns.some((column) => column.aliases?.includes(alias) ?? false);
+}
 
 const migrationPath = path.join(
   process.cwd(),
@@ -43,7 +51,7 @@ test("hr employee definition supports optional attendanceCode on identity master
 });
 
 test("hr employee wizard schema accepts attendanceCode on create", async () => {
-  const { hrEmployeeWizardSchema } = await import("@/features/hr/application/schemas/hr-employees.schema");
+  const { hrEmployeeWizardSchema } = await import("@/features/hr/server-api");
   const parsed = hrEmployeeWizardSchema.safeParse({
     attendanceCode: "  FP-42  ",
     departmentId: "550e8400-e29b-41d4-a716-446655440001",
@@ -61,7 +69,7 @@ test("hr employee wizard schema accepts attendanceCode on create", async () => {
 });
 
 test("hr employee wizard schema requires employeeNumber", async () => {
-  const { hrEmployeeWizardSchema } = await import("@/features/hr/application/schemas/hr-employees.schema");
+  const { hrEmployeeWizardSchema } = await import("@/features/hr/server-api");
   const parsed = hrEmployeeWizardSchema.safeParse({
     departmentId: "550e8400-e29b-41d4-a716-446655440001",
     effectiveFrom: "2026-01-01",
@@ -73,7 +81,7 @@ test("hr employee wizard schema requires employeeNumber", async () => {
 });
 
 test("hr employee quick edit schema accepts attendanceCode update and blank clear", async () => {
-  const { hrEmployeeQuickEditSchema } = await import("@/features/hr/application/schemas/hr-employees.schema");
+  const { hrEmployeeQuickEditSchema } = await import("@/features/hr/server-api");
   const parsed = hrEmployeeQuickEditSchema.safeParse({
     attendanceCode: "   ",
     employeeId: "550e8400-e29b-41d4-a716-446655440000",
@@ -104,13 +112,13 @@ test("hr employee import contract uses unified employee code", () => {
 test("hr employee import has one code column; export drops separate attendance column", () => {
   assert.equal(HR_EMPLOYEE_IMPORT_COLUMNS.filter((column) => column.field === "employeeNumber").length, 1);
   assert.equal(
-    HR_EMPLOYEE_IMPORT_COLUMNS.some((column) => column.field === "attendanceCode"),
+    hasColumnField(HR_EMPLOYEE_IMPORT_COLUMNS, "attendanceCode"),
     false,
   );
-  assert.ok(HR_EMPLOYEE_IMPORT_COLUMNS.some((column) => column.aliases.includes("كود الحضور")));
-  assert.ok(HR_EMPLOYEE_IMPORT_COLUMNS.some((column) => column.aliases.includes("attendance code")));
+  assert.ok(hasColumnAlias(HR_EMPLOYEE_IMPORT_COLUMNS, "كود الحضور"));
+  assert.ok(hasColumnAlias(HR_EMPLOYEE_IMPORT_COLUMNS, "attendance code"));
   assert.equal(
-    HR_EMPLOYEE_EXPORT_COLUMNS.some((column) => column.field === "attendanceCode"),
+    hasColumnField(HR_EMPLOYEE_EXPORT_COLUMNS, "attendanceCode"),
     false,
   );
   assert.ok(HR_EMPLOYEE_EXPORT_COLUMNS.some((column) => column.field === "employeeNumber"));
@@ -169,7 +177,7 @@ test("hr employee wizard and edit UI use employee code as attendance identity", 
 
 test("employee identity helpers unify job code and attendance code", async () => {
   const { resolveEmployeeAttendanceCode, resolveEmployeeIdentityCode } = await import(
-    "@/features/hr/application/utils/hr-employee-identity-code"
+    "@/features/hr/server-api"
   );
 
   assert.equal(resolveEmployeeAttendanceCode("  emp-12  "), "EMP-12");

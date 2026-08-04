@@ -38,7 +38,7 @@ import {
   HR_SEARCH_PROVIDER_CONTRACT,
   resolveHrEmployeeJobChain,
   hrAppManifest,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 import { validateAppManifest, defineAppManifest, type AppManifest } from "@/platform/app-registry/public-api";
 
 const root = process.cwd();

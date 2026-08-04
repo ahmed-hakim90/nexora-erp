@@ -9,7 +9,7 @@ import {
   isHrFoundationResourceKey,
   isRawUuid,
   listHrFoundationResources,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 import { HR_FOUNDATION_LOOKUP_PROVIDER_KEYS, HR_FIELD_LOOKUP_PROVIDER_KEYS } from "@/platform/operator-experience/lookup-registry";
 
 test("hr ui completion separates jobs and positions foundation resources", () => {
@@ -62,7 +62,7 @@ test("hr ui completion exposes operational loaders", async () => {
 });
 
 test("hr ui completion employee quick edit schema blocks assignment-owned fields", async () => {
-  const schemaModule = await import("@/features/hr/application/schemas/hr-employees.schema");
+  const schemaModule = await import("@/features/hr/server-api");
   const parsed = schemaModule.hrEmployeeQuickEditSchema.safeParse({
     employeeId: "550e8400-e29b-41d4-a716-446655440000",
     employeeNumber: "1001",
@@ -76,7 +76,7 @@ test("hr ui completion employee quick edit schema blocks assignment-owned fields
 });
 
 test("hr ui completion report launcher cards are defined", async () => {
-  const constants = await import("@/features/hr/application/constants/hr-operational.constants");
+  const constants = await import("@/features/hr/server-api");
   assert.equal(constants.HR_REPORT_CARDS.length >= 10, true);
   assert.equal(constants.HR_REPORT_CARDS.some((card) => card.label === "Employee Directory"), true);
 });

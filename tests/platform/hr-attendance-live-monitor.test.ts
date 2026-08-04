@@ -10,7 +10,7 @@ import {
   HR_PERMISSIONS,
   hrAttendanceLiveListQuerySchema,
   hrAttendanceLiveSupervisorActionSchema,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 describe("HR Attendance Live Monitor", () => {
   test("registers live monitor permissions", () => {

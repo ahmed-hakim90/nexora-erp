@@ -19,7 +19,7 @@ import {
   MANUFACTURING_PERMISSION_LIST,
 } from "@/features/manufacturing/public-api";
 import { hrAppManifest } from "@/features/hr/app.manifest";
-import { HR_PERMISSION_LIST } from "@/features/hr/permissions/permission-registry";
+import { HR_PERMISSION_LIST } from "@/features/hr/public-api";
 import {
   administrationAppManifest,
   ADMINISTRATION_PERMISSION_LIST,

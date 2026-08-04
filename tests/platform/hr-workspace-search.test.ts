@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HR_PERMISSIONS } from "@/features/hr/permissions/permission-registry";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 import {
   createHrNavigationSearchProvider,
   createHrOperationalShortcutSearchProvider,
@@ -34,15 +34,15 @@ test("hr workspace search providers expose navigation and operational shortcuts"
 
 test("hr navigation search finds leave and payroll routes", async () => {
   const provider = createHrNavigationSearchProvider();
-  const query = normalizeSearchQuery({ experience: "erp", term: "leave" });
-  const results = provider.search?.(query, searchContext) ?? [];
+  const query = normalizeSearchQuery({ experience: "erp", term: "leave", tenantId: "tenant-1" });
+  const results = await (provider.search?.(query, searchContext) ?? []);
   assert.ok(results.some((result) => result.href === "/erp/hr/leave"));
 });
 
 test("hr operational shortcuts find payroll readiness", async () => {
   const provider = createHrOperationalShortcutSearchProvider();
-  const query = normalizeSearchQuery({ experience: "erp", term: "payroll" });
-  const results = provider.search?.(query, searchContext) ?? [];
+  const query = normalizeSearchQuery({ experience: "erp", term: "payroll", tenantId: "tenant-1" });
+  const results = await (provider.search?.(query, searchContext) ?? []);
   assert.ok(results.some((result) => result.href === "/erp/hr/payroll-readiness"));
 });
 

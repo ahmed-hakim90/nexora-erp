@@ -367,7 +367,9 @@ export async function disburseEmployeeLoanAction(loanId: string, formData: FormD
     throw new ApplicationError({ code: "VALIDATION_ERROR", message: "Only approved loans can be disbursed." });
   }
 
-  const firstInstallmentDate = String(formData.get("firstInstallmentDate") ?? new Date().toISOString().slice(0, 10));
+  const requestedFirstInstallmentDate = String(formData.get("firstInstallmentDate") ?? "");
+  const firstInstallmentDate =
+    requestedFirstInstallmentDate || new Date().toISOString().slice(0, 10);
   const disbursedAmount = loan.approved_amount ?? loan.principal_amount;
 
   const { error } = await supabase

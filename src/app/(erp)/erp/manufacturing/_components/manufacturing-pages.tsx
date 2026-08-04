@@ -122,10 +122,6 @@ function relationLookupForField(definition: ManufacturingResourceDefinition, loo
   return lookups[field.name];
 }
 
-function renderDetailValue(definition: ManufacturingResourceDefinition, lookups: ManufacturingLookupOptions, key: string, value: unknown) {
-  return relationToText(value, relationLookupForField(definition, lookups, key));
-}
-
 function OptionalStatusFilter({ defaultValue }: Readonly<{ defaultValue?: string }>) {
   return (
     <select

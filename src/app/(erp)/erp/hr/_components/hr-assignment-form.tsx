@@ -33,11 +33,13 @@ export function HrAssignmentCreateForm({
   employeeId,
   employmentProfileId,
   preset,
+  variant = "inline",
 }: Readonly<{
   action: (formData: FormData) => void | Promise<void>;
   employeeId: string;
   employmentProfileId?: string;
   preset?: string;
+  variant?: "inline" | "modal";
 }>) {
   const t = useTranslations();
   const initialPreset =
@@ -62,8 +64,8 @@ export function HrAssignmentCreateForm({
   );
 
   return (
-    <form action={action} className="space-y-4 rounded-lg border p-5">
-      <h2 className="font-medium">{t("hr.assignments.createTitle")}</h2>
+    <form action={action} className={variant === "modal" ? "space-y-4" : "space-y-4 rounded-lg border p-5"}>
+      {variant === "inline" ? <h2 className="font-medium">{t("hr.assignments.createTitle")}</h2> : null}
       <div className="flex flex-wrap gap-2">
         {HR_ASSIGNMENT_QUICK_ACTIONS.map((item) => (
           <Button

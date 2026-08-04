@@ -14,14 +14,14 @@ import {
   HR_ASSIGNMENT_TYPES,
   HR_FOUNDATION_CONTRACTS,
   HR_OPERATIONAL_BOUNDARY_CONTRACT,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 const root = process.cwd();
 const cacheServicePath = path.join(root, "src/features/hr/application/services/hr-assignment-cache.service.ts");
 const migrationPath = path.join(root, "supabase/migrations/20260710120500_hr_assignment_resolver_runtime.sql");
 
 test("HR assignment resolver runtime exposes cache service and admin rebuild action", async () => {
-  const cacheModule = await import("@/features/hr/application/services/hr-assignment-cache.service");
+  const cacheModule = await import("@/features/hr/server-api");
   assert.equal(typeof cacheModule.HrAssignmentCacheService, "function");
 
   const employeeActions = await import("@/features/hr/routes/actions/hr-employees.actions");
@@ -92,7 +92,7 @@ test("employee assignment actions invoke cache rebuild after mutations", () => {
 });
 
 test("resolver service exposes assignment ids for resolution refs", async () => {
-  const resolverModule = await import("@/features/hr/application/services/hr-assignment-resolver.service");
+  const resolverModule = await import("@/features/hr/server-api");
   const source = fs.readFileSync(
     path.join(root, "src/features/hr/application/services/hr-assignment-resolver.service.ts"),
     "utf8",

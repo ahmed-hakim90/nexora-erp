@@ -5,7 +5,7 @@ import test from "node:test";
 
 test("hr leave runtime: schemas validate", async () => {
   const { hrLeaveCarryForwardPreviewSchema, hrLeaveEncashmentCreateSchema } = await import(
-    "@/features/hr/application/schemas/hr-leave-runtime.schema"
+    "@/features/hr/server-api"
   );
   assert.equal(
     hrLeaveCarryForwardPreviewSchema.safeParse({
@@ -59,7 +59,7 @@ test("hr leave runtime: actions and loader exist", () => {
 });
 
 test("hr leave runtime: permissions registered", async () => {
-  const { HR_PERMISSIONS } = await import("@/features/hr/public-api");
+  const { HR_PERMISSIONS } = await import("@/features/hr/server-api");
   assert.equal(HR_PERMISSIONS.leaveCarryForward, "hr.leave.carry_forward");
   assert.equal(HR_PERMISSIONS.leaveEncashment, "hr.leave.encashment");
   assert.equal(HR_PERMISSIONS.leaveReportsView, "hr.leave.reports.view");
@@ -97,12 +97,12 @@ test("hr leave runtime: foundation flags runtime implemented", async () => {
 });
 
 test("hr leave runtime: conflict codes defined", async () => {
-  const constants = await import("@/features/hr/application/constants/hr-leave-runtime.constants");
+  const constants = await import("@/features/hr/server-api");
   assert.ok(constants.LEAVE_CONFLICT_CODES.includes("insufficient_balance"));
 });
 
 test("hr leave runtime: leave type schema validates create payload", async () => {
-  const { hrLeaveTypeCreateSchema } = await import("@/features/hr/application/schemas/hr-leave.schema");
+  const { hrLeaveTypeCreateSchema } = await import("@/features/hr/server-api");
   const parsed = hrLeaveTypeCreateSchema.parse({
     code: "annual",
     name: "Annual Leave",

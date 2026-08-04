@@ -12,7 +12,6 @@ import {
   hrEmployeeBasicSalaryClearSchema,
   hrEmployeeBasicSalaryOverrideSchema,
   hrEmployeeSalaryAssignmentSchema,
-  hrSalaryPackageLineArchiveSchema,
   hrSalaryPackageLineSchema,
   hrSalaryPackageLineUpdateSchema,
   hrSalaryPackageSchema,

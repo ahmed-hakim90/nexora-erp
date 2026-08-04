@@ -10,14 +10,14 @@ import {
   HR_ATTENDANCE_DEVICE_SYNC_PHASES,
   HR_ATTENDANCE_DEVICE_SYNC_STRATEGIES,
   HR_PERMISSIONS,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 import { HrAttendanceDeviceValidationService } from "@/features/hr/server-api";
-import { computeDeviceHealthDimensions } from "@/features/hr/public-api";
+import { computeDeviceHealthDimensions } from "@/features/hr/server-api";
 import {
   buildSyncRecommendations,
   resolveDownloadWindow,
   validateStrategyConfig,
-} from "@/features/hr/application/utils/hr-attendance-device-sync-strategy";
+} from "@/features/hr/server-api";
 
 describe("HR Attendance Device Center", () => {
   test("exposes sync phases and background job keys", () => {

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { HrDashboardActionQueueItem, HrDashboardMetrics } from "@/features/hr/application/types/hr-ui.types";
-import { hrMetricHelp } from "@/features/hr/application/hr-help-content";
+import type { HrDashboardActionQueueItem, HrDashboardMetrics } from "@/features/hr/server-api";
+import { hrMetricHelp } from "@/features/hr/server-api";
 
 const OPERATIONAL_METRIC_KEYS = [
   "pendingLeaveApprovals",

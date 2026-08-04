@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { HR_NOTIFICATION_RUNTIME_HANDLERS } from "@/features/hr/application/services/hr-notification-runtime.service";
-import { HR_PRINT_RUNTIME_REGISTRY } from "@/features/hr/application/services/hr-print-runtime.service";
-import { HR_PRINT_TEMPLATE_KEYS } from "@/features/hr/public-api";
+import { HR_NOTIFICATION_RUNTIME_HANDLERS } from "@/features/hr/server-api";
+import { HR_PRINT_RUNTIME_REGISTRY } from "@/features/hr/server-api";
+import { HR_PRINT_TEMPLATE_KEYS } from "@/features/hr/server-api";
 
 describe("HR print and notification runtime", () => {
   test("print runtime exposes top operational templates", () => {

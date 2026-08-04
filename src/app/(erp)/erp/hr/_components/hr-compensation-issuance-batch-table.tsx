@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useTransition } from "react";
 
-import type { HrCompensationIssuanceDocumentKind } from "@/features/hr/application/constants/hr-compensation-issuance.constants";
-import {
-  compensationIssuanceBatchPath,
-  compensationIssuanceListPath,
-} from "@/features/hr/application/utils/hr-compensation-issuance-paths";
+import type { HrCompensationIssuanceDocumentKind } from "@/features/hr/public-api";
+import { compensationIssuanceBatchPath } from "@/features/hr/public-api";
 import { approveCompensationIssuanceBatchAction } from "@/features/hr/routes/actions/hr-compensation-issuance.actions";
 import type { HrCompensationIssuanceBatchListItem } from "@/features/hr/routes/loaders/hr-compensation-issuance.loader";
 import { platformFeedback } from "@/platform/feedback/public-api";

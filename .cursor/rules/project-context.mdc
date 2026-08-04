@@ -1,0 +1,67 @@
+---
+description: Nexora ERP project context for developers and AI agents
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Nexora ERP Project Context
+
+Nexora is an enterprise business platform, not a demo app. Every change must preserve modular architecture, strict backend security, operational UX, performance, auditability, and clear developer handoff.
+
+## Product Context
+
+- Primary experience: ERP Workspace for operational users.
+- Secondary experience: HR Self-Service Portal for lightweight employee workflows.
+- Business areas include finance, inventory, HR, purchasing, sales, CRM, service, fleet, rental, manufacturing, commerce, reporting, printing, workflow, approvals, audit, integrations, and platform operations.
+- Canonical documentation starts at `docs/README.md`.
+- Constitutional architecture starts at `docs/00-overview/NEXORA_ENTERPRISE_BLUEPRINT_V1.md`.
+
+## Architecture Context
+
+- Architecture style: modular monolith in one Next.js App Router project.
+- Feature modules live under `src/features/<feature-name>/`.
+- Platform engines live under `src/platform/`.
+- Shared UI and neutral helpers live under `src/shared/`.
+- Supabase and persistence adapters live behind infrastructure boundaries.
+- Cross-module access must go through public APIs, route adapters, or documented platform contracts.
+- Major architecture changes require an ADR under `docs/05-decisions/`.
+
+## Code Placement
+
+- Domain rules, invariants, statuses, calculations, and lifecycle transitions belong in `domain`.
+- Use cases, workflow orchestration, validation coordination, permissions, transactions, and audit requests belong in `application`.
+- Repositories, Supabase/PostgreSQL access, storage, integrations, and mappers belong in `infrastructure`.
+- React components, forms, hooks, tables, view models, and route UI belong in `presentation`.
+- Server actions, API routes, and loaders are thin adapters under `routes`.
+- UI must not query Supabase directly or enforce business rules as the only authority.
+
+## Security Context
+
+- Backend must enforce authentication, tenant/company/branch scope, permissions, validation, RLS-compatible access, and audit-sensitive behavior.
+- Never rely on frontend authorization.
+- Prevent IDOR by validating ownership and scope for every referenced resource.
+- Never use service-role credentials outside trusted backend code.
+- Never expose secrets, stack traces, private metadata, or privileged data to the browser.
+- Treat client-provided IDs, totals, statuses, tenant IDs, branch IDs, permissions, and hidden inputs as attacker-controlled.
+
+## Performance Context
+
+- Large operational lists must be paginated from the first implementation.
+- Search and filtering for products, customers, suppliers, employees, documents, warehouses, serial numbers, invoices, attendance, and audit logs must be server-side.
+- Avoid `select *`, unbounded date ranges, N+1 queries, and client-side aggregation over large datasets.
+- Cache keys must include tenant/company/branch/user/permission dimensions when results depend on them.
+- Heavy reports, exports, imports, batch printing, sync, notifications, and AI jobs must not block normal interactive requests.
+
+## UX Context
+
+- Nexora UI is operational software: dense, clear, fast, accessible, and consistent.
+- Follow `docs/06-guidelines/NEXORA_PLATFORM_UX_CONSTITUTION.md` and `docs/06-guidelines/PLATFORM_UX_REVIEW_GATE.md`.
+- Use shared UI primitives from `src/shared/ui`.
+- Every screen needs loading, empty, error, permission-denied, validation, and responsive states where relevant.
+- Forms must support operator speed, keyboard flow, clear validation, safe dirty-state handling, and predictable save/cancel behavior.
+- Tables must support scanning, sorting/filtering where appropriate, pagination, stable row actions, and no layout shift.
+
+## Developer Handoff
+
+Before finishing, explain the business workflow, affected module, backend permissions, data access, caching/performance choices, UI states, tests, and remaining risks.

@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import {
   HR_PERMISSIONS,
   HR_PRINT_TEMPLATE_KEYS,
-} from "@/features/hr/public-api";
-import { renderHrPrintDocument } from "@/features/hr/application/services/hr-print-runtime.service";
+} from "@/features/hr/server-api";
+import { renderHrPrintDocument } from "@/features/hr/server-api";
 import { resolveBranchRequestContext } from "@/platform/auth/server";
 import { requirePermission } from "@/platform/permissions/server";
 

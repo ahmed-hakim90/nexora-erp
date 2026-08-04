@@ -6,7 +6,7 @@ import {
   importEmployeesCsvAction,
   previewEmployeesCsvAction,
 } from "@/features/hr/routes/actions/hr-employees.actions";
-import type { HrEmployeeImportCommitRow } from "@/features/hr/application/services/hr-import.service";
+import type { HrEmployeeImportCommitRow } from "@/features/hr/server-api";
 
 export async function POST(request: Request) {
   try {

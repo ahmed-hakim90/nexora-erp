@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { HR_ONBOARDING_CHECKLIST_ITEMS } from "@/features/hr/template-lifecycle-foundation";
-import { hrEmployeeWizardSchema } from "@/features/hr/application/schemas/hr-employees.schema";
+import { hrEmployeeWizardSchema } from "@/features/hr/server-api";
 
 const DEFAULT_WORKING_WEEK_DAYS = [0, 1, 2, 3, 4] as const;
 

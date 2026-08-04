@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 test("hr enterprise: leave schema validates required fields", async () => {
-  const { hrLeaveCreateSchema, hrLeavePolicyCreateSchema } = await import("@/features/hr/application/schemas/hr-leave.schema");
+  const { hrLeaveCreateSchema, hrLeavePolicyCreateSchema } = await import("@/features/hr/server-api");
   const invalid = hrLeaveCreateSchema.safeParse({ employeeId: "550e8400-e29b-41d4-a716-446655440000" });
   assert.equal(invalid.success, false);
   const valid = hrLeaveCreateSchema.safeParse({
@@ -24,10 +24,10 @@ test("hr enterprise: leave schema validates required fields", async () => {
 });
 
 test("hr enterprise: leave attendance payroll services are exported", async () => {
-  const leave = await import("@/features/hr/application/services/hr-leave.service");
-  const attendance = await import("@/features/hr/application/services/hr-attendance.service");
-  const payroll = await import("@/features/hr/application/services/hr-payroll.service");
-  const fileAttachment = await import("@/features/hr/application/services/hr-file-attachment.service");
+  const leave = await import("@/features/hr/server-api");
+  const attendance = await import("@/features/hr/server-api");
+  const payroll = await import("@/features/hr/server-api");
+  const fileAttachment = await import("@/features/hr/server-api");
   assert.equal(typeof leave.HrLeaveService, "function");
   assert.equal(typeof attendance.HrAttendanceService, "function");
   assert.equal(typeof payroll.HrPayrollService, "function");

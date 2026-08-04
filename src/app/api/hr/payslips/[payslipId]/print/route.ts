@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { resolveCompanyRequestContext } from "@/platform/auth/server";
 import { createRequestSupabaseClient } from "@/platform/database/server";
 import { requirePermission } from "@/platform/permissions/server";
-import { HR_PERMISSIONS } from "@/features/hr/public-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 
 function escapeHtml(value: string): string {
   return value

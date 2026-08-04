@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { HR_PERMISSIONS } from "@/features/hr/public-api";
+import { HR_PERMISSIONS } from "@/features/hr/server-api";
 
 const root = process.cwd();
 const migrationPath = path.join(root, "supabase/migrations/20260719120000_hr_portal_self_service_rls.sql");

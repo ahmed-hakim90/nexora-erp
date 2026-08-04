@@ -293,7 +293,6 @@ function EditableFieldLegacy<TValue>({
   onSave,
   onWorkflowOpen,
   ownership,
-  pageMode,
   permissionMessage,
   placeholder,
   selectOptions,

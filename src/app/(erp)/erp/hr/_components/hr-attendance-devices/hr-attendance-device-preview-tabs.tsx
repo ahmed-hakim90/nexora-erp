@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 
-import type { HrAttendanceDevicePreviewPayload, HrAttendanceDevicePreviewPunch } from "@/features/hr/application/types/hr-attendance-device.types";
+import type { HrAttendanceDevicePreviewPayload, HrAttendanceDevicePreviewPunch } from "@/features/hr/public-api";
 import { formatHrDurationSeconds } from "@/features/hr/public-api";
 import { formatHrStatusLabel } from "@/features/hr/public-api";
 import {
@@ -65,6 +65,7 @@ export function HrAttendanceDevicePreviewTabs({
   const [draftPunchType, setDraftPunchType] = useState<"in" | "out">("in");
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreviewState(preview);
   }, [preview]);
 

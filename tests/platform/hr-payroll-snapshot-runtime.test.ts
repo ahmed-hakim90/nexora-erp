@@ -5,7 +5,7 @@ import {
   isPayrollLiveFallbackAllowed,
   PAYROLL_PERIOD_FROZEN_STATUSES,
   PAYROLL_SNAPSHOT_REQUIRED_MESSAGE,
-} from "@/features/hr/application/constants/hr-payroll-runtime.constants";
+} from "@/features/hr/server-api";
 import { HR_PAYROLL_ENGINE_BOUNDARY_CONTRACT, HR_PAYROLL_LOCK_READINESS } from "@/features/hr/payroll-foundation";
 
 describe("HR payroll snapshot-only runtime", () => {

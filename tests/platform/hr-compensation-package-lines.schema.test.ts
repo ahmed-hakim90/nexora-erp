@@ -5,7 +5,7 @@ import {
   hrSalaryPackageLineArchiveSchema,
   hrSalaryPackageLineSchema,
   hrSalaryPackageLineUpdateSchema,
-} from "@/features/hr/application/schemas/hr-compensation.schema";
+} from "@/features/hr/server-api";
 
 test("salary package line schemas validate create, update, and archive inputs", () => {
   const packageVersionId = "11111111-1111-4111-8111-111111111111";

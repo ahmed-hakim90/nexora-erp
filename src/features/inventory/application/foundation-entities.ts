@@ -91,17 +91,17 @@ const commonStatusField: InventoryFoundationField = {
 };
 
 const warehouseTypeOptions = [
-  "main",
-  "finished_goods",
-  "raw_materials",
-  "spare_parts",
-  "service",
-  "returns",
-  "scrap",
-  "qc",
-  "production_buffer",
-  "transit",
-].map((value) => ({ label: value, value }));
+  { value: "raw_materials", label: "Raw materials" },
+  { value: "production_buffer", label: "Production floor / buffer" },
+  { value: "finished_goods", label: "Finished goods" },
+  { value: "scrap", label: "Scrap" },
+  { value: "qc", label: "QC hold" },
+  { value: "main", label: "Main" },
+  { value: "spare_parts", label: "Spare parts" },
+  { value: "service", label: "Service" },
+  { value: "returns", label: "Returns" },
+  { value: "transit", label: "Transit" },
+] as const;
 
 const locationTypeOptions = [
   "zone",

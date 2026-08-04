@@ -26,6 +26,15 @@ export {
   parseManufacturingResourceKey,
 } from "./presentation/view-models/page-config";
 export { FUTURE_WORKER_ACHIEVEMENT_FORMULA, PRODUCTION_STANDARD_RESOLUTION_PRIORITY } from "./domain/rules/manufacturing-foundation.rules";
+export { assertManufacturingProductRules } from "./domain/rules/manufacturing-foundation.rules";
+export {
+  MANUFACTURING_ITEM_ROLE_OPTIONS,
+  MANUFACTURING_ITEM_ROLE_VALUES,
+  MANUFACTURING_WAREHOUSE_ROLE_MAP,
+  MANUFACTURING_WAREHOUSE_TYPE_OPTIONS,
+  isManufacturingItemRole,
+} from "./domain/manufacturing-catalog-roles";
+export type { ManufacturingItemRole } from "./domain/manufacturing-catalog-roles";
 export type {
   ManufacturingListQuery,
   ManufacturingMutationInput,

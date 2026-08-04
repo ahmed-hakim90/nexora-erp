@@ -10,7 +10,7 @@ import {
   parseEmployeeImportSpreadsheet,
   previewEmployeeImportRows,
   previewRowsToCommitPayload,
-} from "@/features/hr/application/services/hr-import.service";
+} from "@/features/hr/server-api";
 
 type FakeEmployee = Readonly<{
   attendance_code: string | null;
@@ -149,8 +149,8 @@ test("Arabic gender values normalize during preview and unify code fields", asyn
   assert.equal(preview.rows[1]?.employeeNumber, "FP-AR2");
 });
 
-test("parseEmployeeImportFile reads xlsx/xls workbook rows and Excel serial dates", () => {
-  const XLSX = require("xlsx") as typeof import("xlsx");
+test("parseEmployeeImportFile reads xlsx/xls workbook rows and Excel serial dates", async () => {
+  const XLSX = await import("xlsx");
   const headers = [
     "Full Name",
     "Employee Code",

@@ -5,7 +5,7 @@ import {
   payrollRunAllowsApproval,
   payrollRunAllowsCalculation,
   payrollRunAllowsPublish,
-} from "@/features/hr/public-api";
+} from "@/features/hr/server-api";
 
 describe("HR payroll publish runtime guards", () => {
   test("calculation is allowed for ready and completed runs", () => {

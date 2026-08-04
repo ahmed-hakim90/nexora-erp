@@ -88,7 +88,6 @@ import {
   HR_LATE_EARLY_ENGINE_BOUNDARY_CONTRACT,
   HR_LATE_EARLY_EXPORT_CONTRACT,
   HR_LATE_EARLY_PERMISSION_METADATA,
-  HR_LATE_EARLY_RUNTIME_AUDIT_ACTIONS,
   HR_LATE_EARLY_RUNTIME_EVENT_DEFINITIONS,
   HR_LATE_EARLY_RUNTIME_TABLES,
 } from "./late-early-foundation";
@@ -428,6 +427,7 @@ export { formatHrDisplayLabel, formatHrStatusLabel, isRawUuid, readContactField 
 export {
   translateHrActionType,
   translateHrAdvanceType,
+  translateHrLoanType,
   translateHrAssetType,
   translateHrDisplayValue,
   translateHrDocumentComplianceStatus,
@@ -478,6 +478,7 @@ export type {
   HrAttendanceDeviceImportReport,
   HrAttendanceDeviceListRecord,
   HrAttendanceDevicePreviewPayload,
+  HrAttendanceDevicePreviewPunch,
   HrAttendanceDeviceSyncHistoryRecord,
   HrAttendanceDeviceSyncProgress,
   HrAttendanceDeviceSyncStartContext,
@@ -501,6 +502,7 @@ export {
 export type {
   HrAttendanceLiveEmployeeDrawer,
   HrAttendanceLiveExceptionRecord,
+  HrAttendanceLiveGpsLocation,
   HrAttendanceLiveGridRow,
   HrAttendanceLiveKpis,
   HrAttendanceLiveRefreshPayload,
@@ -3551,3 +3553,15 @@ export const HR_FOUNDATION_CONTRACTS = {
   timelineEventTypes: HR_TIMELINE_EVENT_TYPES,
   productionReadinessGate: HR_PRODUCTION_READINESS_GATE_V1,
 } as const;
+
+export * from "./application/constants/hr-compensation-issuance.constants";
+export * from "./application/constants/hr-document-kind.registry";
+export * from "./application/schemas/hr-attendance-device.schema";
+export * from "./application/schemas/hr-compensation-issuance-batch.schema";
+export * from "./application/types/hr-ui.types";
+export * from "./application/utils/hr-attendance-device-sync-strategy";
+export * from "./application/utils/hr-compensation-issuance-paths";
+export type { HrEmployeeDocumentCompliance } from "./application/utils/hr-document-compliance.evaluate";
+export * from "./application/utils/hr-foundation-display";
+export type { HrCompanyDocumentComplianceSummary } from "./application/services/hr-employee-document-compliance.service";
+export type { HrEmployeeHireReadiness } from "./application/services/hr-employee-hire-readiness.service";

@@ -44,6 +44,7 @@ import type { InventoryProductRecord, InventoryProductWorkspaceData } from "@/fe
 
 const statusOptions = ["draft", "active", "inactive", "locked", "archived"] as const;
 const kindOptions = ["stockable", "consumable", "service", "asset", "rental", "kit"] as const;
+const manufacturingRoleOptions = ["raw_material", "semi_finished", "finished_good", "packaging"] as const;
 const trackingOptions = ["none", "quantity_only", "lot", "serial", "lot_serial"] as const;
 const reservationOptions = ["none", "soft", "hard"] as const;
 const onlineStatusOptions = ["draft", "ready", "published", "hidden", "archived"] as const;
@@ -59,6 +60,7 @@ const productFieldRules: readonly PlatformFormFieldRule[] = [
   { label: "Internal Name", name: "name", required: true },
   { label: "Commercial Name", name: "commercialName", serverAliases: ["commercial_name"] },
   { label: "Product Type", name: "productKind", required: true, serverAliases: ["product_kind"] },
+  { label: "Manufacturing Role", name: "productTypeKey", serverAliases: ["product_type_key"] },
   { label: "Category", name: "categoryId", required: true, serverAliases: ["category_id", "product_category_id"] },
   { label: "Base UOM", name: "baseUomId", required: true, serverAliases: ["base_uom_id"] },
   { label: "Tracking", name: "trackingMode", required: true, serverAliases: ["tracking_mode"] },
@@ -363,6 +365,14 @@ function ProductRecordModal({ data, onOpenChange, open, product, previousHref, n
                         <Field defaultValue={product?.brand} error={validation.errors.brand} label="Brand" name="brand" />
                       <SelectField defaultValue={product?.baseUomId} error={validation.errors.baseUomId} isRequired label="UOM" name="baseUomId" options={data.uoms} />
                       <CheckboxField defaultChecked={product?.hasVariants ?? false} label="Variant-ready" name="hasVariants" />
+                      <CheckboxField defaultChecked={product?.isManufacturable ?? false} label="Manufacturable" name="isManufacturable" />
+                      <SelectField
+                        defaultValue={product?.productTypeKey ?? ""}
+                        error={validation.errors.productTypeKey}
+                        label="Manufacturing Role"
+                        name="productTypeKey"
+                        options={manufacturingRoleOptions}
+                      />
                     </div>
                   ),
                 },
@@ -718,7 +728,6 @@ function LegacyProductHiddenFields({ product }: Readonly<{ product?: InventoryPr
     financeDimensionKey: product?.financeDimensionKey ?? "",
     hsCode: product?.hsCode ?? "",
     isDiscountable: String(product?.isDiscountable ?? true),
-    isManufacturable: String(product?.isManufacturable ?? false),
     isOnlineVisible: String(product?.isOnlineVisible ?? false),
     isPurchasable: String(product?.isPurchasable ?? true),
     isSellable: String(product?.isSellable ?? true),
@@ -728,7 +737,6 @@ function LegacyProductHiddenFields({ product }: Readonly<{ product?: InventoryPr
     onlinePrice: formatNumber(product?.onlinePrice ?? 0),
     openingBalanceQty: formatNumber(product?.openingBalanceQty ?? 0),
     priceIncludesTax: String(product?.priceIncludesTax ?? false),
-    productTypeKey: product?.productTypeKey ?? "",
     purchasePrice: formatNumber(product?.purchasePrice ?? 0),
     purchaseUomId: product?.purchaseUomId ?? "",
     reorderPointQty: formatNumber(product?.reorderPointQty),

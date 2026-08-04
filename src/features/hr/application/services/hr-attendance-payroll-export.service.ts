@@ -448,7 +448,7 @@ export class HrAttendancePayrollExportService {
     employeeId: string,
     filters: HrAttendanceExportFilterInput,
   ): Promise<AttendancePayrollInputSnapshot> {
-    const { data: profile } = await this.supabase
+    await this.supabase
       .from("hr_employment_profiles")
       .select("id")
       .eq("tenant_id", this.context.tenantId)

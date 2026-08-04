@@ -103,6 +103,13 @@ export {
 } from "./application/schemas/inventory-serials.schema";
 export { inventoryProductMutationSchema } from "./application/schemas/inventory-products.schema";
 export {
+  INVENTORY_MANUFACTURING_ITEM_ROLE_OPTIONS,
+  INVENTORY_MANUFACTURING_ITEM_ROLE_VALUES,
+  INVENTORY_PRODUCTION_WAREHOUSE_TYPE_OPTIONS,
+  isInventoryManufacturingItemRole,
+  type InventoryManufacturingItemRole,
+} from "./domain/manufacturing-item-roles";
+export {
   inventoryCurrentStateProjectionSchema,
   inventoryDocumentLineSchema,
   inventoryDocumentSnapshotSchema,

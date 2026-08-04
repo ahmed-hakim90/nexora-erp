@@ -149,7 +149,6 @@ export class ZktecoAttendanceDeviceDriver extends BaseAttendanceDeviceDriver {
   async getDeviceInfo(): Promise<HrDeviceInfo> {
     this.ensureConnected();
     const config = this.ensureConnected();
-    const info = await this.zk!.getInfo();
     const serverTime = this.serverNow();
 
     return {

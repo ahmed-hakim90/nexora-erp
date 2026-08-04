@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { listRequiredDocumentKinds, translateHrRequiredDocumentKind } from "@/features/hr/application/constants/hr-document-kind.registry";
+import { listRequiredDocumentKinds, translateHrRequiredDocumentKind } from "@/features/hr/public-api";
 import {
   archiveRequiredDocumentSetAction,
   createRequiredDocumentSetAction,
